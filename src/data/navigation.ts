@@ -1,4 +1,10 @@
-export type NavKey = "home" | "matcha" | "producers" | "journal" | "howTo"
+export type NavKey =
+  | "home"
+  | "matcha"
+  | "producers"
+  | "journal"
+  | "howTo"
+  | "contact"
 
 export type NavRoute = {
   href: string
@@ -11,4 +17,5 @@ export const mainNav: NavRoute[] = [
   { href: "/producers", key: "producers" },
   { href: "/journal", key: "journal" },
   { href: "/how-to", key: "howTo" },
+  { href: "/contact", key: "contact" },
 ]

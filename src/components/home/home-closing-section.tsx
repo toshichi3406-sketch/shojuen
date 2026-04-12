@@ -1,6 +1,10 @@
 "use client"
 
+import Link from "next/link"
+
 import { FadeIn } from "@/components/motion/fade-in"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { useLanguage } from "@/i18n/language-context"
 
 export function HomeClosingSection() {
@@ -20,6 +24,20 @@ export function HomeClosingSection() {
           <p className="mt-6 text-sm leading-relaxed text-muted-foreground sm:text-base">
             {m.homeClosing.body}
           </p>
+          <p className="mt-8 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {m.homeClosing.contactLine}
+          </p>
+          <div className="mt-6 flex justify-center">
+            <Link
+              href="/contact"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "rounded-full border-primary/30 no-underline"
+              )}
+            >
+              {m.homeClosing.contactCta}
+            </Link>
+          </div>
         </FadeIn>
       </div>
     </section>

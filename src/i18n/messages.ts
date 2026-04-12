@@ -10,7 +10,7 @@ export type Messages = {
   languageSwitcher: { label: string; ja: string; en: string }
   nav: { ariaMain: string; ariaMobile: string; openMenu: string }
   navItems: Record<
-    "home" | "matcha" | "producers" | "journal" | "howTo",
+    "home" | "matcha" | "producers" | "journal" | "howTo" | "contact",
     { label: string; description: string }
   >
   footer: { aria: string; blurb: string; rightsSuffix: string }
@@ -37,7 +37,13 @@ export type Messages = {
       string,
     ]
   }
-  homeClosing: { title: string; body: string }
+  homeClosing: { title: string; body: string; contactLine: string; contactCta: string }
+  contactPage: {
+    title: string
+    mailCta: string
+    mailSubject: string
+    backHome: string
+  }
   latest: {
     kicker: string
     heading: string
@@ -126,11 +132,12 @@ const ja: Messages = {
     producers: { label: "生産者紹介", description: "茶農家・茶師のこだわり" },
     journal: { label: "JOURNAL", description: "碾茶と茶道の記録" },
     howTo: { label: "点て方", description: "濃茶・薄茶・モダンな楽しみ方" },
+    contact: { label: "お問い合わせ", description: "卸・取引・ご相談（メール）" },
   },
   footer: {
     aria: "フッター",
     blurb:
-      "抹茶（碾茶）の産地、品種、石臼挽き、茶道の精神性を、濃緑の一杯とともに読み解く独立メディア。販売は行いません。",
+      "抹茶（碾茶）の産地・品種・石臼挽き・茶道の精神性を、濃緑の一杯とともに綴るメディアです。茶農家から仕入れた抹茶の海外卸などのご相談も承ります。",
     rightsSuffix: ". All rights reserved.",
   },
   hero: {
@@ -163,6 +170,14 @@ const ja: Messages = {
     title: "一杯の濃緑に、風土と作法が宿る。",
     body:
       "碾茶は覆下栽培から蒸し、乾燥、石臼挽きまで、工程のすべてが茶碗の色と香りに刻まれます。松壽園SHOJUENでは、抹茶の多様性と文化性を、目利きの視点で記録します。",
+    contactLine: "お問い合わせはメールにてお願いいたします。",
+    contactCta: "お問い合わせ",
+  },
+  contactPage: {
+    title: "お問い合わせ",
+    mailCta: "メールを送る",
+    mailSubject: "【松壽園SHOJUEN】お問い合わせ",
+    backHome: "トップへ戻る",
   },
   latest: {
     kicker: "Journal",
@@ -317,11 +332,15 @@ const en: Messages = {
       label: "HOW TO",
       description: "Koicha, usucha & modern serves",
     },
+    contact: {
+      label: "CONTACT",
+      description: "Email us",
+    },
   },
   footer: {
     aria: "Footer",
     blurb:
-      "Independent editorial on matcha (tencha): origins, cultivars, stone milling, and the spirit of the tea room — read alongside a bowl of deep green. We do not sell tea.",
+      "Editorial on matcha (tencha): origins, cultivars, stone milling, and the tea room — alongside sourcing matcha from tea farms and export wholesale inquiries.",
     rightsSuffix: ". All rights reserved.",
   },
   hero: {
@@ -354,6 +373,14 @@ const en: Messages = {
     title: "In one bowl of deep green: place, craft, and ritual.",
     body:
       "From shade-growing and steaming to drying and stone milling, every step of tencha leaves its mark in the color and aroma of the tea in your bowl. 松壽園SHOJUEN records the diversity of matcha and its culture with a curator's eye.",
+    contactLine: "Please contact us by email.",
+    contactCta: "Contact",
+  },
+  contactPage: {
+    title: "Contact",
+    mailCta: "Send email",
+    mailSubject: "[SHOJUEN] Inquiry",
+    backHome: "Back to home",
   },
   latest: {
     kicker: "Journal",
