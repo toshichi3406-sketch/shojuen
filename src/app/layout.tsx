@@ -1,8 +1,11 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import { Geist_Mono, Noto_Sans_JP, Noto_Serif_JP } from "next/font/google"
 
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
+import { Providers } from "@/app/providers"
+import { LOCALE_COOKIE, parseLocale } from "@/i18n/types"
 
 import "./globals.css"
 
@@ -41,20 +44,26 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const cookieStore = await cookies()
+  const initialLocale = parseLocale(cookieStore.get(LOCALE_COOKIE)?.value)
+
   return (
     <html
-      lang="ja"
+      lang={initialLocale === "en" ? "en" : "ja"}
+      suppressHydrationWarning
       className={`${notoSans.variable} ${notoSerif.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <Providers initialLocale={initialLocale}>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   )

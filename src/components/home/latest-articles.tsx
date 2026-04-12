@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { ArrowUpRightIcon, ClockIcon } from "lucide-react"
 
@@ -11,8 +13,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { FadeIn, FadeInItem, FadeInStagger } from "@/components/motion/fade-in"
+import { useLanguage } from "@/i18n/language-context"
 
 export function LatestArticles() {
+  const { m } = useLanguage()
   const latest = articles.slice(0, 3)
 
   return (
@@ -21,13 +25,13 @@ export function LatestArticles() {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn className="mb-14 max-w-2xl">
           <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
-            Journal
+            {m.latest.kicker}
           </p>
           <h2 className="font-heading mt-3 text-3xl font-medium tracking-wide text-foreground sm:text-4xl">
-            JOURNAL · 最新記事
+            {m.latest.heading}
           </h2>
           <p className="mt-4 text-muted-foreground leading-relaxed">
-            覆下栽培の光環境、石臼の粒度、濃茶と薄茶の作法——碾茶と抹茶の専門的な記録をお届けします。
+            {m.latest.intro}
           </p>
         </FadeIn>
 
@@ -42,7 +46,7 @@ export function LatestArticles() {
                     </Badge>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <ClockIcon className="size-3.5" aria-hidden />
-                      {article.readMinutes} 分
+                      {article.readMinutes} {m.latest.min}
                     </span>
                   </div>
                   <CardTitle className="font-heading text-lg leading-snug transition-colors group-hover:text-primary">
@@ -76,7 +80,7 @@ export function LatestArticles() {
             href="/journal"
             className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
           >
-            JOURNAL 一覧へ
+            {m.latest.viewAll}
           </Link>
         </FadeIn>
       </div>

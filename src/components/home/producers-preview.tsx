@@ -1,3 +1,5 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import { MapPinIcon, MountainIcon } from "lucide-react"
@@ -6,8 +8,11 @@ import { producers } from "@/data/producers"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { FadeIn } from "@/components/motion/fade-in"
+import { useLanguage } from "@/i18n/language-context"
+import { siteImages } from "@/data/site-images"
 
 export function ProducersPreview() {
+  const { m } = useLanguage()
   const featured = producers.slice(0, 2)
 
   return (
@@ -17,13 +22,13 @@ export function ProducersPreview() {
         <FadeIn className="mb-14 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
             <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
-              Producers
+              {m.producersPreview.kicker}
             </p>
             <h2 className="font-heading mt-3 text-3xl font-medium tracking-wide text-foreground sm:text-4xl">
-              厳選した碾茶の生産者
+              {m.producersPreview.heading}
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed">
-              覆下の日数、蒸しの通熱、石臼の回転に宿る個性。松壽園SHOJUENが長く紹介したい生産者だけを載せています。
+              {m.producersPreview.intro}
             </p>
           </div>
           <Link
@@ -33,7 +38,7 @@ export function ProducersPreview() {
               "w-fit shrink-0 rounded-full border-primary/30 bg-background/80"
             )}
           >
-            PRODUCERS 一覧へ
+            {m.producersPreview.cta}
           </Link>
         </FadeIn>
 
@@ -45,10 +50,10 @@ export function ProducersPreview() {
                   <Image
                     src={
                       i === 0
-                        ? "/images/tea-varieties-collage.png"
-                        : "/images/tea-collage.png"
+                        ? siteImages.previewCardPrimary
+                        : siteImages.previewCardSecondary
                     }
-                    alt=""
+                    alt={m.producersPreview.cardImageAlt}
                     fill
                     sizes="(min-width: 1024px) 40vw, 100vw"
                     className={cn(

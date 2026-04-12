@@ -9,8 +9,11 @@ import { ArrowDownIcon } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { FloatingOrbs } from "@/components/motion/floating-orbs"
+import { useLanguage } from "@/i18n/language-context"
+import { siteImages } from "@/data/site-images"
 
 export function HeroSection() {
+  const { m } = useLanguage()
   const sectionRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -21,7 +24,7 @@ export function HeroSection() {
   const contentOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0])
   const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -40])
 
-  const titleLines = ["一期一会の、", "抹茶体験を。"]
+  const titleLines = [m.hero.title1, m.hero.title2]
 
   return (
     <section
@@ -39,8 +42,8 @@ export function HeroSection() {
           transition={{ duration: 22, ease: [0.22, 1, 0.36, 1] }}
         >
           <Image
-            src="/images/tea-varieties-collage.png"
-            alt="碾茶の抹茶、乾茶、茶筅で点てた泡の濃緑のイメージ"
+            src={siteImages.hero}
+            alt={m.hero.imageAlt}
             fill
             priority
             sizes="100vw"
@@ -95,7 +98,7 @@ export function HeroSection() {
           ))}
         </motion.h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-200/95 sm:text-lg">
-          澄み切った濃緑、茶筅が立てるきめ細かな泡、石臼の音で挽き上げる香り——抹茶は、日本の風土と作法のなかで育まれた一杯です。松壽園SHOJUENは、その複層を言葉で綴ります。
+          {m.hero.lead}
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
@@ -105,7 +108,7 @@ export function HeroSection() {
               "rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-emerald-950/50 no-underline"
             )}
           >
-            PRODUCERS を見る
+            {m.hero.ctaProducers}
           </Link>
           <Link
             href="/the-matcha"
@@ -114,7 +117,7 @@ export function HeroSection() {
               "rounded-full border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 no-underline"
             )}
           >
-            THE MATCHA 図鑑
+            {m.hero.ctaMatcha}
           </Link>
         </div>
         <motion.div
@@ -123,7 +126,7 @@ export function HeroSection() {
           transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
         >
           <ArrowDownIcon className="size-4" aria-hidden />
-          <span className="tracking-widest">Scroll</span>
+          <span className="tracking-widest">{m.hero.scroll}</span>
         </motion.div>
       </motion.div>
     </section>
