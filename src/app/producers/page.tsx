@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { LeafIcon, SproutIcon, LayersIcon, SparklesIcon } from "lucide-react"
+import { SproutIcon, LayersIcon, SparklesIcon } from "lucide-react"
 
 import { producers } from "@/data/producers"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 export const metadata: Metadata = {
   title: "PRODUCERS · 生産者紹介",
   description:
-    "碾茶・抹茶づくりに情熱を注ぐ茶農家・茶師。土壌、品種、石臼挽きを松樹園が記録します。",
+    "碾茶・抹茶づくりに情熱を注ぐ茶農家・茶師。土壌、品種、石臼挽きを松壽園SHOJUENが記録します。",
 }
 
 export default function ProducersPage() {
@@ -139,10 +139,6 @@ export default function ProducersPage() {
                       </h3>
                       <p className="relative mt-4 leading-[1.95] text-foreground/90">
                         {p.curatorNote}
-                      </p>
-                      <p className="relative mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                        <LeafIcon className="size-3.5 text-primary" aria-hidden />
-                        松樹園編集部 · 碾茶試飲と点茶ログに基づくコメント
                       </p>
                     </section>
                   </div>

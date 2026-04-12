@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { LeafIcon } from "lucide-react"
 
-import { ceo } from "@/data/ceo"
 import { mainNav } from "@/data/navigation"
 
 export function SiteFooter() {
@@ -12,13 +11,10 @@ export function SiteFooter() {
           <div className="max-w-sm space-y-3">
             <div className="flex items-center gap-2 font-heading text-lg text-foreground">
               <LeafIcon className="size-5 text-primary" aria-hidden />
-              松樹園
+              松壽園SHOJUEN
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
               抹茶（碾茶）の産地、品種、石臼挽き、茶道の精神性を、濃緑の一杯とともに読み解く独立メディア。販売は行いません。
-            </p>
-            <p className="text-xs leading-relaxed text-muted-foreground/90">
-              {ceo.title}：{ceo.nameJa}（{ceo.nameKana}）
             </p>
           </div>
           <nav className="grid grid-cols-2 gap-x-10 gap-y-2 sm:grid-cols-3" aria-label="フッター">
@@ -34,7 +30,7 @@ export function SiteFooter() {
           </nav>
         </div>
         <p className="mt-12 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Shoujuen Tea Journal. All rights reserved.
+          © {new Date().getFullYear()} 松壽園SHOJUEN. All rights reserved.
         </p>
       </div>
     </footer>

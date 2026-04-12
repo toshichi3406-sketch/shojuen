@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet"
 
 const brand = {
-  name: "松樹園",
+  name: "松壽園SHOJUEN",
   subtitle: "Matcha Journal",
 }
 

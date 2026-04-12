@@ -28,13 +28,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "松樹園 | 抹茶のテロワールと濃緑を綴るメディア",
-    template: "%s | 松樹園",
+    default: "松壽園SHOJUEN | 抹茶のテロワールと濃緑を綴るメディア",
+    template: "%s | 松壽園SHOJUEN",
   },
   description:
     "産地の碾茶、品種、石臼挽き、濃茶と薄茶の作法。宇治・西尾をはじめ、抹茶の専門的な記録をお届けします。",
   openGraph: {
-    title: "松樹園 Tea Journal",
+    title: "松壽園SHOJUEN",
     description:
       "抹茶の碾茶・茶道・文化。濃緑の一杯とともに読み解く独立メディア。",
     locale: "ja_JP",

@@ -95,7 +95,7 @@ export function HeroSection() {
           ))}
         </motion.h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-200/95 sm:text-lg">
-          澄み切った濃緑、茶筅が立てるきめ細かな泡、石臼の音で挽き上げる香り——抹茶は、日本の風土と作法のなかで育まれた一杯です。松樹園は、その複層を言葉で綴ります。
+          澄み切った濃緑、茶筅が立てるきめ細かな泡、石臼の音で挽き上げる香り——抹茶は、日本の風土と作法のなかで育まれた一杯です。松壽園SHOJUENは、その複層を言葉で綴ります。
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link

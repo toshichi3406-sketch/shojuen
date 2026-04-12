@@ -23,7 +23,7 @@ export function ProducersPreview() {
               厳選した碾茶の生産者
             </h2>
             <p className="mt-4 text-muted-foreground leading-relaxed">
-              覆下の日数、蒸しの通熱、石臼の回転に宿る個性。松樹園が長く紹介したい生産者だけを載せています。
+              覆下の日数、蒸しの通熱、石臼の回転に宿る個性。松壽園SHOJUENが長く紹介したい生産者だけを載せています。
             </p>
           </div>
           <Link
