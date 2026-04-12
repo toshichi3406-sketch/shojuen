@@ -23,6 +23,20 @@ export type Messages = {
     ctaMatcha: string
     scroll: string
   }
+  homeMatchaGallery: {
+    kicker: string
+    heading: string
+    intro: string
+    fallbackAlt: string
+    imageAlts: readonly [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+    ]
+  }
   homeClosing: { title: string; body: string }
   latest: {
     kicker: string
@@ -55,6 +69,7 @@ export type Messages = {
     articleCount: string
     readArticle: string
     min: string
+    matchaMoodImageAlts: readonly [string, string, string]
   }
   theMatchaPage: {
     heroKicker: string
@@ -120,7 +135,7 @@ const ja: Messages = {
   },
   hero: {
     imageAlt:
-      "抹茶・茶筅・茶碗をテーマにしたストック写真（濃緑の抹茶イメージ）",
+      "暗い石目の背景に茶筅と濃緑の抹茶粉・点てた抹茶の泡が写ったビジュアル（茶道イメージ）",
     title1: "一期一会の、",
     title2: "抹茶体験を。",
     lead:
@@ -128,6 +143,21 @@ const ja: Messages = {
     ctaProducers: "PRODUCERS を見る",
     ctaMatcha: "THE MATCHA 図鑑",
     scroll: "Scroll",
+  },
+  homeMatchaGallery: {
+    kicker: "Visual",
+    heading: "濃緑のかたち — 抹茶のビジュアル",
+    intro:
+      "ラテやグラスではなく、粉末・茶筅・黒い茶碗と石目の上で光る濃緑だけを切り取った画角です。碾茶が茶碗に至るまでのイメージを共有します。",
+    fallbackAlt: "茶道イメージの抹茶写真",
+    imageAlts: [
+      "黒いスレートの上の茶筅と抹茶粉、点てた抹茶の茶碗",
+      "黒い茶碗に立てた細かい泡の抹茶表面のクローズアップ",
+      "黒い石目に抹茶粉と茶筅を並べた俯瞰の静物",
+      "茶筅を茶碗にかけ、鮮やかな抹茶粉が盛られた構図",
+      "石目の上へ抹茶粉が流れ落ちる動きと茶筅",
+      "粉末が茶碗に落ちる瞬間と濃緑の泡、茶筅を含むワイドな茶道シーン",
+    ],
   },
   homeClosing: {
     title: "一杯の濃緑に、風土と作法が宿る。",
@@ -148,7 +178,7 @@ const ja: Messages = {
     intro:
       "覆下の日数、蒸しの通熱、石臼の回転に宿る個性。松壽園SHOJUENが長く紹介したい生産者だけを載せています。",
     cta: "PRODUCERS 一覧へ",
-    cardImageAlt: "抹茶・碾茶・茶筅をイメージした写真",
+    cardImageAlt: "黒い茶器と濃緑の抹茶・茶筅のイメージ写真",
   },
   producersPage: {
     heroKicker: "Producers",
@@ -168,6 +198,11 @@ const ja: Messages = {
     articleCount: "全 {n} 件",
     readArticle: "本文を読む",
     min: "分",
+    matchaMoodImageAlts: [
+      "黒いスレートの上の茶筅と抹茶粉、点てた抹茶の茶碗",
+      "黒い茶碗に立てた細かい泡の抹茶表面のクローズアップ",
+      "黒い石目に抹茶粉と茶筅を並べた俯瞰の静物",
+    ],
   },
   theMatchaPage: {
     heroKicker: "The Matcha",
@@ -176,7 +211,7 @@ const ja: Messages = {
     introStrong: "濃緑",
     introAfter:
       "に刻まれます。産地の土と品種、臼の音と粒度——ワインのテイスティングノートのように、抹茶のスペクトルを整理した参照表です。",
-    imageAlt: "抹茶粉と茶道具を写したストック写真",
+    imageAlt: "黒い背景に抹茶粉と茶筅を置いた静物写真",
     badge: "抹茶",
     origin: "産地",
     cultivar: "品種",
@@ -187,7 +222,7 @@ const ja: Messages = {
     finish: "余韻",
   },
   howToPage: {
-    imageAlt: "抹茶を点てる手元と茶器のイメージ写真",
+    imageAlt: "石目の上で抹茶粉が流れ落ちる様子と茶筅のイメージ",
     kicker: "How to",
     title: "点て方・楽しみ方",
     introBefore: "濃茶と薄茶では、湯の量・温度・茶筅の動きの目的がまったく異なります。以下は稽古とカフェ双方で再現しやすい",
@@ -291,7 +326,7 @@ const en: Messages = {
   },
   hero: {
     imageAlt:
-      "Stock photo themed on matcha, chasen whisk, and deep green matcha bowl",
+      "Ceremonial matcha on dark stone: vivid green powder, foam in a black chawan, and a bamboo chasen (tea ceremony mood, not a latte)",
     title1: "Ichigo ichie —",
     title2: "a matcha moment.",
     lead:
@@ -299,6 +334,21 @@ const en: Messages = {
     ctaProducers: "Meet the producers",
     ctaMatcha: "The matcha catalog",
     scroll: "Scroll",
+  },
+  homeMatchaGallery: {
+    kicker: "Visual",
+    heading: "The shape of deep green",
+    intro:
+      "No milk, no glassware — only powder, chasen, dark bowls, and emerald light on slate. A shared visual shorthand for how tencha becomes the bowl in front of you.",
+    fallbackAlt: "Ceremonial matcha still life",
+    imageAlts: [
+      "Chasen and matcha powder on black slate beside a bowl of whisked tea",
+      "Close-up of fine foam on whisked matcha in a dark ceramic bowl",
+      "Overhead still life of matcha powder and chasen on dark stone",
+      "Dark chawan with bright matcha powder and a chasen resting on the rim",
+      "Matcha powder cascading onto slate beside a bamboo whisk",
+      "Wide ceremonial scene: powder falling into a bowl, frothy matcha, and chasen",
+    ],
   },
   homeClosing: {
     title: "In one bowl of deep green: place, craft, and ritual.",
@@ -319,7 +369,7 @@ const en: Messages = {
     intro:
       "Character lives in shade days, steam heat, and how the mill turns. Only growers we want to keep spotlighting — curated by 松壽園SHOJUEN.",
     cta: "Browse all producers",
-    cardImageAlt: "Photo themed on matcha, tencha, and chasen",
+    cardImageAlt: "Dark tea ware with vivid green matcha and a chasen",
   },
   producersPage: {
     heroKicker: "Producers",
@@ -339,6 +389,11 @@ const en: Messages = {
     articleCount: "All {n} articles",
     readArticle: "Read article",
     min: "min",
+    matchaMoodImageAlts: [
+      "Chasen and matcha powder on black slate beside a bowl of whisked tea",
+      "Close-up of fine foam on whisked matcha in a dark ceramic bowl",
+      "Overhead still life of matcha powder and chasen on dark stone",
+    ],
   },
   theMatchaPage: {
     heroKicker: "The Matcha",
@@ -348,7 +403,7 @@ const en: Messages = {
     introStrong: "deep green",
     introAfter:
       ". Soil and cultivar, the sound of the mill and particle size — a reference sheet for matcha's spectrum, like wine tasting notes.",
-    imageAlt: "Stock photo of matcha powder and tea utensils",
+    imageAlt: "Matcha powder and chasen on a dark background",
     badge: "Matcha",
     origin: "Origin",
     cultivar: "Cultivar",
@@ -359,7 +414,7 @@ const en: Messages = {
     finish: "Finish",
   },
   howToPage: {
-    imageAlt: "Stock photo of preparing matcha with chasen and bowl",
+    imageAlt: "Matcha powder flowing onto slate with a bamboo chasen",
     kicker: "How to",
     title: "How to prepare & enjoy",
     introBefore:

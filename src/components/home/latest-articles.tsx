@@ -1,9 +1,11 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpRightIcon, ClockIcon } from "lucide-react"
 
 import { articles } from "@/data/articles"
+import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -33,6 +35,23 @@ export function LatestArticles() {
           <p className="mt-4 text-muted-foreground leading-relaxed">
             {m.latest.intro}
           </p>
+        </FadeIn>
+
+        <FadeIn className="mb-12 grid grid-cols-3 gap-2 sm:gap-3" delay={0.08}>
+          {homeMatchaVisualGallery.slice(3, 6).map((item, i) => (
+            <div
+              key={item.src}
+              className="relative aspect-[5/3] overflow-hidden rounded-md border border-border/60 bg-muted/40"
+            >
+              <Image
+                src={item.src}
+                alt={m.homeMatchaGallery.imageAlts[i + 3]}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 33vw, 280px"
+              />
+            </div>
+          ))}
         </FadeIn>
 
         <FadeInStagger className="grid gap-6 md:grid-cols-3">

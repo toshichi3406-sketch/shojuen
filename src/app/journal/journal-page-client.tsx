@@ -1,9 +1,11 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { BookOpenIcon, ClockIcon } from "lucide-react"
 
 import { articles } from "@/data/articles"
+import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -41,6 +43,22 @@ export function JournalPageClient() {
               </strong>
               {m.journalPage.introRest}
             </p>
+            <div className="mt-10 grid grid-cols-3 gap-2 sm:mt-12 sm:gap-3">
+              {homeMatchaVisualGallery.slice(0, 3).map((item, i) => (
+                <div
+                  key={item.src}
+                  className="relative aspect-[5/3] overflow-hidden rounded-md border border-border/50 bg-muted shadow-sm"
+                >
+                  <Image
+                    src={item.src}
+                    alt={m.journalPage.matchaMoodImageAlts[i]}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 33vw, 240px"
+                  />
+                </div>
+              ))}
+            </div>
           </FadeIn>
         </div>
       </div>
