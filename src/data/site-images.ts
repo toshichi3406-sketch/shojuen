@@ -1,30 +1,30 @@
 /**
- * AI-generated ceremonial matcha imagery (dark slate, chasen, powder, froth).
- * Stored under /public/images — no remote hosts.
+ * AI-generated ceremonial matcha imagery. Each path is used in at most one
+ * layout role so the same photo is not repeated across hero, pages, and strips.
  */
 const img = (name: string) => `/images/${name}` as const
 
 export const siteImages = {
-  /** Full-bleed home hero — wide ceremonial scene */
+  /** Full-bleed home hero only */
   hero: img("hero-ceremonial-matcha.png"),
-  /** Producers page header */
-  producersHeader: img("slate-powder-chasen.png"),
-  producersCardPrimary: img("chawan-powder-chasen.png"),
-  producersCardSecondary: img("frothy-matcha-macro.png"),
-  previewCardPrimary: img("chawan-powder-chasen.png"),
-  previewCardSecondary: img("frothy-matcha-macro.png"),
-  /** THE MATCHA intro */
-  matchaCatalogBanner: img("matcha-flatlay-slate.png"),
-  /** HOW TO top */
-  howToHero: img("powder-cascade-slate.png"),
+  producersHeader: img("slot-producers-header.png"),
+  producersCardPrimary: img("slot-producer-card-1.png"),
+  producersCardSecondary: img("slot-producer-card-2.png"),
+  previewCardPrimary: img("slot-preview-1.png"),
+  previewCardSecondary: img("slot-preview-2.png"),
+  matchaCatalogBanner: img("slot-matcha-catalog.png"),
+  howToHero: img("slot-howto-hero.png"),
 } as const
 
-/** Home gallery + optional strips elsewhere — order matches i18n `homeMatchaGallery.imageAlts` */
+/**
+ * Home gallery + journal/latest strips — six images, disjoint from `siteImages`
+ * (except hero, which is not listed here so the home hero stays unique).
+ */
 export const homeMatchaVisualGallery = [
-  { src: img("slate-powder-chasen.png") },
-  { src: img("frothy-matcha-macro.png") },
-  { src: img("matcha-flatlay-slate.png") },
-  { src: img("chawan-powder-chasen.png") },
-  { src: img("powder-cascade-slate.png") },
-  { src: img("hero-ceremonial-matcha.png") },
+  { src: img("gallery-strip-1.png") },
+  { src: img("gallery-strip-2.png") },
+  { src: img("gallery-strip-3.png") },
+  { src: img("gallery-strip-4.png") },
+  { src: img("gallery-strip-5.png") },
+  { src: img("gallery-strip-6.png") },
 ] as const

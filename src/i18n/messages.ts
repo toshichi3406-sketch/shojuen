@@ -158,12 +158,12 @@ const ja: Messages = {
       "ラテやグラスではなく、粉末・茶筅・黒い茶碗と石目の上で光る濃緑だけを切り取った画角です。碾茶が茶碗に至るまでのイメージを共有します。",
     fallbackAlt: "茶道イメージの抹茶写真",
     imageAlts: [
-      "黒いスレートの上の茶筅と抹茶粉、点てた抹茶の茶碗",
-      "黒い茶碗に立てた細かい泡の抹茶表面のクローズアップ",
-      "黒い石目に抹茶粉と茶筅を並べた俯瞰の静物",
-      "茶筅を茶碗にかけ、鮮やかな抹茶粉が盛られた構図",
-      "石目の上へ抹茶粉が流れ落ちる動きと茶筅",
-      "粉末が茶碗に落ちる瞬間と濃緑の泡、茶筅を含むワイドな茶道シーン",
+      "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
+      "漆塗り盆に棗と茶筅、茶碗の縁が見える静物",
+      "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
+      "碾茶の葉と抹茶粉が並んだ二つの黒い茶碗",
+      "石台の上に斜めに並んだ三つの黒い茶碗と点てた抹茶",
+      "茶筅で抹茶を立てる動きのモーションブラー",
     ],
   },
   homeClosing: {
@@ -214,9 +214,9 @@ const ja: Messages = {
     readArticle: "本文を読む",
     min: "分",
     matchaMoodImageAlts: [
-      "黒いスレートの上の茶筅と抹茶粉、点てた抹茶の茶碗",
-      "黒い茶碗に立てた細かい泡の抹茶表面のクローズアップ",
-      "黒い石目に抹茶粉と茶筅を並べた俯瞰の静物",
+      "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
+      "漆塗り盆に棗と茶筅、茶碗の縁が見える静物",
+      "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
     ],
   },
   theMatchaPage: {
@@ -226,7 +226,7 @@ const ja: Messages = {
     introStrong: "濃緑",
     introAfter:
       "に刻まれます。産地の土と品種、臼の音と粒度——ワインのテイスティングノートのように、抹茶のスペクトルを整理した参照表です。",
-    imageAlt: "黒い背景に抹茶粉と茶筅を置いた静物写真",
+    imageAlt: "複数の抹茶粉の色味を並べた俯瞰のイメージ",
     badge: "抹茶",
     origin: "産地",
     cultivar: "品種",
@@ -237,7 +237,7 @@ const ja: Messages = {
     finish: "余韻",
   },
   howToPage: {
-    imageAlt: "石目の上で抹茶粉が流れ落ちる様子と茶筅のイメージ",
+    imageAlt: "茶筅で抹茶を点てる手元のイメージ",
     kicker: "How to",
     title: "点て方・楽しみ方",
     introBefore: "濃茶と薄茶では、湯の量・温度・茶筅の動きの目的がまったく異なります。以下は稽古とカフェ双方で再現しやすい",
@@ -361,12 +361,12 @@ const en: Messages = {
       "No milk, no glassware — only powder, chasen, dark bowls, and emerald light on slate. A shared visual shorthand for how tencha becomes the bowl in front of you.",
     fallbackAlt: "Ceremonial matcha still life",
     imageAlts: [
-      "Chasen and matcha powder on black slate beside a bowl of whisked tea",
-      "Close-up of fine foam on whisked matcha in a dark ceramic bowl",
-      "Overhead still life of matcha powder and chasen on dark stone",
-      "Dark chawan with bright matcha powder and a chasen resting on the rim",
-      "Matcha powder cascading onto slate beside a bamboo whisk",
-      "Wide ceremonial scene: powder falling into a bowl, frothy matcha, and chasen",
+      "Matcha powder spiral on black slate with a bamboo whisk",
+      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
+      "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
+      "Two dark bowls: tencha leaves and bright matcha powder on weathered wood",
+      "Three black chawans in perspective on stone, nearest bowl whisked matcha",
+      "Motion blur of whisking matcha with chasen in a dark chawan",
     ],
   },
   homeClosing: {
@@ -417,9 +417,9 @@ const en: Messages = {
     readArticle: "Read article",
     min: "min",
     matchaMoodImageAlts: [
-      "Chasen and matcha powder on black slate beside a bowl of whisked tea",
-      "Close-up of fine foam on whisked matcha in a dark ceramic bowl",
-      "Overhead still life of matcha powder and chasen on dark stone",
+      "Matcha powder spiral on black slate with a bamboo whisk",
+      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
+      "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
     ],
   },
   theMatchaPage: {
@@ -430,7 +430,7 @@ const en: Messages = {
     introStrong: "deep green",
     introAfter:
       ". Soil and cultivar, the sound of the mill and particle size — a reference sheet for matcha's spectrum, like wine tasting notes.",
-    imageAlt: "Matcha powder and chasen on a dark background",
+    imageAlt: "Overhead view of several heaps of matcha powder in different greens",
     badge: "Matcha",
     origin: "Origin",
     cultivar: "Cultivar",
@@ -441,7 +441,7 @@ const en: Messages = {
     finish: "Finish",
   },
   howToPage: {
-    imageAlt: "Matcha powder flowing onto slate with a bamboo chasen",
+    imageAlt: "Hands whisking matcha with a chasen above a chawan",
     kicker: "How to",
     title: "How to prepare & enjoy",
     introBefore:
