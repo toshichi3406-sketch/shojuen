@@ -10,7 +10,13 @@ export type Messages = {
   languageSwitcher: { label: string; ja: string; en: string }
   nav: { ariaMain: string; ariaMobile: string; openMenu: string }
   navItems: Record<
-    "home" | "matcha" | "producers" | "journal" | "howTo" | "contact",
+    | "home"
+    | "matcha"
+    | "chawan"
+    | "producers"
+    | "journal"
+    | "howTo"
+    | "contact",
     { label: string; description: string }
   >
   footer: { aria: string; blurb: string; rightsSuffix: string }
@@ -113,6 +119,42 @@ export type Messages = {
     min: string
     draftNote: string
   }
+  chawanPage: {
+    heroKicker: string
+    title: string
+    introBefore: string
+    introStrong: string
+    introAfter: string
+    filterAria: string
+    filterAll: string
+    /** Use "{n}" placeholder for item count */
+    itemCount: string
+    emptyFilter: string
+    viewDetail: string
+    closeLightbox: string
+    prevPhoto: string
+    nextPhoto: string
+    photoLabel: string
+    sizeLabel: string
+    detailLabel: string
+    refLabel: string
+    inquireItem: string
+    mailSubject: string
+    ctaTitle: string
+    ctaBody: string
+    ctaMail: string
+    ctaContact: string
+    categories: Record<
+      | "raku"
+      | "hagi"
+      | "karatsu"
+      | "seto"
+      | "shino"
+      | "oribe"
+      | "other",
+      string
+    >
+  }
 }
 
 const ja: Messages = {
@@ -129,6 +171,7 @@ const ja: Messages = {
   navItems: {
     home: { label: "トップ", description: "濃緑と一期一会" },
     matcha: { label: "抹茶図鑑", description: "産地・品種・挽き・味わい" },
+    chawan: { label: "抹茶椀", description: "茶碗カタログ・卸提案" },
     producers: { label: "生産者紹介", description: "茶農家・茶師のこだわり" },
     journal: { label: "JOURNAL", description: "碾茶と茶道の記録" },
     howTo: { label: "点て方", description: "濃茶・薄茶・モダンな楽しみ方" },
@@ -158,12 +201,12 @@ const ja: Messages = {
       "ラテやグラスではなく、粉末・茶筅・黒い茶碗と石目の上で光る濃緑だけを切り取った画角です。碾茶が茶碗に至るまでのイメージを共有します。",
     fallbackAlt: "茶道イメージの抹茶写真",
     imageAlts: [
-      "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
-      "漆塗り盆に棗と茶筅、茶碗の縁が見える静物",
-      "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
-      "碾茶の葉と抹茶粉が並んだ二つの黒い茶碗",
-      "石台の上に斜めに並んだ三つの黒い茶碗と点てた抹茶",
-      "茶筅で抹茶を立てる動きのモーションブラー",
+      "淡い色の小皿に盛られた鮮やかな抹茶粉と竹の茶杓",
+      "黒い茶碗に点てられた薄茶のきめ細かな泡と茶筅",
+      "暗い茶碗で抹茶を点てる手元、飛び散る雫と湯気",
+      "金属の茶こしでふるい落とされる抹茶の微粉末",
+      "木の盆に置かれた黒い茶碗の薄茶を真上から見た図",
+      "漆の盆に開いた黒い棗の抹茶粉、茶筅と茶杓",
     ],
   },
   homeClosing: {
@@ -304,6 +347,43 @@ const ja: Messages = {
     min: "分",
     draftNote: "（本文は編集中です。データソースと図版を追って公開予定です。）",
   },
+  chawanPage: {
+    heroKicker: "Chawan",
+    title: "抹茶椀カタログ",
+    introBefore:
+      "楽焼・萩・唐津ほか、茶道用茶碗からホテル・アメニティ向けまで。松壽園SHOJUENが",
+    introStrong: "取引先向け",
+    introAfter:
+      "にご提案する抹茶椀のラインアップです。口径・仕上げ・ロット対応の可否など、詳細は各商品またはお問い合わせよりご相談ください。",
+    filterAria: "カテゴリで絞り込み",
+    filterAll: "すべて",
+    itemCount: "全 {n} 点",
+    emptyFilter: "該当する商品がありません。",
+    viewDetail: "詳細を見る",
+    closeLightbox: "閉じる",
+    prevPhoto: "前の写真",
+    nextPhoto: "次の写真",
+    photoLabel: "写真",
+    sizeLabel: "サイズ",
+    detailLabel: "仕様・特徴",
+    refLabel: "参照番号",
+    inquireItem: "この椀について問い合わせ",
+    mailSubject: "【松壽園SHOJUEN】抹茶椀のお問い合わせ",
+    ctaTitle: "卸・取引のご相談",
+    ctaBody:
+      "数量・納期・箱付・名入れなど、取引条件は案件ごとにご提案します。カタログにない形状・釉色のご要望もお気軽にどうぞ。",
+    ctaMail: "メールで相談する",
+    ctaContact: "お問い合わせページ",
+    categories: {
+      raku: "楽焼",
+      hagi: "萩",
+      karatsu: "唐津",
+      seto: "瀬戸",
+      shino: "志野",
+      oribe: "織部",
+      other: "その他",
+    },
+  },
 }
 
 const en: Messages = {
@@ -322,6 +402,10 @@ const en: Messages = {
     matcha: {
       label: "THE MATCHA",
       description: "Origin, cultivar, milling, flavor",
+    },
+    chawan: {
+      label: "CHAWAN",
+      description: "Matcha bowl catalog & wholesale",
     },
     producers: {
       label: "PRODUCERS",
@@ -361,12 +445,12 @@ const en: Messages = {
       "No milk, no glassware — only powder, chasen, dark bowls, and emerald light on slate. A shared visual shorthand for how tencha becomes the bowl in front of you.",
     fallbackAlt: "Ceremonial matcha still life",
     imageAlts: [
-      "Matcha powder spiral on black slate with a bamboo whisk",
-      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
-      "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
-      "Two dark bowls: tencha leaves and bright matcha powder on weathered wood",
-      "Three black chawans in perspective on stone, nearest bowl whisked matcha",
-      "Motion blur of whisking matcha with chasen in a dark chawan",
+      "Vivid matcha powder in a pale ceramic dish with a bamboo chashaku scoop",
+      "Fine green foam of usucha whisked in a black chawan with a chasen resting",
+      "Hands whisking matcha in a dark bowl, droplets and steam mid-motion",
+      "Fine matcha powder being sifted through a metal mesh sieve",
+      "Overhead view of whisked usucha in a black chawan on a wooden tray",
+      "Open black natsume caddy of matcha powder with chasen and chashaku on a lacquer tray",
     ],
   },
   homeClosing: {
@@ -515,6 +599,43 @@ const en: Messages = {
     min: "min",
     draftNote:
       "(Full article in preparation — sources and figures to follow.)",
+  },
+  chawanPage: {
+    heroKicker: "Chawan",
+    title: "Matcha bowl catalog",
+    introBefore:
+      "From raku and hagi to karatsu — ceremonial chawan and hotel amenity lines. A ",
+    introStrong: "wholesale-facing",
+    introAfter:
+      " lineup curated by 松壽園SHOJUEN. Tap any bowl for size and finish notes, or email us for MOQ, lead time, and custom packaging.",
+    filterAria: "Filter by category",
+    filterAll: "All",
+    itemCount: "{n} items",
+    emptyFilter: "No items in this category.",
+    viewDetail: "View details",
+    closeLightbox: "Close",
+    prevPhoto: "Previous photo",
+    nextPhoto: "Next photo",
+    photoLabel: "Photo",
+    sizeLabel: "Size",
+    detailLabel: "Finish & notes",
+    refLabel: "Reference",
+    inquireItem: "Inquire about this bowl",
+    mailSubject: "[SHOJUEN] Matcha bowl inquiry",
+    ctaTitle: "Wholesale & trade inquiries",
+    ctaBody:
+      "We quote volume, lead time, tomobako, and branding per project. Custom shapes and glazes outside this catalog are welcome.",
+    ctaMail: "Email us",
+    ctaContact: "Contact page",
+    categories: {
+      raku: "Raku",
+      hagi: "Hagi",
+      karatsu: "Karatsu",
+      seto: "Seto",
+      shino: "Shino",
+      oribe: "Oribe",
+      other: "Other",
+    },
   },
 }
 
