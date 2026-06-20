@@ -43,11 +43,31 @@ export function SiteHeader() {
 
           <nav className="hidden items-center gap-1 md:flex" aria-label={m.nav.ariaMain}>
             {mainNav.map((item) => {
+              const itemMsg = m.navItems[item.key]
+
+              if (item.comingSoon) {
+                return (
+                  <div key={item.href} className="group relative">
+                    <span
+                      aria-disabled="true"
+                      className="flex cursor-not-allowed select-none items-center gap-1 rounded-lg px-3 py-2 text-sm text-muted-foreground/55"
+                    >
+                      {itemMsg.label}
+                    </span>
+                    <span
+                      role="tooltip"
+                      className="pointer-events-none absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border/70 bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-opacity duration-200 group-hover:opacity-100"
+                    >
+                      {m.nav.comingSoon}
+                    </span>
+                  </div>
+                )
+              }
+
               const active =
                 item.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(item.href)
-              const itemMsg = m.navItems[item.key]
               return (
                 <Link
                   key={item.href}
@@ -86,6 +106,27 @@ export function SiteHeader() {
                 <nav className="flex flex-col gap-1" aria-label={m.nav.ariaMobile}>
                   {mainNav.map((item) => {
                     const itemMsg = m.navItems[item.key]
+
+                    if (item.comingSoon) {
+                      return (
+                        <div
+                          key={item.href}
+                          aria-disabled="true"
+                          className="cursor-not-allowed select-none rounded-lg px-3 py-3 text-base opacity-60"
+                        >
+                          <span className="flex items-center gap-2 font-medium text-foreground">
+                            {itemMsg.label}
+                            <span className="rounded-full border border-border/70 px-2 py-0.5 text-[0.65rem] font-normal uppercase tracking-wide text-muted-foreground">
+                              {m.nav.comingSoon}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {itemMsg.description}
+                          </span>
+                        </div>
+                      )
+                    }
+
                     return (
                       <Link
                         key={item.href}

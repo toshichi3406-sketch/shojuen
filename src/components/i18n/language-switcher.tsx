@@ -25,6 +25,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
       >
         <option value="ja">{m.languageSwitcher.ja}</option>
         <option value="en">{m.languageSwitcher.en}</option>
+        <option value="zh">{m.languageSwitcher.zh}</option>
       </select>
     </label>
   )

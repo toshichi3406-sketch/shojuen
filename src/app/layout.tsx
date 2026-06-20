@@ -5,7 +5,7 @@ import { Geist_Mono, Noto_Sans_JP, Noto_Serif_JP } from "next/font/google"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { Providers } from "@/app/providers"
-import { LOCALE_COOKIE, parseLocale } from "@/i18n/types"
+import { LOCALE_COOKIE, htmlLang, parseLocale } from "@/i18n/types"
 
 import "./globals.css"
 
@@ -54,7 +54,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang={initialLocale === "en" ? "en" : "ja"}
+      lang={htmlLang(initialLocale)}
       suppressHydrationWarning
       className={`${notoSans.variable} ${notoSerif.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >

@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { BookOpenIcon, ClockIcon } from "lucide-react"
 
-import { articles } from "@/data/articles"
+import { articles, localize } from "@/data/articles"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,7 +18,7 @@ import { FadeIn, FadeInItem, FadeInStagger } from "@/components/motion/fade-in"
 import { useLanguage } from "@/i18n/language-context"
 
 export function JournalPageClient() {
-  const { m } = useLanguage()
+  const { locale, m } = useLanguage()
   const countLabel = m.journalPage.articleCount.replace(
     "{n}",
     String(articles.length)
@@ -76,7 +76,7 @@ export function JournalPageClient() {
                 <CardHeader className="gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary" className="font-normal">
-                      {article.category}
+                      {localize(article.category, locale)}
                     </Badge>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <ClockIcon className="size-3.5" aria-hidden />
@@ -89,11 +89,11 @@ export function JournalPageClient() {
                       href={`/journal/${article.slug}`}
                       className="text-foreground no-underline transition-colors group-hover:text-primary"
                     >
-                      {article.title}
+                      {localize(article.title, locale)}
                     </Link>
                   </CardTitle>
                   <CardDescription className="text-[0.95rem] leading-relaxed">
-                    {article.excerpt}
+                    {localize(article.excerpt, locale)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

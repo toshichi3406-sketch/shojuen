@@ -7,8 +7,13 @@ export type HowToBlock = {
 }
 
 export type Messages = {
-  languageSwitcher: { label: string; ja: string; en: string }
-  nav: { ariaMain: string; ariaMobile: string; openMenu: string }
+  languageSwitcher: { label: string; ja: string; en: string; zh: string }
+  nav: {
+    ariaMain: string
+    ariaMobile: string
+    openMenu: string
+    comingSoon: string
+  }
   navItems: Record<
     | "home"
     | "matcha"
@@ -34,14 +39,7 @@ export type Messages = {
     heading: string
     intro: string
     fallbackAlt: string
-    imageAlts: readonly [
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-    ]
+    imageAlts: readonly string[]
   }
   homeClosing: { title: string; body: string; contactLine: string; contactCta: string }
   contactPage: {
@@ -162,11 +160,13 @@ const ja: Messages = {
     label: "Language",
     ja: "日本語",
     en: "English",
+    zh: "繁體中文",
   },
   nav: {
     ariaMain: "メイン",
     ariaMobile: "モバイルメイン",
     openMenu: "メニューを開く",
+    comingSoon: "近日公開",
   },
   navItems: {
     home: { label: "トップ", description: "濃緑と一期一会" },
@@ -207,6 +207,9 @@ const ja: Messages = {
       "金属の茶こしでふるい落とされる抹茶の微粉末",
       "木の盆に置かれた黒い茶碗の薄茶を真上から見た図",
       "漆の盆に開いた黒い棗の抹茶粉、茶筅と茶杓",
+      "黒い天目茶碗の抹茶粉に、鉄瓶から湯を注ぐ瞬間と立ちのぼる湯気",
+      "石臼の溝からあふれる、挽きたての鮮やかな抹茶の微粉",
+      "漆塗りの棗にかけた竹の茶杓に山盛りの抹茶粉",
     ],
   },
   homeClosing: {
@@ -391,11 +394,13 @@ const en: Messages = {
     label: "Language",
     ja: "日本語",
     en: "English",
+    zh: "繁體中文",
   },
   nav: {
     ariaMain: "Main",
     ariaMobile: "Main navigation (mobile)",
     openMenu: "Open menu",
+    comingSoon: "Coming soon",
   },
   navItems: {
     home: { label: "HOME", description: "Deep green, ichigo ichie" },
@@ -451,6 +456,9 @@ const en: Messages = {
       "Fine matcha powder being sifted through a metal mesh sieve",
       "Overhead view of whisked usucha in a black chawan on a wooden tray",
       "Open black natsume caddy of matcha powder with chasen and chashaku on a lacquer tray",
+      "Hot water poured from an iron kettle onto matcha powder in a black tenmoku bowl, steam rising",
+      "Freshly stone-milled vivid matcha powder spilling from the grooves of a granite mill",
+      "A bamboo chashaku heaped with matcha powder resting across a lacquer tea caddy",
     ],
   },
   homeClosing: {
@@ -639,7 +647,240 @@ const en: Messages = {
   },
 }
 
-const catalog: Record<Locale, Messages> = { ja, en }
+const zh: Messages = {
+  languageSwitcher: {
+    label: "語言",
+    ja: "日本語",
+    en: "English",
+    zh: "繁體中文",
+  },
+  nav: {
+    ariaMain: "主選單",
+    ariaMobile: "行動版主選單",
+    openMenu: "開啟選單",
+    comingSoon: "即將推出",
+  },
+  navItems: {
+    home: { label: "首頁", description: "濃綠與一期一會" },
+    matcha: { label: "抹茶圖鑑", description: "產地・品種・研磨・風味" },
+    chawan: { label: "抹茶碗", description: "茶碗型錄・批發提案" },
+    producers: { label: "生產者介紹", description: "茶農與茶師的講究" },
+    journal: { label: "JOURNAL", description: "碾茶與茶道的紀錄" },
+    howTo: { label: "點茶方式", description: "濃茶・薄茶・現代喝法" },
+    contact: { label: "聯絡我們", description: "批發・交易・諮詢（Email）" },
+  },
+  footer: {
+    aria: "頁尾",
+    blurb:
+      "以一碗濃綠，記錄抹茶（碾茶）的產地、品種、石臼研磨與茶道精神的媒體。也承接向茶農採購抹茶的海外批發等諮詢。",
+    rightsSuffix: ". All rights reserved.",
+  },
+  hero: {
+    imageAlt: "深色石紋背景上的茶筅、濃綠抹茶粉與點好的抹茶泡沫（茶道意象）",
+    title1: "一期一會的",
+    title2: "抹茶體驗。",
+    lead:
+      "澄澈的濃綠、茶筅打出的細緻泡沫、石臼磨出的香氣——抹茶，是在日本風土與作法中孕育的一碗。松壽園SHOJUEN以文字記錄它的層次。",
+    ctaProducers: "查看 PRODUCERS",
+    ctaMatcha: "THE MATCHA 圖鑑",
+    scroll: "Scroll",
+  },
+  homeMatchaGallery: {
+    kicker: "Visual",
+    heading: "濃綠的樣貌 — 抹茶視覺",
+    intro:
+      "不是拿鐵或玻璃杯，而是只擷取粉末、茶筅、黑碗與石紋上閃耀的濃綠的畫面。分享碾茶化為一碗茶之前的意象。",
+    fallbackAlt: "茶道意象的抹茶照片",
+    imageAlts: [
+      "淺色小碟上盛著鮮豔抹茶粉與竹製茶杓",
+      "黑碗中點好的薄茶細緻泡沫與茶筅",
+      "在深色碗中點抹茶的手，飛濺的水滴與蒸氣",
+      "以金屬茶篩篩落的抹茶細粉",
+      "從正上方俯瞰木盤上黑碗中的薄茶",
+      "漆盤上敞開的黑色棗形茶罐中的抹茶粉、茶筅與茶杓",
+      "鐵壺將熱水注入黑天目茶碗中抹茶粉的瞬間，蒸氣升起",
+      "從石臼溝槽溢出的現磨鮮綠抹茶細粉",
+      "竹製茶杓上山盛的抹茶粉，橫架於漆器棗罐邊緣",
+    ],
+  },
+  homeClosing: {
+    title: "一碗濃綠，承載著風土與作法。",
+    body:
+      "碾茶從覆下栽培到蒸菁、乾燥、石臼研磨，每一道工序都刻印在茶碗的色與香裡。松壽園SHOJUEN以鑑賞者的視角，記錄抹茶的多樣與文化。",
+    contactLine: "諮詢請以 Email 與我們聯繫。",
+    contactCta: "聯絡我們",
+  },
+  contactPage: {
+    title: "聯絡我們",
+    mailCta: "寄送 Email",
+    mailSubject: "【松壽園SHOJUEN】諮詢",
+    backHome: "返回首頁",
+  },
+  latest: {
+    kicker: "Journal",
+    heading: "JOURNAL · 最新文章",
+    intro:
+      "覆下栽培的光環境、石臼的粒度、濃茶與薄茶的作法——為您送上碾茶與抹茶的專業紀錄。",
+    min: "分鐘",
+    viewAll: "前往 JOURNAL 列表",
+  },
+  producersPreview: {
+    kicker: "Producers",
+    heading: "嚴選的碾茶生產者",
+    intro:
+      "覆下的天數、蒸菁的透熱、石臼轉動間蘊含的個性。只刊載松壽園SHOJUEN想長期介紹的生產者。",
+    cta: "前往 PRODUCERS 列表",
+    cardImageAlt: "黑色茶具與濃綠抹茶、茶筅的意象照片",
+  },
+  producersPage: {
+    heroKicker: "Producers",
+    title: "生產者介紹",
+    intro:
+      "碾茶的香氣，蘊藏在覆下的天數、蒸菁的每一秒與石臼的轉動裡。茶樹紮根的土壤履歷、選擇品種的用意，以及碾茶工房的講究，我們在現場反覆點茶、反覆記錄。",
+    jumpNavAria: "跳至生產者區塊",
+    sectionSoil: "土壤與風土",
+    sectionProcess: "碾茶・研磨之芯",
+    sectionCurator: "鑑賞者的視角",
+  },
+  journalPage: {
+    introLead: "覆下栽培的光環境、蒸菁的透熱、石臼的粒度、茶室的作法——",
+    introStrong: "抹茶（碾茶）",
+    introRest:
+      "的文化與科學，擁有一片濃綠無法容納的層次。我們往返於宇治、西尾等各地現場與文獻之間，以鑑賞者的視角記錄。",
+    articleCount: "共 {n} 篇",
+    readArticle: "閱讀全文",
+    min: "分鐘",
+    matchaMoodImageAlts: [
+      "黑色石板上描繪的抹茶粉螺旋與茶筅",
+      "漆盤上的棗形茶罐與茶筅，可見茶碗邊緣的靜物",
+      "熱水注入茶碗抹茶粉瞬間的水滴",
+    ],
+  },
+  theMatchaPage: {
+    heroKicker: "The Matcha",
+    title: "抹茶圖鑑",
+    introBefore: "碾茶從覆下栽培到蒸菁、乾燥、石臼研磨，每一道工序都刻印在杯中的",
+    introStrong: "濃綠",
+    introAfter:
+      "裡。產地的土與品種、石臼的聲音與粒度——如同葡萄酒的品飲筆記，整理抹茶光譜的參照表。",
+    imageAlt: "並排呈現多種抹茶粉色澤的俯瞰意象",
+    badge: "抹茶",
+    origin: "產地",
+    cultivar: "品種",
+    milling: "研磨方式",
+    color: "色澤",
+    aroma: "香氣",
+    palate: "口感",
+    finish: "餘韻",
+  },
+  howToPage: {
+    imageAlt: "以茶筅點抹茶的手部意象",
+    kicker: "How to",
+    title: "點茶與品飲方式",
+    introBefore:
+      "濃茶與薄茶在用水量、溫度、茶筅動作的目的上完全不同。以下是在練習與咖啡店都容易重現的",
+    introStrong: "基準",
+    introAfter: "。若有流派或茶會的禮法，請以其為優先。",
+    modernTitle: "現代喝法",
+    modernBodyBefore: "抹茶拿鐵中，牛奶的脂肪容易包覆香氣，因此使用",
+    modernBodyStrong: "濃一點的碾茶",
+    modernBodyAfter:
+      "，或以打泡器稍微打入空氣帶出香氣，較容易取得平衡。氣泡水調飲時細粉容易沉澱，要充分攪拌，並考量冰塊融化會稀釋，一開始就調濃一些是訣竅。",
+    backHome: "返回首頁",
+    blocks: [
+      {
+        title: "薄茶（usucha）",
+        subtitle: "在碗中打出細緻的「泡沫」",
+        items: [
+          {
+            label: "水溫",
+            value: "約 75〜85℃（勿過度煮沸。軟水為佳）",
+          },
+          {
+            label: "抹茶量",
+            value: "約 2 杓（約 2g）／水約 70ml",
+          },
+          {
+            label: "茶筅",
+            value: "選穗較細者。以 W 字形快速前後運腕，觀察泡沫生成",
+          },
+          { label: "收尾", value: "勿過度打發。表面均勻覆上細泡即完成" },
+        ],
+      },
+      {
+        title: "濃茶（koicha）",
+        subtitle: "化開黏稠而濃郁的鮮味團塊",
+        items: [
+          {
+            label: "水溫",
+            value: "多偏低 60〜70℃ 區間（依流派・品牌而異）",
+          },
+          {
+            label: "抹茶量",
+            value: "約 3.5〜4g 以上／可先以少量水開始再添加",
+          },
+          {
+            label: "茶筅",
+            value: "不打泡。如貼著碗底般緩慢均勻地移動",
+          },
+          {
+            label: "收尾",
+            value: "為避免產生沉渣，勿一口氣過度攪拌",
+          },
+        ],
+      },
+    ],
+  },
+  notFound: {
+    title: "找不到頁面",
+    body: "網址可能已變更，或文章尚未公開。",
+    backHome: "返回首頁",
+  },
+  journalArticle: {
+    back: "← JOURNAL 列表",
+    min: "分鐘",
+    draftNote: "（內文編輯中。將陸續補上資料來源與圖版後公開。）",
+  },
+  chawanPage: {
+    heroKicker: "Chawan",
+    title: "抹茶碗型錄",
+    introBefore:
+      "從樂燒・萩燒・唐津，到茶道用茶碗與飯店備品。這是松壽園SHOJUEN為",
+    introStrong: "合作夥伴",
+    introAfter:
+      "提案的抹茶碗系列。口徑、表面處理、能否配合批量等細節，請於各商品或來信洽詢。",
+    filterAria: "依分類篩選",
+    filterAll: "全部",
+    itemCount: "共 {n} 件",
+    emptyFilter: "沒有符合的商品。",
+    viewDetail: "查看詳情",
+    closeLightbox: "關閉",
+    prevPhoto: "上一張",
+    nextPhoto: "下一張",
+    photoLabel: "照片",
+    sizeLabel: "尺寸",
+    detailLabel: "規格與特徵",
+    refLabel: "參考編號",
+    inquireItem: "洽詢此碗",
+    mailSubject: "【松壽園SHOJUEN】抹茶碗洽詢",
+    ctaTitle: "批發・交易洽詢",
+    ctaBody:
+      "數量、交期、附木箱、刻名等交易條件將依個案提案。型錄以外的造型・釉色需求也歡迎洽詢。",
+    ctaMail: "以 Email 洽詢",
+    ctaContact: "聯絡頁面",
+    categories: {
+      raku: "樂燒",
+      hagi: "萩燒",
+      karatsu: "唐津燒",
+      seto: "瀨戶燒",
+      shino: "志野燒",
+      oribe: "織部燒",
+      other: "其他",
+    },
+  },
+}
+
+const catalog: Record<Locale, Messages> = { ja, en, zh }
 
 export function getMessages(locale: Locale): Messages {
   return catalog[locale]

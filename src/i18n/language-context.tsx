@@ -11,7 +11,7 @@ import {
 import { useRouter } from "next/navigation"
 
 import { getMessages, type Messages } from "@/i18n/messages"
-import { LOCALE_COOKIE, type Locale, parseLocale } from "@/i18n/types"
+import { LOCALE_COOKIE, type Locale, htmlLang, parseLocale } from "@/i18n/types"
 
 type LanguageContextValue = {
   locale: Locale
@@ -36,7 +36,7 @@ export function LanguageProvider({
   }, [initialLocale])
 
   useEffect(() => {
-    document.documentElement.lang = locale === "en" ? "en" : "ja"
+    document.documentElement.lang = htmlLang(locale)
   }, [locale])
 
   const setLocale = useCallback(
@@ -78,7 +78,7 @@ export function useLanguage() {
 export function readStoredLocale(): Locale {
   if (typeof document === "undefined") return "ja"
   const match = document.cookie.match(
-    new RegExp(`(?:^|; )${LOCALE_COOKIE}=(ja|en)(?:;|$)`)
+    new RegExp(`(?:^|; )${LOCALE_COOKIE}=(ja|en|zh)(?:;|$)`)
   )
   if (match?.[1]) return parseLocale(match[1])
   try {

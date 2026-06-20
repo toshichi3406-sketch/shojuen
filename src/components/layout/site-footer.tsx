@@ -26,15 +26,28 @@ export function SiteFooter() {
             className="grid grid-cols-2 gap-x-10 gap-y-2 sm:grid-cols-3"
             aria-label={m.footer.aria}
           >
-            {mainNav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {m.navItems[item.key].label}
-              </Link>
-            ))}
+            {mainNav.map((item) =>
+              item.comingSoon ? (
+                <span
+                  key={item.href}
+                  aria-disabled="true"
+                  className="flex cursor-not-allowed select-none items-center gap-1.5 text-sm text-muted-foreground/55"
+                >
+                  {m.navItems[item.key].label}
+                  <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground/70">
+                    （{m.nav.comingSoon}）
+                  </span>
+                </span>
+              ) : (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {m.navItems[item.key].label}
+                </Link>
+              )
+            )}
           </nav>
         </div>
         <p className="mt-12 text-center text-xs text-muted-foreground">

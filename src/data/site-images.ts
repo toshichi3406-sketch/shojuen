@@ -12,13 +12,14 @@ export const siteImages = {
   producersCardSecondary: img("slot-producer-card-2.png"),
   previewCardPrimary: img("slot-preview-1.png"),
   previewCardSecondary: img("slot-preview-2.png"),
-  matchaCatalogBanner: img("slot-matcha-catalog.png"),
+  matchaCatalogBanner: img("slot-matcha-catalog-v2.png"),
   howToHero: img("slot-howto-hero.png"),
 } as const
 
 /**
- * Home gallery + journal/latest strips — six images, disjoint from `siteImages`
- * (except hero, which is not listed here so the home hero stays unique).
+ * Home gallery + journal/latest strips. Nine images, disjoint from `siteImages`
+ * (the hero is not listed here so the home hero stays unique).
+ * 1–6 = main visual gallery, 7–9 = latest-articles strip (no overlap).
  */
 export const homeMatchaVisualGallery = [
   { src: img("gallery-strip-1.png") },
@@ -27,4 +28,7 @@ export const homeMatchaVisualGallery = [
   { src: img("gallery-strip-4.png") },
   { src: img("gallery-strip-5.png") },
   { src: img("gallery-strip-6.png") },
+  { src: img("gallery-strip-7.png") },
+  { src: img("gallery-strip-8.png") },
+  { src: img("gallery-strip-9.png") },
 ] as const

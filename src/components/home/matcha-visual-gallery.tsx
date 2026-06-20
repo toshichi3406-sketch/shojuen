@@ -33,7 +33,7 @@ export function MatchaVisualGallery() {
         </FadeIn>
 
         <FadeInStagger className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-          {homeMatchaVisualGallery.map((item, i) => (
+          {homeMatchaVisualGallery.slice(0, 6).map((item, i) => (
             <FadeInItem key={item.src}>
               <figure className="group relative aspect-[4/3] overflow-hidden rounded-lg border border-white/10 bg-stone-900 shadow-lg shadow-black/40">
                 <Image

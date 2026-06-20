@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpRightIcon, ClockIcon } from "lucide-react"
 
-import { articles } from "@/data/articles"
+import { articles, localize } from "@/data/articles"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,7 +18,7 @@ import { FadeIn, FadeInItem, FadeInStagger } from "@/components/motion/fade-in"
 import { useLanguage } from "@/i18n/language-context"
 
 export function LatestArticles() {
-  const { m } = useLanguage()
+  const { locale, m } = useLanguage()
   const latest = articles.slice(0, 3)
 
   return (
@@ -38,14 +38,17 @@ export function LatestArticles() {
         </FadeIn>
 
         <FadeIn className="mb-12 grid grid-cols-3 gap-2 sm:gap-3" delay={0.08}>
-          {homeMatchaVisualGallery.slice(3, 6).map((item, i) => (
+          {homeMatchaVisualGallery.slice(6, 9).map((item, i) => (
             <div
               key={item.src}
               className="relative aspect-[5/3] overflow-hidden rounded-md border border-border/60 bg-muted/40"
             >
               <Image
                 src={item.src}
-                alt={m.homeMatchaGallery.imageAlts[i + 3]}
+                alt={
+                  m.homeMatchaGallery.imageAlts[i + 6] ??
+                  m.homeMatchaGallery.fallbackAlt
+                }
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 33vw, 280px"
@@ -61,7 +64,7 @@ export function LatestArticles() {
                 <CardHeader className="gap-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary" className="font-normal">
-                      {article.category}
+                      {localize(article.category, locale)}
                     </Badge>
                     <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <ClockIcon className="size-3.5" aria-hidden />
@@ -73,7 +76,7 @@ export function LatestArticles() {
                       href={`/journal/${article.slug}`}
                       className="inline-flex items-start gap-1 no-underline outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      {article.title}
+                      {localize(article.title, locale)}
                       <ArrowUpRightIcon
                         className="mt-0.5 size-4 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
                         aria-hidden
@@ -81,7 +84,7 @@ export function LatestArticles() {
                     </Link>
                   </CardTitle>
                   <CardDescription className="line-clamp-3 text-sm leading-relaxed">
-                    {article.excerpt}
+                    {localize(article.excerpt, locale)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
