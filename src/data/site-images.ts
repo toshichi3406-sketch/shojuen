@@ -6,7 +6,7 @@ const img = (name: string) => `/images/${name}` as const
 
 export const siteImages = {
   /** Full-bleed home hero only */
-  hero: img("hero-ceremonial-matcha-v3.png"),
+  hero: img("hero-ceremonial-matcha-v4.png"),
   producersHeader: img("slot-producers-header.png"),
   producersCardPrimary: img("slot-producer-card-1.png"),
   producersCardSecondary: img("slot-producer-card-2.png"),
