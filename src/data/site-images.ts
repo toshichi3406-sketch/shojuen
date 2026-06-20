@@ -6,12 +6,12 @@ const img = (name: string) => `/images/${name}` as const
 
 export const siteImages = {
   /** Full-bleed home hero only */
-  hero: img("hero-ceremonial-matcha.png"),
+  hero: img("hero-ceremonial-matcha-v3.png"),
   producersHeader: img("slot-producers-header.png"),
   producersCardPrimary: img("slot-producer-card-1.png"),
   producersCardSecondary: img("slot-producer-card-2.png"),
   previewCardPrimary: img("slot-preview-1.png"),
-  previewCardSecondary: img("slot-preview-2.png"),
+  previewCardSecondary: img("slot-preview-2-v2.png"),
   matchaCatalogBanner: img("slot-matcha-catalog-v2.png"),
   howToHero: img("slot-howto-hero.png"),
 } as const
