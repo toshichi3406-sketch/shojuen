@@ -24,8 +24,6 @@ export function HeroSection() {
   const contentOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0])
   const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -40])
 
-  const titleLines = [m.hero.title1, m.hero.title2]
-
   return (
     <section
       ref={sectionRef}
@@ -67,57 +65,37 @@ export function HeroSection() {
         style={{ opacity: contentOpacity, y: contentY }}
       >
         <p className="mb-4 max-w-xl text-xs font-medium uppercase tracking-[0.45em] text-emerald-100/90">
-          Matcha · Tencha · Ishiusu
+          {m.hero.subtagline}
         </p>
         <motion.h1
           className="font-heading max-w-3xl text-4xl font-medium leading-[1.15] tracking-wide text-white drop-shadow-sm sm:text-5xl md:text-6xl"
-          initial="hidden"
-          animate="show"
-          variants={{
-            hidden: {},
-            show: {
-              transition: { staggerChildren: 0.14, delayChildren: 0.35 },
-            },
-          }}
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: 0.35 }}
         >
-          {titleLines.map((line) => (
-            <motion.span
-              key={line}
-              className="block overflow-hidden"
-              variants={{
-                hidden: { opacity: 0, y: 28 },
-                show: {
-                  opacity: 1,
-                  y: 0,
-                  transition: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
-                },
-              }}
-            >
-              <span className="block">{line}</span>
-            </motion.span>
-          ))}
+          {m.hero.title}
         </motion.h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-200/95 sm:text-lg">
           {m.hero.lead}
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
-            href="/producers"
+            href="/contact"
             className={cn(
               buttonVariants({ size: "lg" }),
               "rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-emerald-950/50 no-underline"
             )}
           >
-            {m.hero.ctaProducers}
+            {m.hero.ctaWholesale}
           </Link>
           <Link
-            href="/the-matcha"
+            href="/journal"
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
               "rounded-full border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 no-underline"
             )}
           >
-            {m.hero.ctaMatcha}
+            {m.hero.ctaJournal}
           </Link>
         </div>
         <motion.div

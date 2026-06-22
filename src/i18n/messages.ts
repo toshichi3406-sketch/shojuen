@@ -24,15 +24,26 @@ export type Messages = {
     | "contact",
     { label: string; description: string }
   >
-  footer: { aria: string; blurb: string; rightsSuffix: string }
+  footer: {
+    aria: string
+    blurb: string
+    rightsSuffix: string
+  }
   hero: {
     imageAlt: string
-    title1: string
-    title2: string
+    title: string
     lead: string
-    ctaProducers: string
-    ctaMatcha: string
+    subtagline: string
+    ctaWholesale: string
+    ctaJournal: string
     scroll: string
+  }
+  wholesaleBanner: {
+    kicker: string
+    body: string
+    lines: string
+    replyNote: string
+    cta: string
   }
   homeMatchaGallery: {
     kicker: string
@@ -47,6 +58,9 @@ export type Messages = {
     mailCta: string
     mailSubject: string
     backHome: string
+    wholesaleTitle: string
+    wholesaleIntro: string
+    wholesaleFields: string
   }
   latest: {
     kicker: string
@@ -169,30 +183,39 @@ const ja: Messages = {
     comingSoon: "近日公開",
   },
   navItems: {
-    home: { label: "トップ", description: "濃緑と一期一会" },
+    home: { label: "トップ", description: "宇治・九州の抹茶卸" },
     matcha: { label: "抹茶図鑑", description: "産地・品種・挽き・味わい" },
     chawan: { label: "抹茶椀", description: "茶碗カタログ・卸提案" },
     producers: { label: "生産者紹介", description: "茶農家・茶師のこだわり" },
-    journal: { label: "JOURNAL", description: "碾茶と茶道の記録" },
+    journal: { label: "JOURNAL", description: "産地取材と碾茶の記録" },
     howTo: { label: "点て方", description: "濃茶・薄茶・モダンな楽しみ方" },
     contact: { label: "お問い合わせ", description: "卸・取引・ご相談（メール）" },
   },
   footer: {
     aria: "フッター",
     blurb:
-      "抹茶（碾茶）の産地・品種・石臼挽き・茶道の精神性を、濃緑の一杯とともに綴るメディアです。茶農家から仕入れた抹茶の海外卸などのご相談も承ります。",
+      "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外の業者様へ届けます。",
     rightsSuffix: ". All rights reserved.",
   },
   hero: {
     imageAlt:
-      "暗い石目の背景に茶筅と濃緑の抹茶粉・点てた抹茶の泡が写ったビジュアル（茶道イメージ）",
-    title1: "一期一会の、",
-    title2: "抹茶体験を。",
+      "暗い石目の背景に茶筅と抹茶粉・点てた抹茶の泡が写ったビジュアル",
+    title: "職人のこだわりを味わえる一杯へ。お手伝いします。",
     lead:
-      "澄み切った濃緑、茶筅が立てるきめ細かな泡、石臼の音で挽き上げる香り——抹茶は、日本の風土と作法のなかで育まれた一杯です。松壽園SHOJUENは、その複層を言葉で綴ります。",
-    ctaProducers: "PRODUCERS を見る",
-    ctaMatcha: "THE MATCHA 図鑑",
+      "松壽園は、茶を並べて流すだけの商社ではありません。こだわった農家と製茶所の仕事に向き合い、Journal で記録しながら、抹茶・碾茶・ほうじ茶を国内外の業者様へ届けます。お問い合わせは1営業日以内の返信を目指しています。",
+    subtagline: "こだわりの農家から · 卸 · 輸出",
+    ctaWholesale: "卸売・輸出のご相談",
+    ctaJournal: "Journal を読む",
     scroll: "Scroll",
+  },
+  wholesaleBanner: {
+    kicker: "【業務用・輸出向け】",
+    body:
+      "松壽園は、抹茶・碾茶・ほうじ茶の業務用・輸出向け卸の窓口です。現地で出会った農家と製茶所のこだわりを、あなたの一杯へ。",
+    lines:
+      "飲料・烘焙・再販など、用途や量に合わせてご相談ください。",
+    replyNote: "1営業日以内に返信目標 →",
+    cta: "卸売・輸出のご相談",
   },
   homeMatchaGallery: {
     kicker: "Visual",
@@ -201,21 +224,21 @@ const ja: Messages = {
       "ラテやグラスではなく、粉末・茶筅・黒い茶碗と石目の上で光る濃緑だけを切り取った画角です。碾茶が茶碗に至るまでのイメージを共有します。",
     fallbackAlt: "茶道イメージの抹茶写真",
     imageAlts: [
-      "淡い色の小皿に盛られた鮮やかな抹茶粉と竹の茶杓",
-      "黒い茶碗に点てられた薄茶のきめ細かな泡と茶筅",
-      "暗い茶碗で抹茶を点てる手元、飛び散る雫と湯気",
-      "金属の茶こしでふるい落とされる抹茶の微粉末",
-      "木の盆に置かれた黒い茶碗の薄茶を真上から見た図",
-      "漆の盆に開いた黒い棗の抹茶粉、茶筅と茶杓",
+      "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
+      "漆の盆、棗と茶筅、茶碗の縁が見える静物",
+      "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
+      "碾茶の葉と抹茶粉が並んだ二つの黒い茶碗",
+      "石台の上に斜めに並んだ三つの黒い茶碗と点てた抹茶",
+      "茶筅で抹茶を立てる動きのモーションブラー",
       "黒い天目茶碗の抹茶粉に、鉄瓶から湯を注ぐ瞬間と立ちのぼる湯気",
       "石臼の溝からあふれる、挽きたての鮮やかな抹茶の微粉",
       "漆塗りの棗にかけた竹の茶杓に山盛りの抹茶粉",
     ],
   },
   homeClosing: {
-    title: "一杯の濃緑に、風土と作法が宿る。",
+    title: "産地のこだわりを、業務用の一杯へ。",
     body:
-      "碾茶は覆下栽培から蒸し、乾燥、石臼挽きまで、工程のすべてが茶碗の色と香りに刻まれます。松壽園SHOJUENでは、抹茶の多様性と文化性を、目利きの視点で記録します。",
+      "碾茶は覆下栽培から蒸し、乾燥、石臼挽きまで、工程のすべてが茶碗の色と香りに刻まれます。松壽園では、こだわった農家と製茶所の仕事を Journal で記録しながら、抹茶・碾茶・ほうじ茶を国内外の業者様へ届けます。",
     contactLine: "お問い合わせはメールにてお願いいたします。",
     contactCta: "お問い合わせ",
   },
@@ -224,6 +247,11 @@ const ja: Messages = {
     mailCta: "メールを送る",
     mailSubject: "【松壽園SHOJUEN】お問い合わせ",
     backHome: "トップへ戻る",
+    wholesaleTitle: "■ 卸売・輸出のお問い合わせ",
+    wholesaleIntro:
+      "以下をお知らせください（すべて不要・分かる範囲で可）：",
+    wholesaleFields:
+      "・会社名 / 用途（飲料・烘焙・再販）\n・希望商品・数量（kg）\n・納品国・希望時期",
   },
   latest: {
     kicker: "Journal",
@@ -247,7 +275,7 @@ const ja: Messages = {
     intro:
       "碾茶の香りは、覆下の日数と蒸しの一秒、石臼の回転に宿る。茶樹が根を下ろす土の履歴、品種選びの意図、そして碾茶工房のこだわりを、現地で何度も点て直しながら記録しています。",
     jumpNavAria: "生産者セクションへジャンプ",
-    sectionSoil: "土壌とテロワール",
+    sectionSoil: "土壌と風土",
     sectionProcess: "碾茶・挽きの芯",
     sectionCurator: "目利きの視点",
   },
@@ -255,7 +283,7 @@ const ja: Messages = {
     introLead: "覆下栽培の光環境、蒸しの通熱、石臼の粒度、茶室の作法——",
     introStrong: "抹茶（碾茶）",
     introRest:
-      "の文化と科学は、一枚の濃緑に収まりきらない層を持っています。宇治・西尾・各地の現場と文献を往復しながら、目利きの視点で記録します。",
+      "の文化と科学は、現場と文献にまたがる層を持っています。宇治・九州の産地を取材しながら、目利きの視点で記録します。",
     articleCount: "全 {n} 件",
     readArticle: "本文を読む",
     min: "分",
@@ -403,7 +431,7 @@ const en: Messages = {
     comingSoon: "Coming soon",
   },
   navItems: {
-    home: { label: "HOME", description: "Deep green, ichigo ichie" },
+    home: { label: "HOME", description: "Uji & Kyushu matcha wholesale" },
     matcha: {
       label: "THE MATCHA",
       description: "Origin, cultivar, milling, flavor",
@@ -416,7 +444,7 @@ const en: Messages = {
       label: "PRODUCERS",
       description: "Growers & tea craftspeople",
     },
-    journal: { label: "JOURNAL", description: "Tencha & tea ceremony notes" },
+    journal: { label: "JOURNAL", description: "Field notes & tencha records" },
     howTo: {
       label: "HOW TO",
       description: "Koicha, usucha & modern serves",
@@ -429,19 +457,29 @@ const en: Messages = {
   footer: {
     aria: "Footer",
     blurb:
-      "Editorial on matcha (tencha): origins, cultivars, stone milling, and the tea room — alongside sourcing matcha from tea farms and export wholesale inquiries.",
+      "Matcha, tencha & hojicha from farmers and craftspeople we care about — delivered through our Journal.",
     rightsSuffix: ". All rights reserved.",
   },
   hero: {
     imageAlt:
-      "Ceremonial matcha on dark stone: vivid green powder, foam in a black chawan, and a bamboo chasen (tea ceremony mood, not a latte)",
-    title1: "Ichigo ichie —",
-    title2: "a matcha moment.",
+      "Ceremonial matcha on dark stone: green powder, foam in a black chawan, and a bamboo chasen",
+    title:
+      "Helping you serve a cup that carries the craftsperson's intent.",
     lead:
-      "Clear deep green, fine foam from the chasen, aroma lifted by the stone mill — matcha is a bowl shaped by Japanese land and practice. 松壽園SHOJUEN puts those layers into words.",
-    ctaProducers: "Meet the producers",
-    ctaMatcha: "The matcha catalog",
+      "Shojuen is not a broker that simply lists tea. We work with farmers and mills we believe in, document their craft in our Journal, and deliver matcha, tencha & hojicha to businesses worldwide. We aim to reply within one business day.",
+    subtagline: "Farm-sourced · Wholesale · Export",
+    ctaWholesale: "Wholesale & export inquiry",
+    ctaJournal: "Read the Journal",
     scroll: "Scroll",
+  },
+  wholesaleBanner: {
+    kicker: "For business & export",
+    body:
+      "Shojuen is the B2B wholesale & export desk for matcha, tencha & hojicha — connecting craft from the field to your cup.",
+    lines:
+      "Beverage, baking, resale — tell us your use and volume; we're happy to discuss fit and samples.",
+    replyNote: "Reply within 1 business day →",
+    cta: "Wholesale & export inquiry",
   },
   homeMatchaGallery: {
     kicker: "Visual",
@@ -450,21 +488,21 @@ const en: Messages = {
       "No milk, no glassware — only powder, chasen, dark bowls, and emerald light on slate. A shared visual shorthand for how tencha becomes the bowl in front of you.",
     fallbackAlt: "Ceremonial matcha still life",
     imageAlts: [
-      "Vivid matcha powder in a pale ceramic dish with a bamboo chashaku scoop",
-      "Fine green foam of usucha whisked in a black chawan with a chasen resting",
-      "Hands whisking matcha in a dark bowl, droplets and steam mid-motion",
-      "Fine matcha powder being sifted through a metal mesh sieve",
-      "Overhead view of whisked usucha in a black chawan on a wooden tray",
-      "Open black natsume caddy of matcha powder with chasen and chashaku on a lacquer tray",
+      "Matcha powder spiral on black slate with a bamboo whisk",
+      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
+      "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
+      "Two dark bowls: tencha leaves and bright matcha powder on weathered wood",
+      "Three black chawans in perspective on stone, nearest bowl whisked matcha",
+      "Motion blur of whisking matcha with chasen in a dark chawan",
       "Hot water poured from an iron kettle onto matcha powder in a black tenmoku bowl, steam rising",
       "Freshly stone-milled vivid matcha powder spilling from the grooves of a granite mill",
       "A bamboo chashaku heaped with matcha powder resting across a lacquer tea caddy",
     ],
   },
   homeClosing: {
-    title: "In one bowl of deep green: place, craft, and ritual.",
+    title: "From origin craft to your business cup.",
     body:
-      "From shade-growing and steaming to drying and stone milling, every step of tencha leaves its mark in the color and aroma of the tea in your bowl. 松壽園SHOJUEN records the diversity of matcha and its culture with a curator's eye.",
+      "From shade-growing and steaming to drying and stone milling, every step of tencha leaves its mark in the bowl. Shojuen documents the work of farmers and mills we care about in our Journal, and delivers matcha, tencha & hojicha to businesses worldwide.",
     contactLine: "Please contact us by email.",
     contactCta: "Contact",
   },
@@ -473,6 +511,11 @@ const en: Messages = {
     mailCta: "Send email",
     mailSubject: "[SHOJUEN] Inquiry",
     backHome: "Back to home",
+    wholesaleTitle: "Wholesale & export inquiries",
+    wholesaleIntro:
+      "Please share what you can (all fields optional):",
+    wholesaleFields:
+      "· Company name / use (beverage, baking, resale)\n· Product & quantity (kg)\n· Destination country & timing",
   },
   latest: {
     kicker: "Journal",
@@ -496,7 +539,7 @@ const en: Messages = {
     intro:
       "Tencha's aroma lives in shade days, each second of steaming, and the turn of the mill. We record the history in the soil, intent in cultivar choice, and the craft of the workshop — tasting again and again in the field.",
     jumpNavAria: "Jump to producer sections",
-    sectionSoil: "Soil & terroir",
+    sectionSoil: "Soil & land",
     sectionProcess: "Tencha & milling",
     sectionCurator: "Tasting notes",
   },
@@ -504,7 +547,7 @@ const en: Messages = {
     introLead: "Light under the shade, steam heat, particle size from the mill, etiquette in the tea room — ",
     introStrong: "matcha (tencha)",
     introRest:
-      " holds more layers than one bowl of green can hold. We move between Uji, Nishio, other fields and the literature, with a curator's lens.",
+      " holds layers that span field work and literature. We document Uji, Kyushu, and other origins with a curator's lens.",
     articleCount: "All {n} articles",
     readArticle: "Read article",
     min: "min",
@@ -661,29 +704,36 @@ const zh: Messages = {
     comingSoon: "即將推出",
   },
   navItems: {
-    home: { label: "首頁", description: "濃綠與一期一會" },
+    home: { label: "首頁", description: "宇治・九州抹茶批發" },
     matcha: { label: "抹茶圖鑑", description: "產地・品種・研磨・風味" },
     chawan: { label: "抹茶碗", description: "茶碗型錄・批發提案" },
     producers: { label: "生產者介紹", description: "茶農與茶師的講究" },
-    journal: { label: "JOURNAL", description: "碾茶與茶道的紀錄" },
+    journal: { label: "JOURNAL", description: "產地取材與碾茶紀錄" },
     howTo: { label: "點茶方式", description: "濃茶・薄茶・現代喝法" },
     contact: { label: "聯絡我們", description: "批發・交易・諮詢（Email）" },
   },
   footer: {
     aria: "頁尾",
     blurb:
-      "以一碗濃綠，記錄抹茶（碾茶）的產地、品種、石臼研磨與茶道精神的媒體。也承接向茶農採購抹茶的海外批發等諮詢。",
+      "透過 Journal，將我們信賴的農家抹茶・碾茶・焙茶送達海內外業者。",
     rightsSuffix: ". All rights reserved.",
   },
   hero: {
-    imageAlt: "深色石紋背景上的茶筅、濃綠抹茶粉與點好的抹茶泡沫（茶道意象）",
-    title1: "一期一會的",
-    title2: "抹茶體驗。",
+    imageAlt: "深色石紋背景上的茶筅、抹茶粉與點好的抹茶泡沫",
+    title: "協助您呈現承載職人堅持的一杯。",
     lead:
-      "澄澈的濃綠、茶筅打出的細緻泡沫、石臼磨出的香氣——抹茶，是在日本風土與作法中孕育的一碗。松壽園SHOJUEN以文字記錄它的層次。",
-    ctaProducers: "查看 PRODUCERS",
-    ctaMatcha: "THE MATCHA 圖鑑",
+      "松壽園不是只陳列茶葉的商社。我們與信賴的農家與製茶所合作，在 Journal 中記錄他們的堅持，並將抹茶・碾茶・焙茶送達海內外業者。目標一個工作天內回覆。",
+    subtagline: "嚴選農家 · 批發 · 出口",
+    ctaWholesale: "批發・出口諮詢",
+    ctaJournal: "閱讀 Journal",
     scroll: "Scroll",
+  },
+  wholesaleBanner: {
+    kicker: "【業務用・出口向】",
+    body: "松壽園是抹茶・碾茶・焙茶的業務用・出口批發窗口。將現地遇見的農家與製茶所之堅持，送到您的一杯。",
+    lines: "飲料・烘焙・再販等，依用途與數量歡迎洽詢。",
+    replyNote: "目標一個工作天內回覆 →",
+    cta: "批發・出口諮詢",
   },
   homeMatchaGallery: {
     kicker: "Visual",
@@ -692,21 +742,21 @@ const zh: Messages = {
       "不是拿鐵或玻璃杯，而是只擷取粉末、茶筅、黑碗與石紋上閃耀的濃綠的畫面。分享碾茶化為一碗茶之前的意象。",
     fallbackAlt: "茶道意象的抹茶照片",
     imageAlts: [
-      "淺色小碟上盛著鮮豔抹茶粉與竹製茶杓",
-      "黑碗中點好的薄茶細緻泡沫與茶筅",
-      "在深色碗中點抹茶的手，飛濺的水滴與蒸氣",
-      "以金屬茶篩篩落的抹茶細粉",
-      "從正上方俯瞰木盤上黑碗中的薄茶",
-      "漆盤上敞開的黑色棗形茶罐中的抹茶粉、茶筅與茶杓",
+      "黑石板上的抹茶粉螺旋與茶筅",
+      "漆盤、棗、茶筅與茶碗邊緣的靜物",
+      "熱水注入茶碗抹茶粉的瞬間水滴",
+      "碾茶葉與抹茶粉並列的兩個黑碗",
+      "石台上斜向排列的三個黑碗與點好的抹茶",
+      "茶筅點抹茶的動態模糊",
       "鐵壺將熱水注入黑天目茶碗中抹茶粉的瞬間，蒸氣升起",
       "從石臼溝槽溢出的現磨鮮綠抹茶細粉",
       "竹製茶杓上山盛的抹茶粉，橫架於漆器棗罐邊緣",
     ],
   },
   homeClosing: {
-    title: "一碗濃綠，承載著風土與作法。",
+    title: "將產地的堅持，化為業務用的一杯。",
     body:
-      "碾茶從覆下栽培到蒸菁、乾燥、石臼研磨，每一道工序都刻印在茶碗的色與香裡。松壽園SHOJUEN以鑑賞者的視角，記錄抹茶的多樣與文化。",
+      "碾茶從覆下栽培到蒸菁、乾燥、石臼研磨，每一道工序都刻印在茶碗的色與香裡。松壽園在 Journal 中記錄信賴的農家與製茶所，將抹茶・碾茶・焙茶送達海內外業者。",
     contactLine: "諮詢請以 Email 與我們聯繫。",
     contactCta: "聯絡我們",
   },
@@ -715,6 +765,10 @@ const zh: Messages = {
     mailCta: "寄送 Email",
     mailSubject: "【松壽園SHOJUEN】諮詢",
     backHome: "返回首頁",
+    wholesaleTitle: "■ 批發・出口諮詢",
+    wholesaleIntro: "請告知以下資訊（全部非必填，能提供的範圍即可）：",
+    wholesaleFields:
+      "・公司名 / 用途（飲料・烘焙・再販）\n・希望商品・數量（kg）\n・交貨國・希望時期",
   },
   latest: {
     kicker: "Journal",
@@ -746,7 +800,7 @@ const zh: Messages = {
     introLead: "覆下栽培的光環境、蒸菁的透熱、石臼的粒度、茶室的作法——",
     introStrong: "抹茶（碾茶）",
     introRest:
-      "的文化與科學，擁有一片濃綠無法容納的層次。我們往返於宇治、西尾等各地現場與文獻之間，以鑑賞者的視角記錄。",
+      "的文化與科學，擁有跨越現場與文獻的層次。我們往返於宇治、九州等產地，以鑑賞者的視角記錄。",
     articleCount: "共 {n} 篇",
     readArticle: "閱讀全文",
     min: "分鐘",

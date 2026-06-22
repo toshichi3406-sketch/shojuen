@@ -15,7 +15,7 @@ export function ContactPageClient() {
   const mailto = `mailto:${email}?subject=${encodeURIComponent(m.contactPage.mailSubject)}`
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6 sm:py-24">
+    <div className="mx-auto max-w-lg px-4 py-16 sm:px-6 sm:py-24">
       <FadeIn>
         <h1 className="font-heading text-3xl font-medium tracking-wide text-foreground sm:text-4xl">
           {m.contactPage.title}
@@ -33,6 +33,26 @@ export function ContactPageClient() {
             {m.contactPage.mailCta}
           </a>
         </div>
+      </FadeIn>
+
+      <FadeIn className="mt-16 text-left" delay={0.08}>
+        <h2 className="font-heading text-xl font-medium text-foreground">
+          {m.contactPage.wholesaleTitle}
+        </h2>
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          {m.contactPage.wholesaleIntro}
+        </p>
+        <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
+          {m.contactPage.wholesaleFields}
+        </p>
+        <p className="mt-6 text-sm">
+          <a
+            href={`mailto:${email}`}
+            className="font-mono text-foreground underline-offset-4 hover:underline"
+          >
+            {email}
+          </a>
+        </p>
       </FadeIn>
 
       <FadeIn className="mt-14" delay={0.1}>

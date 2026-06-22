@@ -31,15 +31,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "松壽園SHOJUEN | 抹茶のテロワールと濃緑を綴るメディア",
-    template: "%s | 松壽園SHOJUEN",
+    default:
+      "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
+    template: "%s | 松壽園",
   },
   description:
-    "産地の碾茶、品種、石臼挽き、濃茶と薄茶の作法。宇治・西尾をはじめ、抹茶の専門的な記録をお届けします。",
+    "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。職人のこだわりが伝わる一杯を、お手伝いします。info@ochanoshojuen.com",
   openGraph: {
-    title: "松壽園SHOJUEN",
+    title: "松壽園 SHOJUEN — matcha wholesale & export",
     description:
-      "抹茶の碾茶・茶道・文化。濃緑の一杯とともに読み解く独立メディア。",
+      "Matcha, tencha & hojicha from farmers and craftspeople we care about — for businesses worldwide.",
     locale: "ja_JP",
   },
 }
