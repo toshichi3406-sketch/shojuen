@@ -30,6 +30,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ochanoshojuen.com"),
   title: {
     default:
       "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
@@ -38,10 +39,22 @@ export const metadata: Metadata = {
   description:
     "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。職人のこだわりが伝わる一杯を、お手伝いします。info@ochanoshojuen.com",
   openGraph: {
-    title: "松壽園 SHOJUEN — matcha wholesale & export",
+    type: "website",
+    url: "https://ochanoshojuen.com",
+    siteName: "松壽園",
+    title: "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
     description:
-      "Matcha, tencha & hojicha from farmers and craftspeople we care about — for businesses worldwide.",
+      "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。職人のこだわりが伝わる一杯を、お手伝いします。",
     locale: "ja_JP",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
+    description:
+      "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。",
+  },
+  alternates: {
+    canonical: "https://ochanoshojuen.com",
   },
 }
 
