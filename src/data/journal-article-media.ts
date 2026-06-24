@@ -77,10 +77,10 @@ export const journalArticleMedia: Record<string, JournalArticleMedia> = {
       },
       {
         src: takeoChawan("07-workshop-working.png"),
-        captionJa: "工房の奥で手を動かす職人。碗の重心と口縁は、この段階で決まる。",
+        captionJa: "工房の奥で手を動かす作り手。碗の重心と口縁は、この段階で決まる。",
         captionEn:
-          "Hands at work deep in the workshop — a bowl's balance and rim are settled in this stage.",
-        captionZh: "工房深處動手的職人。茶碗的重心與口沿在此階段定案。",
+          "A maker's hands deep in the workshop — a bowl's balance and rim are settled at this stage.",
+        captionZh: "工房深處動手的製作者。茶碗的重心與口沿在此階段定案。",
         needsPermission: true,
       },
       {

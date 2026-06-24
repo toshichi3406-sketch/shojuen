@@ -34,8 +34,8 @@ export const articles: Article[] = [
     },
     excerpt: {
       ja: "当園が抹茶椀を取り扱うにあたり、佐賀・武雄の窯元を訪ねた取材ノート。有田焼・伊万里焼・波佐見焼の文脈のなかで、焼き物を暮らしの彩りとするご主人の話——「2020年」「2021年」の器にまつわるエピソードを、写真とともに残す。",
-      en: "A field note from our visit to a workshop in Takeo, Saga, as Shojuen prepares to offer matcha bowls — the master's view of pottery as color in daily life, set against Arita, Imari, and Hasami, with the story of the pieces named 2020 and 2021.",
-      zh: "松壽園準備經手抹茶碗之際，造訪佐賀・武雄窯元的採訪筆記。在有田燒・伊萬里燒・波佐見燒的脈絡中，記錄主人將燒物視為生活彩飾的話語——以及名為「2020年」「2021年」的器物軼事，附照片留存。",
+      en: "A field note from our visit to a workshop in Takeo, Saga, as Shojuen prepares to offer matcha bowls — the kiln owner's view of pottery as color in daily life, set against Arita, Imari, and Hasami, with the story of the pieces named 2020 and 2021.",
+      zh: "松壽園準備經手抹茶碗之際，造訪佐賀、武雄窯元的採訪筆記。在有田燒、伊萬里燒、波佐見燒的脈絡中，記錄主人將燒物視為生活彩飾的話語——以及名為「2020年」「2021年」的器物軼事，附照片留存。",
     },
     category: { ja: "取材ノート", en: "Field Notes", zh: "採訪筆記" },
     publishedAt: "2026-06-24",
