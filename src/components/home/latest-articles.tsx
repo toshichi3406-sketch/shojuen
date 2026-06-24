@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowUpRightIcon, ClockIcon } from "lucide-react"
 
-import { articles, localize } from "@/data/articles"
+import { getPublishedArticles, localize } from "@/data/articles"
 import { getArticleCoverImage } from "@/data/journal-article-media"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +20,7 @@ import { useLanguage } from "@/i18n/language-context"
 
 export function LatestArticles() {
   const { locale, m } = useLanguage()
-  const latest = articles.slice(0, 3)
+  const latest = getPublishedArticles().slice(0, 3)
 
   return (
     <section className="relative border-b border-border/60 bg-background py-24 sm:py-32">

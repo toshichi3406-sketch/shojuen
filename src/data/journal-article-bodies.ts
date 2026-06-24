@@ -8,6 +8,38 @@ export const journalArticleBodies: Record<
   string,
   Partial<Record<Locale, string[]>>
 > = {
+  "field-note-takeo-chawan-kiln": {
+    ja: [
+      "当園では、これから抹茶椀も取り扱っていこうと考えています。その背景には、佐賀が日本でも有数の焼き物の産地であるという事実があります。有田焼、伊万里焼、波佐見焼——名前は異なりますが、いずれも長い歴史と高い技術を持つ磁器の世界です。今回、松壽園が抹茶椀の窯元として向き合うことにしたのが、佐賀・武雄のこの窯元です。",
+      "有田焼は、佐賀県有田町を中心とした磁器。1610年代ごろから続く日本磁器の原点のひとつで、国指定の伝統工芸品です。伊万里焼は、本来は伊万里港から海外へ出荷された磁器の総称。中身の多くは有田・近郊の窯元の作品で、別の技法というより流通・呼び名に近いものです。波佐見焼は長崎県波佐見町にあり、有田と同じ系譜に属する磁器地帯で、江戸以降は日常器の大量生産でも知られます。武雄焼は武雄市の地場の焼き物で、400年以上の歴史があり、磁器・陶器の両方、90か所以上の窯元が今も残っています。",
+      "今回訪ねた窯元は、有田焼の系譜を受け継ぎながら武雄で器を手がける工房です。伊万里や波佐見の産地そのものではなく、武雄の地で日々の器をつくる現場——花器を専門としながら、抹茶碗や茶道具にも取り組む、個性の強い一軒です。有田・伊万里の磁器は、江戸時代から海外にも渡り、日本を代表する輸出陶磁器として名を残しました。日常の茶碗から格式高い茶道具・花器まで、一つの地域に技術と窯が集中している点で、国内でも希少な焼き物の宝庫です。",
+      "取材に伺うと、窯元のご主人が優しく出迎えてくださいました。現在はご主人と奥様のお二人で窯を守られているようです。姫路焼き物フェスや波佐見陶器市など、全国各地のイベントにも出品されているそうです。工房には、ろくろ、釉薬の桶、窯、素焼きの椀が並ぶ棚——作り手の手仕事がそのまま残る、落ち着いた空間でした。",
+      "ご主人に話を伺うと、「焼き物を作っているのは楽しい。人様に使っていただけるのがありがたい」——そんな言葉が印象に残りました。「職人の作品」という固定観念にとらわれず、職人として驕らず、いろんな人に手に取ってもらうことで、焼き物に商品としての価値を与えてきた——そう語られました。",
+      "もともと「焼き物」と聞くと、作家の作品として、高く、触れにくいものというイメージが先行しがちです。けれどその話を聞いて、焼き物は商品として、いろんな人の暮らしの中に彩りを与えるものだという価値観は、とても素敵だと感じました。敷居が高く、高価な焼き物でも、誰の目にも触れなければ意味がない——その考え方が、ご主人の人となりそのものに表れているように思います。",
+      "その人柄がよくわかるエピソードを、ぜひここに残しておきたいと思います。ある日、4歳か5歳くらいの子どもを連れた女性が、窯元を訪れたそうです。子どもが気に入った焼き物を購入したとき、ご主人は「一年たったら、その焼き物を割ったら、また買いに来られるよ。そしたら、おじちゃんに会えるよ」と伝えたといいます。焼き物は消耗品ではある。けれど、壊れない限り買い替えを考えることは少ない——そのことをご主人は知っているからこそ、冗談交じりにそう言ったのだそうです。",
+      "ところがその子どもは、本気で一年後にまた「焼き物のおじちゃん」に会いたいと思い、本当に割ろうとした——が、割れなかった。その子どもは、その器に「2020年」という名前をつけ、壁に飾ったそうです。そして翌年、ご主人に「2021年のやつを買いに来た」と伝えに来た——その話を聞いて、ご主人は涙が出たとおっしゃいました。このエピソードから、ご主人が人と人とのつながりを何より大切にしていることが伝わってきます。焼き物があるのは、そのつながりのため——そして同時に、器そのものの大切さも、きちんと認識されている。私たち松壽園も、商売を通じて人と人とのつながりをつくっている。その道具として商品がある。だからこそ、無機質な金銭のやり取りだけでなく、想いを商品に載せることが大切なのだと、改めて感じました。",
+    ],
+    en: [
+      "We are preparing to offer matcha bowls at Shojuen. Saga is one of Japan's foremost pottery regions — Arita, Imari, Hasami: different names, but each a world of porcelain with long history and deep skill. For matcha bowls, we chose to work with this workshop in Takeo, Saga.",
+      "Arita ware centers on Arita Town in Saga — among the origins of Japanese porcelain from the 1610s, a nationally designated traditional craft. Imari ware is historically the name for porcelain shipped abroad from Imari port; most pieces came from Arita and nearby kilns — less a separate technique than a trade name. Hasami ware, in Hasami Town, Nagasaki, shares the same lineage; since the Edo period it has been known for high-volume daily wares. Takeo ware is local pottery in Takeo City, with over four hundred years of history and more than ninety active kilns making both porcelain and stoneware.",
+      "The workshop we visited inherits the Arita lineage while making vessels in Takeo — not Imari or Hasami proper, but a daily workshop on Takeo ground, specializing in flower vases while also making matcha bowls and tea utensils. Arita and Imari porcelain were exported from the Edo period onward, among Japan's defining ceramic exports. From everyday tea bowls to formal tea tools and flower vases, the concentration of technique and kilns in one region makes Saga a rare treasury of pottery in Japan.",
+      "When we arrived for the interview, the master welcomed us warmly. He and his wife now run the kiln together. They exhibit at events nationwide — the Himeji Pottery Festival, the Hasami Pottery Market, and others. Inside the workshop: wheels, glaze buckets, the kiln, shelves of bisque bowls — a calm space where the maker's handwork is still visible everywhere.",
+      "Asked about his work, he said: 'Making pottery is enjoyable. I'm grateful when people use what I make.' He told us he avoids the fixed idea of the 'artisan's masterwork,' doesn't stand on pride as a craftsman, and lets many people pick up his pieces — thereby giving pottery value as a product.",
+      "Hearing him, I felt how fine it is to see pottery as a product that adds color to daily life, not only as a lofty, untouchable artwork. Even costly, exclusive pieces mean little if no one ever sees them — that outlook seemed to be the master himself.",
+      "One episode showed his character clearly. A woman visited with a child of four or five. When the child chose a piece to buy, the master joked: 'In a year, break it — then you can come buy another. And you'll get to see Uncle again.' Pottery is consumable in a sense, yet people rarely replace it unless it breaks — knowing that, he said it lightly, in jest.",
+      "The child took him seriously, wanted to see 'Uncle who makes pottery' again, and really tried to break it — but couldn't. The child named the piece '2020' and hung it on the wall. The next year they came to tell the master they had come to buy the '2021' piece — and he teared up hearing it. It shows how he values human connection above all; pottery exists for that bond, yet he also honors the vessel itself. Shojuen, too, connects people through trade; products are the means. So it matters not only to exchange money, but to put feeling into what we sell — I felt that again.",
+    ],
+    zh: [
+      "松壽園準備經手抹茶碗。佐賀是日本數一數二的燒物產地——有田燒、伊萬里燒、波佐見燒，名稱各異，卻都是歷史悠久、技術深厚的磁器世界。這次，松壽園選擇與佐賀・武雄的這座窯元合作抹茶碗。",
+      "有田燒以佐賀縣有田町為中心，自1610年代前後延續至今，是日本磁器的起源之一，亦為國指定傳統工藝品。伊萬里燒本是從伊萬里港出口海外的磁器總稱，內容多為有田及近郊窯元的作品，與其說是另一種技法，不如說是流通上的稱呼。波佐見燒在長崎縣波佐見町，與有田同屬一系，江戶以降以日常器的大量生產聞名。武雄燒則是武雄市的地方燒物，有四百年以上歷史，磁器與陶器並存，至今仍有九十處以上窯元。",
+      "此次造訪的窯元，承襲有田燒系譜，在武雄製作器物——並非伊萬里或波佐見產地本身，而是在武雄這片土地上日常制器的工房；專門花器，同時也製作抹茶碗與茶道具，個性鮮明。有田・伊萬里的磁器自江戶時代起出口海外，是日本代表性的輸出陶磁器。從日常茶碗到格調高的茶道具・花器，技術與窯元集中於一地，佐賀在國內也是罕見的燒物寶庫。",
+      "採訪當日，窯元主人溫和地迎接我們。目前由主人與夫人兩人守窯。姫路燒物祭、波佐見陶器市等，全國各地活動皆有出品。工房裡有拉坯機、釉料桶、窯、素燒碗排列的棚架——作匠的手活仍原封留存，是沉靜的空間。",
+      "聽主人談話，「做燒物很快樂。有人使用，非常感激」——這句話令人印象深刻。他不囿於「職人作品」的固定觀念，不以職人身份驕傲，讓各種人親手觸摸，從而賦予燒物作為商品的價值——他如此說道。",
+      "一聽「燒物」，往往先想到作家作品、高價、難以觸碰。但聽完他的話，燒物是商品，為各種人的生活添彩——這種價值觀非常動人。即使門檻高、價格貴，若無人看見也便無意義——這種想法，正是主人本身。",
+      "有一則軼事最能看出他的為人。某日，一位帶著四、五歲孩子的女性來訪。孩子買下喜歡的燒物時，主人說：「一年後若把它打破，可以再來買。就能再見到叔叔喔。」燒物某種意義上是消耗品，但不壞則很少考慮更換——主人深知這點，才半開玩笑地這麼說。",
+      "然而孩子當真了，一年後真的想再見「做燒物的叔叔」，便試著打破——卻打不破。孩子替那只器取名「2020年」，掛在牆上。翌年來告訴主人「要買2021年的」——聽到這話，主人落淚。這軼事讓人感到，他最重視人與人的連結；燒物為此而存在，同時也確實認識器本身的重要。松壽園亦透過商業連結人與人，商品是其中的媒介。因此，不能只有金錢的交換，把心意載在商品上才重要——我再次這樣想。",
+    ],
+  },
   "field-note-ureshino-kamairi-2026": {
     ja: [
       "2026年6月、佐賀・嬉野の茶畑を訪ねました。松壽園が大切にしているのは、袋に詰めて送ることだけではありません。出会った人のこだわりを取材し、そのまま言葉と写真で届けること——今日は、その第一歩として釜炒り抹茶の現場を歩きました。",

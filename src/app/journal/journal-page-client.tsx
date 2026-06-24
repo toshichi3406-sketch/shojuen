@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { BookOpenIcon, ClockIcon } from "lucide-react"
 
-import { articles, localize } from "@/data/articles"
+import { getPublishedArticles, localize } from "@/data/articles"
 import { getArticleCoverImage } from "@/data/journal-article-media"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
@@ -20,9 +20,10 @@ import { useLanguage } from "@/i18n/language-context"
 
 export function JournalPageClient() {
   const { locale, m } = useLanguage()
+  const published = getPublishedArticles()
   const countLabel = m.journalPage.articleCount.replace(
     "{n}",
-    String(articles.length)
+    String(published.length)
   )
 
   return (
@@ -71,7 +72,7 @@ export function JournalPageClient() {
         </FadeIn>
 
         <FadeInStagger className="grid gap-6 md:grid-cols-2">
-          {articles.map((article) => {
+          {published.map((article) => {
             const cover = getArticleCoverImage(article.slug)
             return (
               <FadeInItem key={article.slug}>

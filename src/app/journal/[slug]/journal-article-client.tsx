@@ -66,6 +66,14 @@ export function JournalArticleClient({
         >
           {m.journalArticle.back}
         </Link>
+        {article.draft && (
+          <p
+            role="status"
+            className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-950 dark:text-amber-100"
+          >
+            {m.journalArticle.draftPreviewBanner}
+          </p>
+        )}
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Badge variant="secondary">{localize(article.category, locale)}</Badge>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">

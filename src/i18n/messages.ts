@@ -130,6 +130,7 @@ export type Messages = {
     back: string
     min: string
     draftNote: string
+    draftPreviewBanner: string
   }
   chawanPage: {
     heroKicker: string
@@ -377,6 +378,8 @@ const ja: Messages = {
     back: "← JOURNAL 一覧",
     min: "分",
     draftNote: "（本文は編集中です。データソースと図版を追って公開予定です。）",
+    draftPreviewBanner:
+      "プレビュー — この記事は未公開です。JOURNAL 一覧には表示されません。",
   },
   chawanPage: {
     heroKicker: "Chawan",
@@ -650,6 +653,8 @@ const en: Messages = {
     min: "min",
     draftNote:
       "(Full article in preparation — sources and figures to follow.)",
+    draftPreviewBanner:
+      "Preview — this article is not published yet and does not appear on the JOURNAL index.",
   },
   chawanPage: {
     heroKicker: "Chawan",
@@ -894,6 +899,8 @@ const zh: Messages = {
     back: "← JOURNAL 列表",
     min: "分鐘",
     draftNote: "（內文編輯中。將陸續補上資料來源與圖版後公開。）",
+    draftPreviewBanner:
+      "預覽 — 本文尚未公開，不會出現在 JOURNAL 列表。",
   },
   chawanPage: {
     heroKicker: "Chawan",
