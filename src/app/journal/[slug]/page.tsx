@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { notFound } from "next/navigation"
 
 import { articles, localize } from "@/data/articles"
+import { getArticleCoverImage } from "@/data/journal-article-media"
 import { LOCALE_COOKIE, parseLocale } from "@/i18n/types"
 import { JournalArticleClient } from "./journal-article-client"
 
@@ -18,9 +19,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!article) return { title: "記事が見つかりません" }
   const cookieStore = await cookies()
   const locale = parseLocale(cookieStore.get(LOCALE_COOKIE)?.value)
+  const cover = getArticleCoverImage(slug)
+  const title = localize(article.title, locale)
+  const description = localize(article.excerpt, locale)
   return {
-    title: localize(article.title, locale),
-    description: localize(article.excerpt, locale),
+    title,
+    description,
+    openGraph: cover
+      ? {
+          title,
+          description,
+          images: [{ url: cover, alt: title }],
+        }
+      : undefined,
+    twitter: cover
+      ? {
+          card: "summary_large_image",
+          title,
+          description,
+          images: [cover],
+        }
+      : undefined,
   }
 }
 

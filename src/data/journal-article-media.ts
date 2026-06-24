@@ -68,3 +68,8 @@ export const journalArticleMedia: Record<string, JournalArticleMedia> = {
     ],
   },
 }
+
+/** 記事カード・OG 用。hero 画像があればそのパスを返す。 */
+export function getArticleCoverImage(slug: string): string | undefined {
+  return journalArticleMedia[slug]?.hero?.src
+}

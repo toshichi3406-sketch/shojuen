@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowUpRightIcon, ClockIcon } from "lucide-react"
 
 import { articles, localize } from "@/data/articles"
+import { getArticleCoverImage } from "@/data/journal-article-media"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -58,43 +59,60 @@ export function LatestArticles() {
         </FadeIn>
 
         <FadeInStagger className="grid gap-6 md:grid-cols-3">
-          {latest.map((article) => (
-            <FadeInItem key={article.slug}>
-              <Card className="group h-full overflow-hidden border-border/80 bg-card/80 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
-                <CardHeader className="gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary" className="font-normal">
-                      {localize(article.category, locale)}
-                    </Badge>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <ClockIcon className="size-3.5" aria-hidden />
-                      {article.readMinutes} {m.latest.min}
-                    </span>
-                  </div>
-                  <CardTitle className="font-heading text-lg leading-snug transition-colors group-hover:text-primary">
+          {latest.map((article) => {
+            const cover = getArticleCoverImage(article.slug)
+            return (
+              <FadeInItem key={article.slug}>
+                <Card className="group h-full overflow-hidden border-border/80 bg-card/80 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
+                  {cover && (
                     <Link
                       href={`/journal/${article.slug}`}
-                      className="inline-flex items-start gap-1 no-underline outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      className="relative block aspect-[16/10] overflow-hidden bg-muted"
                     >
-                      {localize(article.title, locale)}
-                      <ArrowUpRightIcon
-                        className="mt-0.5 size-4 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
-                        aria-hidden
+                      <Image
+                        src={cover}
+                        alt={localize(article.title, locale)}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                        sizes="(max-width: 768px) 100vw, 33vw"
                       />
                     </Link>
-                  </CardTitle>
-                  <CardDescription className="line-clamp-3 text-sm leading-relaxed">
-                    {localize(article.excerpt, locale)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-xs text-muted-foreground">
-                    {article.publishedAt}
-                  </p>
-                </CardContent>
-              </Card>
-            </FadeInItem>
-          ))}
+                  )}
+                  <CardHeader className="gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="font-normal">
+                        {localize(article.category, locale)}
+                      </Badge>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <ClockIcon className="size-3.5" aria-hidden />
+                        {article.readMinutes} {m.latest.min}
+                      </span>
+                    </div>
+                    <CardTitle className="font-heading text-lg leading-snug transition-colors group-hover:text-primary">
+                      <Link
+                        href={`/journal/${article.slug}`}
+                        className="inline-flex items-start gap-1 no-underline outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {localize(article.title, locale)}
+                        <ArrowUpRightIcon
+                          className="mt-0.5 size-4 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100"
+                          aria-hidden
+                        />
+                      </Link>
+                    </CardTitle>
+                    <CardDescription className="line-clamp-3 text-sm leading-relaxed">
+                      {localize(article.excerpt, locale)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-xs text-muted-foreground">
+                      {article.publishedAt}
+                    </p>
+                  </CardContent>
+                </Card>
+              </FadeInItem>
+            )
+          })}
         </FadeInStagger>
 
         <FadeIn className="mt-12 flex justify-center" delay={0.15}>

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { BookOpenIcon, ClockIcon } from "lucide-react"
 
 import { articles, localize } from "@/data/articles"
+import { getArticleCoverImage } from "@/data/journal-article-media"
 import { homeMatchaVisualGallery } from "@/data/site-images"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -70,43 +71,60 @@ export function JournalPageClient() {
         </FadeIn>
 
         <FadeInStagger className="grid gap-6 md:grid-cols-2">
-          {articles.map((article) => (
-            <FadeInItem key={article.slug}>
-              <Card className="group h-full border-border/80 bg-card/90 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
-                <CardHeader className="gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary" className="font-normal">
-                      {localize(article.category, locale)}
-                    </Badge>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <ClockIcon className="size-3.5" aria-hidden />
-                      {article.readMinutes} {m.journalPage.min} ·{" "}
-                      {article.publishedAt}
-                    </span>
-                  </div>
-                  <CardTitle className="font-heading text-xl leading-snug sm:text-2xl">
+          {articles.map((article) => {
+            const cover = getArticleCoverImage(article.slug)
+            return (
+              <FadeInItem key={article.slug}>
+                <Card className="group h-full overflow-hidden border-border/80 bg-card/90 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
+                  {cover && (
                     <Link
                       href={`/journal/${article.slug}`}
-                      className="text-foreground no-underline transition-colors group-hover:text-primary"
+                      className="relative block aspect-[16/10] overflow-hidden bg-muted"
                     >
-                      {localize(article.title, locale)}
+                      <Image
+                        src={cover}
+                        alt={localize(article.title, locale)}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
                     </Link>
-                  </CardTitle>
-                  <CardDescription className="text-[0.95rem] leading-relaxed">
-                    {localize(article.excerpt, locale)}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link
-                    href={`/journal/${article.slug}`}
-                    className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    {m.journalPage.readArticle}
-                  </Link>
-                </CardContent>
-              </Card>
-            </FadeInItem>
-          ))}
+                  )}
+                  <CardHeader className="gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary" className="font-normal">
+                        {localize(article.category, locale)}
+                      </Badge>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <ClockIcon className="size-3.5" aria-hidden />
+                        {article.readMinutes} {m.journalPage.min} ·{" "}
+                        {article.publishedAt}
+                      </span>
+                    </div>
+                    <CardTitle className="font-heading text-xl leading-snug sm:text-2xl">
+                      <Link
+                        href={`/journal/${article.slug}`}
+                        className="text-foreground no-underline transition-colors group-hover:text-primary"
+                      >
+                        {localize(article.title, locale)}
+                      </Link>
+                    </CardTitle>
+                    <CardDescription className="text-[0.95rem] leading-relaxed">
+                      {localize(article.excerpt, locale)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link
+                      href={`/journal/${article.slug}`}
+                      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      {m.journalPage.readArticle}
+                    </Link>
+                  </CardContent>
+                </Card>
+              </FadeInItem>
+            )
+          })}
         </FadeInStagger>
       </div>
     </div>
