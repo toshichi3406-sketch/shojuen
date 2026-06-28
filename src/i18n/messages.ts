@@ -292,10 +292,11 @@ const ja: Messages = {
   theMatchaPage: {
     heroKicker: "The Matcha",
     title: "抹茶図鑑",
-    introBefore: "碾茶は覆下栽培から蒸し、乾燥、石臼挽きまで、工程のすべてが杯の",
-    introStrong: "濃緑",
+    introBefore:
+      "ラベルは同じ「抹茶」でも、遮光・殺青・揉捻・粉砕の組み合わせで中身は変わります。",
+    introStrong: "第0章",
     introAfter:
-      "に刻まれます。産地の土と品種、臼の音と粒度——ワインのテイスティングノートのように、抹茶のスペクトルを整理した参照表です。",
+      "は、その読み方の地図です。まず A / B / C の大枠を押さえ、農園・製茶所のレシピと向く用途を整理する参照章です。",
     imageAlt: "複数の抹茶粉の色味を並べた俯瞰のイメージ",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.ja,
@@ -550,12 +551,12 @@ const en: Messages = {
   },
   theMatchaPage: {
     heroKicker: "The Matcha",
-    title: "Matcha catalog",
+    title: "Matcha Encyclopedia",
     introBefore:
-      "From shade-growing through steam, dry, and stone mill, every step is etched into the bowl's ",
-    introStrong: "deep green",
+      'The label may say "matcha," but shading, fixation, rolling, and grinding change what is in the bag. ',
+    introStrong: "Chapter 0",
     introAfter:
-      ". Soil and cultivar, the sound of the mill and particle size — a reference sheet for matcha's spectrum, like wine tasting notes.",
+      " is the map — start with types A / B / C, then read each farm's recipe and best use.",
     imageAlt: "Overhead view of several heaps of matcha powder in different greens",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.en,
@@ -799,10 +800,11 @@ const zh: Messages = {
   theMatchaPage: {
     heroKicker: "The Matcha",
     title: "抹茶圖鑑",
-    introBefore: "碾茶從覆下栽培到蒸菁、乾燥、石臼研磨，每一道工序都刻印在杯中的",
-    introStrong: "濃綠",
+    introBefore:
+      "標籤都是「抹茶」，覆下、殺青、揉捻、粉碎的組合不同，內容就不同。",
+    introStrong: "第0章",
     introAfter:
-      "裡。產地的土與品種、石臼的聲音與粒度——如同葡萄酒的品飲筆記，整理抹茶光譜的參照表。",
+      "是閱讀方式的地圖。先掌握 A / B / C 的大框架，再整理各茶園的配方與適合用途。",
     imageAlt: "並排呈現多種抹茶粉色澤的俯瞰意象",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.zh,
