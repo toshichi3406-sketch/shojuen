@@ -104,15 +104,6 @@ export type Messages = {
     introStrong: string
     introAfter: string
     imageAlt: string
-    badge: string
-    origin: string
-    cultivar: string
-    milling: string
-    color: string
-    aroma: string
-    palate: string
-    finish: string
-    catalogHeading: string
   }
   encyclopediaCh0: MatchaEncyclopediaCh0Messages
   howToPage: {
@@ -306,15 +297,6 @@ const ja: Messages = {
     introAfter:
       "に刻まれます。産地の土と品種、臼の音と粒度——ワインのテイスティングノートのように、抹茶のスペクトルを整理した参照表です。",
     imageAlt: "複数の抹茶粉の色味を並べた俯瞰のイメージ",
-    badge: "抹茶",
-    origin: "産地",
-    cultivar: "品種",
-    milling: "挽き方",
-    color: "色味",
-    aroma: "香気",
-    palate: "味わい",
-    finish: "余韻",
-    catalogHeading: "取扱商品",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.ja,
   howToPage: {
@@ -575,15 +557,6 @@ const en: Messages = {
     introAfter:
       ". Soil and cultivar, the sound of the mill and particle size — a reference sheet for matcha's spectrum, like wine tasting notes.",
     imageAlt: "Overhead view of several heaps of matcha powder in different greens",
-    badge: "Matcha",
-    origin: "Origin",
-    cultivar: "Cultivar",
-    milling: "Milling",
-    color: "Color",
-    aroma: "Aroma",
-    palate: "Palate",
-    finish: "Finish",
-    catalogHeading: "Products",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.en,
   howToPage: {
@@ -831,15 +804,6 @@ const zh: Messages = {
     introAfter:
       "裡。產地的土與品種、石臼的聲音與粒度——如同葡萄酒的品飲筆記，整理抹茶光譜的參照表。",
     imageAlt: "並排呈現多種抹茶粉色澤的俯瞰意象",
-    badge: "抹茶",
-    origin: "產地",
-    cultivar: "品種",
-    milling: "研磨方式",
-    color: "色澤",
-    aroma: "香氣",
-    palate: "口感",
-    finish: "餘韻",
-    catalogHeading: "商品一覽",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.zh,
   howToPage: {
