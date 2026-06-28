@@ -8,6 +8,7 @@ import {
   PaletteIcon,
 } from "lucide-react"
 
+import { MatchaEncyclopediaCh0 } from "@/components/the-matcha/matcha-encyclopedia-ch0"
 import { matchaCatalog } from "@/data/matcha-catalog"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -59,8 +60,15 @@ export function TheMatchaPageClient() {
         </div>
       </div>
 
+      <MatchaEncyclopediaCh0 />
+
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-        <FadeInStagger className="grid gap-8 lg:grid-cols-2">
+        <FadeIn>
+          <h2 className="font-heading text-2xl font-medium tracking-wide text-foreground sm:text-3xl">
+            {m.theMatchaPage.catalogHeading}
+          </h2>
+        </FadeIn>
+        <FadeInStagger className="mt-10 grid gap-8 lg:grid-cols-2">
           {matchaCatalog.map((item) => (
             <FadeInItem key={item.id}>
               <Card className="h-full overflow-hidden border-border/80 bg-card/95 shadow-sm transition-shadow hover:border-primary/25 hover:shadow-md">

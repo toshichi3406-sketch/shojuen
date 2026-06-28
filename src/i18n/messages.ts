@@ -1,4 +1,6 @@
 import type { Locale } from "./types"
+import type { MatchaEncyclopediaCh0Messages } from "./matcha-encyclopedia-ch0-messages"
+import { matchaEncyclopediaCh0ByLocale } from "./matcha-encyclopedia-ch0-messages"
 
 export type HowToBlock = {
   title: string
@@ -110,7 +112,9 @@ export type Messages = {
     aroma: string
     palate: string
     finish: string
+    catalogHeading: string
   }
+  encyclopediaCh0: MatchaEncyclopediaCh0Messages
   howToPage: {
     imageAlt: string
     kicker: string
@@ -310,7 +314,9 @@ const ja: Messages = {
     aroma: "香気",
     palate: "味わい",
     finish: "余韻",
+    catalogHeading: "取扱商品",
   },
+  encyclopediaCh0: matchaEncyclopediaCh0ByLocale.ja,
   howToPage: {
     imageAlt: "茶筅で抹茶を点てる手元のイメージ",
     kicker: "How to",
@@ -577,7 +583,9 @@ const en: Messages = {
     aroma: "Aroma",
     palate: "Palate",
     finish: "Finish",
+    catalogHeading: "Products",
   },
+  encyclopediaCh0: matchaEncyclopediaCh0ByLocale.en,
   howToPage: {
     imageAlt: "Hands whisking matcha with a chasen above a chawan",
     kicker: "How to",
@@ -831,7 +839,9 @@ const zh: Messages = {
     aroma: "香氣",
     palate: "口感",
     finish: "餘韻",
+    catalogHeading: "商品一覽",
   },
+  encyclopediaCh0: matchaEncyclopediaCh0ByLocale.zh,
   howToPage: {
     imageAlt: "以茶筅點抹茶的手部意象",
     kicker: "How to",
