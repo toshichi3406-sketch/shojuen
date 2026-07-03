@@ -95,7 +95,6 @@ export type Messages = {
     articleCount: string
     readArticle: string
     min: string
-    matchaMoodImageAlts: readonly [string, string, string]
   }
   theMatchaPage: {
     heroKicker: string
@@ -283,11 +282,6 @@ const ja: Messages = {
     articleCount: "全 {n} 件",
     readArticle: "本文を読む",
     min: "分",
-    matchaMoodImageAlts: [
-      "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
-      "漆塗り盆に棗と茶筅、茶碗の縁が見える静物",
-      "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
-    ],
   },
   theMatchaPage: {
     heroKicker: "The Matcha",
@@ -543,11 +537,6 @@ const en: Messages = {
     articleCount: "All {n} articles",
     readArticle: "Read article",
     min: "min",
-    matchaMoodImageAlts: [
-      "Matcha powder spiral on black slate with a bamboo whisk",
-      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
-      "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
-    ],
   },
   theMatchaPage: {
     heroKicker: "The Matcha",
@@ -791,11 +780,6 @@ const zh: Messages = {
     articleCount: "共 {n} 篇",
     readArticle: "閱讀全文",
     min: "分鐘",
-    matchaMoodImageAlts: [
-      "黑色石板上描繪的抹茶粉螺旋與茶筅",
-      "漆盤上的棗形茶罐與茶筅，可見茶碗邊緣的靜物",
-      "熱水注入茶碗抹茶粉瞬間的水滴",
-    ],
   },
   theMatchaPage: {
     heroKicker: "The Matcha",

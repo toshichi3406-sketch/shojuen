@@ -19,7 +19,7 @@ export const siteImages = {
 /**
  * Home gallery + journal/latest strips. Nine images, disjoint from `siteImages`
  * (the hero is not listed here so the home hero stays unique).
- * 1–6 = main visual gallery, 7–9 = latest-articles strip (no overlap).
+ * 1–6 = home main visual gallery only; 7–9 = journal index + latest-articles strip.
  */
 export const homeMatchaVisualGallery = [
   { src: img("gallery-strip-1.png") },

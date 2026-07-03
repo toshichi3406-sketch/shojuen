@@ -46,14 +46,17 @@ export function JournalPageClient() {
               {m.journalPage.introRest}
             </p>
             <div className="mt-10 grid grid-cols-3 gap-2 sm:mt-12 sm:gap-3">
-              {homeMatchaVisualGallery.slice(0, 3).map((item, i) => (
+              {homeMatchaVisualGallery.slice(6, 9).map((item, i) => (
                 <div
                   key={item.src}
                   className="relative aspect-[5/3] overflow-hidden rounded-md border border-border/50 bg-muted shadow-sm"
                 >
                   <Image
                     src={item.src}
-                    alt={m.journalPage.matchaMoodImageAlts[i]}
+                    alt={
+                      m.homeMatchaGallery.imageAlts[i + 6] ??
+                      m.homeMatchaGallery.fallbackAlt
+                    }
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 33vw, 240px"
