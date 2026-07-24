@@ -196,7 +196,7 @@ const ja: Messages = {
       "暗い石目の背景に茶筅と抹茶粉・点てた抹茶の泡が写ったビジュアル",
     title: "職人のこだわりを味わえる一杯へ。お手伝いします。",
     lead:
-      "松壽園は、茶を並べて流すだけの商社ではありません。こだわった農家と製茶所の仕事に向き合い、Journal で記録しながら、抹茶・碾茶・ほうじ茶を国内外の業者様へ届けます。お問い合わせは1営業日以内の返信を目指しています。",
+      "松壽園は、茶を並べて流すだけの商社ではありません。こだわった農家と製茶所の仕事に向き合い、Journal で記録しながら、商品開発や輸出など業者様ごとのニーズに応じた最適な一杯をご提案し、抹茶・碾茶・ほうじ茶を国内外へ届けます。",
     subtagline: "こだわりの農家から · 卸 · 輸出",
     ctaWholesale: "卸売・輸出のご相談",
     ctaJournal: "Journal を読む",
@@ -450,7 +450,7 @@ const en: Messages = {
     title:
       "Helping you serve a cup that carries the craftsperson's intent.",
     lead:
-      "Shojuen is not a broker that simply lists tea. We work with farmers and mills we believe in, document their craft in our Journal, and deliver matcha, tencha & hojicha to businesses worldwide. We aim to reply within one business day.",
+      "Shojuen is not a broker that simply lists tea. We work with farmers and mills we believe in, document their craft in our Journal, and propose the ideal cup tailored to each client's needs — from product development to export — delivering matcha, tencha & hojicha in Japan and abroad.",
     subtagline: "Farm-sourced · Wholesale · Export",
     ctaWholesale: "Wholesale & export inquiry",
     ctaJournal: "Read the Journal",
@@ -695,7 +695,7 @@ const zh: Messages = {
     imageAlt: "深色石紋背景上的茶筅、抹茶粉與點好的抹茶泡沫",
     title: "協助您呈現承載職人堅持的一杯。",
     lead:
-      "松壽園不是只陳列茶葉的商社。我們與信賴的農家與製茶所合作，在 Journal 中記錄他們的堅持，並將抹茶・碾茶・焙茶送達海內外業者。目標一個工作天內回覆。",
+      "松壽園不是只陳列茶葉的商社。我們與信賴的農家與製茶所合作，在 Journal 中記錄他們的堅持，並依商品開發、輸出等各業者的需求，提案最合適的一杯，將抹茶・碾茶・焙茶送達海內外。",
     subtagline: "嚴選農家 · 批發 · 出口",
     ctaWholesale: "批發・出口諮詢",
     ctaJournal: "閱讀 Journal",
