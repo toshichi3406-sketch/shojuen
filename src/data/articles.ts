@@ -28,14 +28,14 @@ export const articles: Article[] = [
   {
     slug: "field-note-takeo-chawan-kiln",
     title: {
-      ja: "佐賀の焼き物と、武雄の窯元 — 抹茶椀を巡る取材ノート",
-      en: "Saga pottery and a Takeo workshop — a field note on matcha bowls",
-      zh: "佐賀燒物與武雄窯元 — 抹茶碗採訪筆記",
+      ja: "佐賀の焼き物と、有田の窯元 — 抹茶椀を巡る取材ノート",
+      en: "Saga pottery and an Arita workshop — a field note on matcha bowls",
+      zh: "佐賀燒物與有田窯元 — 抹茶碗採訪筆記",
     },
     excerpt: {
-      ja: "佐賀・武雄の窯元を訪ねた取材ノート。焼き物を暮らしの彩りとするご主人の言葉と、「2020年」「2021年」と名付けられた器のエピソードを、写真とともに残す。",
-      en: "A field note from our visit to a workshop in Takeo, Saga, as Shojuen prepares to offer matcha bowls — porcelain from Arita, Imari, and Hasami set against Takeo, where stoneware and porcelain coexist, and the kiln owner's view of ware as color in daily life, with the story of the pieces named 2020 and 2021.",
-      zh: "松壽園準備經手抹茶碗之際，造訪佐賀、武雄窯元的採訪筆記。在有田、伊萬里、波佐見等磁器產地，以及陶器與磁器並存的武雄脈絡中，記錄主人將燒物視為生活彩飾的話語——以及名為「2020年」「2021年」的器物軼事，附照片留存。",
+      ja: "佐賀・有田で有田焼を手がける窯元を訪ねた取材ノート。焼き物を暮らしの彩りとするご主人の言葉と、「2020年」「2021年」と名付けられた器のエピソードを、写真とともに残す。",
+      en: "A field note from our visit to a kiln making Arita ware in Arita, Saga, as Shojuen prepares to offer matcha bowls — Arita ware set among Saga's porcelain traditions of Imari and Hasami, and the kiln owner's view of ware as color in daily life, with the story of the pieces named 2020 and 2021.",
+      zh: "松壽園準備經手抹茶碗之際，造訪佐賀・有田製作有田燒之窯元的採訪筆記。在有田、伊萬里、波佐見等磁器產地的脈絡中，記錄主人將燒物視為生活彩飾的話語——以及名為「2020年」「2021年」的器物軼事，附照片留存。",
     },
     category: { ja: "取材ノート", en: "Field Notes", zh: "採訪筆記" },
     publishedAt: "2026-06-24",

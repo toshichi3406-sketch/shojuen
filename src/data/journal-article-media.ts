@@ -61,10 +61,10 @@ export const journalArticleMedia: Record<string, JournalArticleMedia> = {
       },
       {
         src: takeoChawan("05-brick-kiln.png"),
-        captionJa: "レンガ造りの窯。武雄の窯元に残る、昔ながらの焼成スタイル。",
+        captionJa: "レンガ造りの窯。有田の窯元に残る、昔ながらの焼成スタイル。",
         captionEn:
-          "A brick-built kiln — the traditional firing style still kept at this Takeo workshop.",
-        captionZh: "磚砌窯爐。武雄窯元仍保留的傳統燒成方式。",
+          "A brick-built kiln — the traditional firing style still kept at this Arita workshop.",
+        captionZh: "磚砌窯爐。有田窯元仍保留的傳統燒成方式。",
       },
       {
         src: takeoChawan("06-finished-bowls-crate.png"),
