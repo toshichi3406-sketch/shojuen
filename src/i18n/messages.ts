@@ -152,13 +152,12 @@ export type Messages = {
     ctaMail: string
     ctaContact: string
     categories: Record<
-      | "raku"
-      | "hagi"
-      | "karatsu"
-      | "seto"
-      | "shino"
-      | "oribe"
-      | "other",
+      | "matchawan"
+      | "chasentate"
+      | "kibako"
+      | "katakuchi"
+      | "nodate"
+      | "natsu",
       string
     >
   }
@@ -220,7 +219,7 @@ const ja: Messages = {
     fallbackAlt: "茶道イメージの抹茶写真",
     imageAlts: [
       "黒いスレートに描かれた抹茶粉の螺旋と茶筅",
-      "漆の盆、棗と茶筅、茶碗の縁が見える静物",
+      "青みがかった釉の有田焼の抹茶椀と、その共箱（木箱）",
       "湯が茶碗の抹茶粉に注がれる瞬間の水滴",
       "碾茶の葉と抹茶粉が並んだ二つの黒い茶碗",
       "石台の上に斜めに並んだ三つの黒い茶碗と点てた抹茶",
@@ -368,10 +367,10 @@ const ja: Messages = {
     heroKicker: "Chawan",
     title: "抹茶椀カタログ",
     introBefore:
-      "楽焼・萩・唐津ほか、茶道用茶碗からホテル・アメニティ向けまで。松壽園SHOJUENが",
+      "取り扱う抹茶椀はすべて有田焼。抹茶椀・茶筅たて・片口から、木箱入り・野点・夏用まで。松壽園SHOJUENが",
     introStrong: "取引先向け",
     introAfter:
-      "にご提案する抹茶椀のラインアップです。口径・仕上げ・ロット対応の可否など、詳細は各商品またはお問い合わせよりご相談ください。",
+      "にご提案する有田焼のラインアップです。口径・仕上げ・ロット対応の可否など、詳細は各商品またはお問い合わせよりご相談ください。",
     filterAria: "カテゴリで絞り込み",
     filterAll: "すべて",
     itemCount: "全 {n} 点",
@@ -392,13 +391,12 @@ const ja: Messages = {
     ctaMail: "メールで相談する",
     ctaContact: "お問い合わせページ",
     categories: {
-      raku: "楽焼",
-      hagi: "萩",
-      karatsu: "唐津",
-      seto: "瀬戸",
-      shino: "志野",
-      oribe: "織部",
-      other: "その他",
+      matchawan: "抹茶椀",
+      chasentate: "茶筅たて",
+      kibako: "木箱",
+      katakuchi: "片口",
+      nodate: "野点",
+      natsu: "夏用",
     },
   },
 }
@@ -475,7 +473,7 @@ const en: Messages = {
     fallbackAlt: "Ceremonial matcha still life",
     imageAlts: [
       "Matcha powder spiral on black slate with a bamboo whisk",
-      "Still life with lacquer tray, natsume caddy, chasen, and chawan rim",
+      "A blue-glazed Arita matcha bowl beside its wooden presentation box",
       "Hot water pouring onto matcha powder in a bowl, droplets frozen mid-air",
       "Two dark bowls: tencha leaves and bright matcha powder on weathered wood",
       "Three black chawans in perspective on stone, nearest bowl whisked matcha",
@@ -631,10 +629,10 @@ const en: Messages = {
     heroKicker: "Chawan",
     title: "Matcha bowl catalog",
     introBefore:
-      "From raku and hagi to karatsu — ceremonial chawan and hotel amenity lines. A ",
+      "Every piece is Arita ware — matcha bowls, chasen stands, and katakuchi through boxed sets, nodate, and summer bowls. A ",
     introStrong: "wholesale-facing",
     introAfter:
-      " lineup curated by 松壽園SHOJUEN. Tap any bowl for size and finish notes, or email us for MOQ, lead time, and custom packaging.",
+      " Arita-ware lineup curated by 松壽園SHOJUEN. Tap any bowl for size and finish notes, or email us for MOQ, lead time, and custom packaging.",
     filterAria: "Filter by category",
     filterAll: "All",
     itemCount: "{n} items",
@@ -655,13 +653,12 @@ const en: Messages = {
     ctaMail: "Email us",
     ctaContact: "Contact page",
     categories: {
-      raku: "Raku",
-      hagi: "Hagi",
-      karatsu: "Karatsu",
-      seto: "Seto",
-      shino: "Shino",
-      oribe: "Oribe",
-      other: "Other",
+      matchawan: "Matcha bowl",
+      chasentate: "Chasen stand",
+      kibako: "Wooden box",
+      katakuchi: "Katakuchi",
+      nodate: "Nodate",
+      natsu: "Summer",
     },
   },
 }
@@ -719,7 +716,7 @@ const zh: Messages = {
     fallbackAlt: "茶道意象的抹茶照片",
     imageAlts: [
       "黑石板上的抹茶粉螺旋與茶筅",
-      "漆盤、棗、茶筅與茶碗邊緣的靜物",
+      "青釉有田燒抹茶碗與其共箱（木盒）",
       "熱水注入茶碗抹茶粉的瞬間水滴",
       "碾茶葉與抹茶粉並列的兩個黑碗",
       "石台上斜向排列的三個黑碗與點好的抹茶",
@@ -866,10 +863,10 @@ const zh: Messages = {
     heroKicker: "Chawan",
     title: "抹茶碗型錄",
     introBefore:
-      "從樂燒・萩燒・唐津，到茶道用茶碗與飯店備品。這是松壽園SHOJUEN為",
+      "所經手的抹茶碗皆為有田燒。從抹茶碗・茶筅座・片口，到附木箱・野點・夏用。這是松壽園SHOJUEN為",
     introStrong: "合作夥伴",
     introAfter:
-      "提案的抹茶碗系列。口徑、表面處理、能否配合批量等細節，請於各商品或來信洽詢。",
+      "提案的有田燒系列。口徑、表面處理、能否配合批量等細節，請於各商品或來信洽詢。",
     filterAria: "依分類篩選",
     filterAll: "全部",
     itemCount: "共 {n} 件",
@@ -890,13 +887,12 @@ const zh: Messages = {
     ctaMail: "以 Email 洽詢",
     ctaContact: "聯絡頁面",
     categories: {
-      raku: "樂燒",
-      hagi: "萩燒",
-      karatsu: "唐津燒",
-      seto: "瀨戶燒",
-      shino: "志野燒",
-      oribe: "織部燒",
-      other: "其他",
+      matchawan: "抹茶碗",
+      chasentate: "茶筅座",
+      kibako: "木箱",
+      katakuchi: "片口",
+      nodate: "野點",
+      natsu: "夏用",
     },
   },
 }
