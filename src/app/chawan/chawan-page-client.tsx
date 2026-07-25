@@ -197,73 +197,6 @@ export function ChawanPageClient() {
         </span>
       </section>
 
-      {/* ── Philosophy (editorial essay over dual imagery) ───── */}
-      <section className="relative overflow-hidden py-28 sm:py-36">
-        {/* Dual background: garden basin | tea setting */}
-        <div className="pointer-events-none absolute inset-0 grid grid-rows-2 md:grid-cols-2 md:grid-rows-1">
-          <div className="relative min-h-full">
-            <Image
-              src={PHIL_IMG_L}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover scale-105"
-            />
-          </div>
-          <div className="relative min-h-full">
-            <Image
-              src={PHIL_IMG_R}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover scale-105"
-            />
-          </div>
-        </div>
-        {/* Keep overall black tone; let photos breathe at the edges */}
-        <div className="pointer-events-none absolute inset-0 bg-[#0c0a08]/50" />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#14110e] via-[#14110e]/72 to-[#14110e]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,_rgba(20,17,14,0.5)_0%,_transparent_68%)]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-stone-500/30 to-transparent" />
-
-        <div className="relative mx-auto max-w-3xl px-6">
-          <FadeIn className="text-center">
-            <p className="text-xs font-medium uppercase tracking-[0.45em] text-emerald-300/90">
-              {m.chawanPage.philKicker}
-            </p>
-            <div className="mx-auto mt-5 h-px w-12 bg-emerald-300/50" />
-            <h2 className="font-heading mt-10 text-3xl font-medium leading-snug tracking-[0.08em] text-stone-50 drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)] sm:text-4xl md:text-[2.75rem]">
-              {m.chawanPage.philLead}
-            </h2>
-          </FadeIn>
-
-          <div className="mt-14 space-y-12 sm:mt-16 sm:space-y-14">
-            {m.chawanPage.philStanzas.map((stanza, i) => (
-              <FadeIn key={i}>
-                {i > 0 && (
-                  <div
-                    className="mx-auto mb-12 h-px w-8 bg-stone-300/25 sm:mb-14"
-                    aria-hidden
-                  />
-                )}
-                <p
-                  className={cn(
-                    "mx-auto whitespace-pre-line text-center leading-[2.05] tracking-wide drop-shadow-[0_1px_12px_rgba(0,0,0,0.65)]",
-                    i === 0
-                      ? "max-w-xl text-[0.95rem] text-stone-100 sm:text-base"
-                      : i === m.chawanPage.philStanzas.length - 1
-                        ? "max-w-2xl text-[0.95rem] text-stone-100 sm:text-base"
-                        : "max-w-2xl text-sm text-stone-200/95 sm:text-[0.95rem]"
-                  )}
-                >
-                  {stanza}
-                </p>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── Clay / pottery thesis (draft) ────────────────────── */}
       <section className="relative overflow-hidden border-t border-stone-500/20">
         <div className="grid lg:grid-cols-12">
@@ -307,37 +240,6 @@ export function ChawanPageClient() {
               </FadeIn>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── How to order ─────────────────────────────────────── */}
-      <section className="relative border-t border-stone-500/20 py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-6">
-          <FadeIn>
-            <p className="text-xs font-medium uppercase tracking-[0.4em] text-stone-400">
-              {m.chawanPage.flowKicker}
-            </p>
-            <h3 className="font-heading mt-3 text-2xl font-medium tracking-wide text-stone-100 sm:text-3xl">
-              {m.chawanPage.flowTitle}
-            </h3>
-          </FadeIn>
-          <FadeInStagger className="mt-12 grid gap-px overflow-hidden rounded-sm bg-stone-500/15 sm:grid-cols-3">
-            {m.chawanPage.flowSteps.map((step) => (
-              <FadeInItem key={step.step}>
-                <div className="flex h-full flex-col bg-[#14110e] p-8">
-                  <span className="font-heading text-4xl font-medium text-emerald-400/50">
-                    {step.step}
-                  </span>
-                  <h4 className="font-heading mt-5 text-lg font-medium text-stone-100">
-                    {step.title}
-                  </h4>
-                  <p className="mt-3 text-sm leading-relaxed text-stone-400">
-                    {step.body}
-                  </p>
-                </div>
-              </FadeInItem>
-            ))}
-          </FadeInStagger>
         </div>
       </section>
 
@@ -492,6 +394,37 @@ export function ChawanPageClient() {
         </div>
       </div>
 
+      {/* ── How to order (after catalogue) ───────────────────── */}
+      <section className="relative border-t border-stone-500/20 py-20 sm:py-24">
+        <div className="mx-auto max-w-6xl px-6">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.4em] text-stone-400">
+              {m.chawanPage.flowKicker}
+            </p>
+            <h3 className="font-heading mt-3 text-2xl font-medium tracking-wide text-stone-100 sm:text-3xl">
+              {m.chawanPage.flowTitle}
+            </h3>
+          </FadeIn>
+          <FadeInStagger className="mt-12 grid gap-px overflow-hidden rounded-sm bg-stone-500/15 sm:grid-cols-3">
+            {m.chawanPage.flowSteps.map((step) => (
+              <FadeInItem key={step.step}>
+                <div className="flex h-full flex-col bg-[#14110e] p-8">
+                  <span className="font-heading text-4xl font-medium text-emerald-400/50">
+                    {step.step}
+                  </span>
+                  <h4 className="font-heading mt-5 text-lg font-medium text-stone-100">
+                    {step.title}
+                  </h4>
+                  <p className="mt-3 text-sm leading-relaxed text-stone-400">
+                    {step.body}
+                  </p>
+                </div>
+              </FadeInItem>
+            ))}
+          </FadeInStagger>
+        </div>
+      </section>
+
       {/* ── Quote break (full-bleed image) ───────────────────── */}
       <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
         <div
@@ -555,6 +488,73 @@ export function ChawanPageClient() {
               </FadeInItem>
             ))}
           </FadeInStagger>
+        </div>
+      </section>
+
+      {/* ── Philosophy (editorial essay — after catalogue) ───── */}
+      <section className="relative overflow-hidden py-28 sm:py-36">
+        {/* Dual background: garden basin | tea setting */}
+        <div className="pointer-events-none absolute inset-0 grid grid-rows-2 md:grid-cols-2 md:grid-rows-1">
+          <div className="relative min-h-full">
+            <Image
+              src={PHIL_IMG_L}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover scale-105"
+            />
+          </div>
+          <div className="relative min-h-full">
+            <Image
+              src={PHIL_IMG_R}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover scale-105"
+            />
+          </div>
+        </div>
+        {/* Keep overall black tone; let photos breathe at the edges */}
+        <div className="pointer-events-none absolute inset-0 bg-[#0c0a08]/50" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#14110e] via-[#14110e]/72 to-[#14110e]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,_rgba(20,17,14,0.5)_0%,_transparent_68%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-stone-500/30 to-transparent" />
+
+        <div className="relative mx-auto max-w-3xl px-6">
+          <FadeIn className="text-center">
+            <p className="text-xs font-medium uppercase tracking-[0.45em] text-emerald-300/90">
+              {m.chawanPage.philKicker}
+            </p>
+            <div className="mx-auto mt-5 h-px w-12 bg-emerald-300/50" />
+            <h2 className="font-heading mt-10 text-3xl font-medium leading-snug tracking-[0.08em] text-stone-50 drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)] sm:text-4xl md:text-[2.75rem]">
+              {m.chawanPage.philLead}
+            </h2>
+          </FadeIn>
+
+          <div className="mt-14 space-y-12 sm:mt-16 sm:space-y-14">
+            {m.chawanPage.philStanzas.map((stanza, i) => (
+              <FadeIn key={i}>
+                {i > 0 && (
+                  <div
+                    className="mx-auto mb-12 h-px w-8 bg-stone-300/25 sm:mb-14"
+                    aria-hidden
+                  />
+                )}
+                <p
+                  className={cn(
+                    "mx-auto whitespace-pre-line text-center leading-[2.05] tracking-wide drop-shadow-[0_1px_12px_rgba(0,0,0,0.65)]",
+                    i === 0
+                      ? "max-w-xl text-[0.95rem] text-stone-100 sm:text-base"
+                      : i === m.chawanPage.philStanzas.length - 1
+                        ? "max-w-2xl text-[0.95rem] text-stone-100 sm:text-base"
+                        : "max-w-2xl text-sm text-stone-200/95 sm:text-[0.95rem]"
+                  )}
+                >
+                  {stanza}
+                </p>
+              </FadeIn>
+            ))}
+          </div>
         </div>
       </section>
 
