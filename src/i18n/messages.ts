@@ -128,36 +128,67 @@ export type Messages = {
   }
   chawanPage: {
     heroKicker: string
+    heroBadges: readonly string[]
     title: string
-    introBefore: string
-    introStrong: string
-    introAfter: string
+    heroLead: string
+    heroScroll: string
+    philKicker: string
+    philLead: string
+    /** Essay stanzas; may contain newlines for line breaks */
+    philStanzas: readonly string[]
+    clayKicker: string
+    clayTitle: string
+    claySub: string
+    clayStanzas: readonly string[]
+    quote: string
+    quoteAuthor: string
+    flowKicker: string
+    flowTitle: string
+    flowSteps: readonly { step: string; title: string; body: string }[]
+    catalogKicker: string
+    catalogTitle: string
+    catalogLead: string
     filterAria: string
     filterAll: string
     /** Use "{n}" placeholder for item count */
     itemCount: string
     emptyFilter: string
     viewDetail: string
+    colorLabel: string
+    shapeLabel: string
+    useLabel: string
+    sizeLabel: string
+    refLabel: string
+    madeToOrderNote: string
+    inquireItem: string
+    mailSubject: string
     closeLightbox: string
     prevPhoto: string
     nextPhoto: string
     photoLabel: string
-    sizeLabel: string
-    detailLabel: string
-    refLabel: string
-    inquireItem: string
-    mailSubject: string
+    condKicker: string
+    condTitle: string
+    conditions: readonly { label: string; value: string }[]
+    condNote: string
+    workshopKicker: string
+    workshopTitle: string
+    workshopBody: string
+    workshopCaptions: readonly string[]
     ctaTitle: string
     ctaBody: string
     ctaMail: string
     ctaContact: string
-    categories: Record<
+    colors: Record<
+      "hakuji" | "sometsuke" | "seiji" | "ruri" | "kuro" | "kohiki",
+      { label: string; blurb: string }
+    >
+    kinds: Record<
       | "matchawan"
-      | "chasentate"
-      | "kibako"
       | "katakuchi"
       | "nodate"
-      | "natsu",
+      | "natsu"
+      | "chasentate"
+      | "kibako",
       string
     >
   }
@@ -364,39 +395,108 @@ const ja: Messages = {
       "プレビュー — この記事は未公開です。JOURNAL 一覧には表示されません。",
   },
   chawanPage: {
-    heroKicker: "Chawan",
-    title: "抹茶椀カタログ",
-    introBefore:
-      "取り扱う抹茶椀はすべて有田焼。抹茶椀・茶筅たて・片口から、木箱入り・野点・夏用まで。松壽園SHOJUENが",
-    introStrong: "取引先向け",
-    introAfter:
-      "にご提案する有田焼のラインアップです。口径・仕上げ・ロット対応の可否など、詳細は各商品またはお問い合わせよりご相談ください。",
-    filterAria: "カテゴリで絞り込み",
+    heroKicker: "Chawan · 有田焼",
+    heroBadges: ["有田焼", "陶器（土もの）", "在庫から選定", "世界に一つの表情"],
+    title: "作風で選ぶ、抹茶椀。",
+    heroLead:
+      "取り扱う抹茶椀はすべて有田焼——ただし磁器ではなく、希少な陶器（土もの）。有田の格式ある技を宿しながら、土の温もりを手に届ける一碗です。まずは作風と種類から雰囲気をお選びください。窯元の在庫のなかから、ご希望に最も合う一碗をお選びします。",
+    heroScroll: "Scroll",
+    philKicker: "Philosophy",
+    philLead: "抹茶を点てる時間。",
+    philStanzas: [
+      "それは自分自身と静かに深く向き合う時であり、\n一期一会の出会いに心を尽くすもてなしの時であり、\n日々の暮らしをそっと彩る、ささやかなご褒美の時。\nどのような場面であっても根底にあるのは、人と自身をいたわる温かな眼差しです。",
+      "手仕事によって生み出された抹茶椀は、慈しみ丁寧にお使いいただくことで、私たちの寿命よりも長くこの世に留まります。あなたが重ねてきたもてなしの記憶、自分と向き合った豊かな時間の温もり。そのすべてを「形」として宿し、子へ、孫へと世代を超えて継承できる存在です。",
+      "凛とした美しさと圧倒的な頑丈さを兼ね備え、世界を魅了してきた有田焼。格式ある歴史を纏うこの器とともに、あなたの心を紡ぐ一服をお愉しみください。",
+    ],
+    clayKicker: "Arita · Pottery",
+    clayTitle: "有田の、土もの。",
+    claySub: "磁器の産地で、あえて陶器に挑む。",
+    clayStanzas: [
+      "肥前の地に息づくのは、気品ある磁器の美と、素朴で温かな陶器（土もの）の歴史。",
+      "有田焼が誇る格式高い技法と洗練された精神を宿しながら、あえて「陶器」という表現に挑んでいます。磁器が主流の有田にあって、この土ものは希少な存在です。",
+      "土の息づかいに応える独自の釉薬を纏わせ、有田の高度な焼きの技術によって命を吹き込まれた器は、土ものならではの優しい手触りと、永い時に耐えうる格別の品格を併せ持ちます。最高峰の技が生み出す、深みある一期一会の景色。世代を超えて心に寄り添う一服をお届けします。",
+    ],
+    quote: "やきものを通じて縁を結ぶ",
+    quoteAuthor: "— 佐賀・有田の窯元とともに",
+    flowKicker: "How to order",
+    flowTitle: "ご注文の流れ",
+    flowSteps: [
+      {
+        step: "01",
+        title: "作風・種類を選ぶ",
+        body: "色・釉調・形の「作風」と、片口・野点・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
+      },
+      {
+        step: "02",
+        title: "ご相談・お見積り",
+        body: "数量・納期・箱などのご要望を伺い、可否とお見積りをご案内します。",
+      },
+      {
+        step: "03",
+        title: "在庫から選定してお届け",
+        body: "窯元の在庫のなかから、ご希望の雰囲気に最も合う一碗を選び、検品のうえお届けします。手仕事のため、まったく同じ表情はほかに一つとしてありません。",
+      },
+    ],
+    catalogKicker: "Catalogue",
+    catalogTitle: "作風カタログ",
+    catalogLead:
+      "素地は磁器ではなく陶器（土もの）。種類ごとにご覧いただき、作風（色・釉調）は各品目でお選びください。表情の違いは、この器の個性としてお楽しみください。",
+    filterAria: "種類で絞り込み",
     filterAll: "すべて",
     itemCount: "全 {n} 点",
-    emptyFilter: "該当する商品がありません。",
-    viewDetail: "詳細を見る",
+    emptyFilter: "該当する品目がありません。",
+    viewDetail: "詳しく見る",
+    colorLabel: "作風",
+    shapeLabel: "形",
+    useLabel: "用途",
+    sizeLabel: "目安サイズ",
+    refLabel: "参照",
+    madeToOrderNote:
+      "手仕事のため、まったく同じ表情はほかに一つとしてありません。表情の違いは、この器の個性としてお楽しみください。",
+    inquireItem: "この作風で相談する",
+    mailSubject: "【松壽園SHOJUEN】抹茶椀（作風）のお問い合わせ",
     closeLightbox: "閉じる",
     prevPhoto: "前の写真",
     nextPhoto: "次の写真",
     photoLabel: "写真",
-    sizeLabel: "サイズ",
-    detailLabel: "仕様・特徴",
-    refLabel: "参照番号",
-    inquireItem: "この椀について問い合わせ",
-    mailSubject: "【松壽園SHOJUEN】抹茶椀のお問い合わせ",
+    condKicker: "Terms",
+    condTitle: "お取引の目安",
+    conditions: [
+      { label: "最小ロット", value: "準備中" },
+      { label: "納期", value: "準備中" },
+      { label: "木箱", value: "2種あり（カタログ参照）" },
+    ],
+    condNote: "",
+    workshopKicker: "Workshop",
+    workshopTitle: "制作の現場 — 有田焼の窯元から",
+    workshopBody:
+      "取り扱う抹茶椀は、佐賀・有田の窯元で一つひとつ手づくりされています。ろくろでの成形から高台削り、乾燥、焼成まで——作り手の手仕事の現場を、写真でご紹介します。",
+    workshopCaptions: [
+      "棚に並ぶ、成形したばかりの生地の椀",
+      "ろくろで高台を削り出すご主人",
+      "伏せて乾かす椀。削り出した高台がそろう",
+      "釉薬の桶が並ぶ、工房の作業台",
+    ],
     ctaTitle: "卸・取引のご相談",
     ctaBody:
-      "数量・納期・箱付・名入れなど、取引条件は案件ごとにご提案します。カタログにない形状・釉色のご要望もお気軽にどうぞ。",
+      "数量・納期・箱付など、取引条件は案件ごとにご提案します。",
     ctaMail: "メールで相談する",
     ctaContact: "お問い合わせページ",
-    categories: {
+    colors: {
+      hakuji: { label: "白磁", blurb: "混じりけのない白。抹茶の緑を最も鮮やかに映す。" },
+      sometsuke: { label: "染付", blurb: "呉須の藍で描く絵付け。有田焼らしい端正さ。" },
+      seiji: { label: "青磁", blurb: "淡い青緑の釉。静かで奥行きのある景色。" },
+      ruri: { label: "瑠璃", blurb: "深い藍一色。緑との鮮烈な対比。" },
+      kuro: { label: "黒・鉄", blurb: "艶やかな黒と鉄釉。泡のきめが際立つ。" },
+      kohiki: { label: "粉引", blurb: "白化粧のやわらかな白。経年の景色も。" },
+    },
+    kinds: {
       matchawan: "抹茶椀",
-      chasentate: "茶筅たて",
-      kibako: "木箱",
       katakuchi: "片口",
       nodate: "野点",
       natsu: "夏用",
+      chasentate: "茶筅たて",
+      kibako: "木箱",
     },
   },
 }
@@ -626,39 +726,108 @@ const en: Messages = {
       "Preview — this article is not published yet and does not appear on the JOURNAL index.",
   },
   chawanPage: {
-    heroKicker: "Chawan",
-    title: "Matcha bowl catalog",
-    introBefore:
-      "Every piece is Arita ware — matcha bowls, chasen stands, and katakuchi through boxed sets, nodate, and summer bowls. A ",
-    introStrong: "wholesale-facing",
-    introAfter:
-      " Arita-ware lineup curated by 松壽園SHOJUEN. Tap any bowl for size and finish notes, or email us for MOQ, lead time, and custom packaging.",
-    filterAria: "Filter by category",
+    heroKicker: "Chawan · Arita ware",
+    heroBadges: ["Arita ware", "Pottery (earthenware)", "Selected from stock", "One of a kind"],
+    title: "Choose your matcha bowl by style.",
+    heroLead:
+      "Every bowl we handle is Arita ware — not porcelain, but rare pottery (earthenware). Arita's storied craft, with the warmth of clay in the hand. Start by choosing a style and kind of ware. From the kiln's stock, we select the bowl that best matches your request.",
+    heroScroll: "Scroll",
+    philKicker: "Philosophy",
+    philLead: "The time of whisking matcha.",
+    philStanzas: [
+      "It is a quiet hour spent with yourself,\na moment of wholehearted hospitality for a once-in-a-lifetime encounter,\nand a small reward that gently steadies the day.\nWhatever the occasion, what lies beneath is a warm regard for people — and for oneself.",
+      "A handcrafted matcha bowl, used with care and affection, can remain in this world longer than we do. The memory of hospitality you have layered, the warmth of time spent facing yourself — all of it can dwell in form, and be passed on from child to grandchild.",
+      "Arita ware: poised beauty and remarkable strength that have captivated the world. With this vessel, wrapped in a storied past, enjoy a bowl of tea that weaves your heart.",
+    ],
+    clayKicker: "Arita · Pottery",
+    clayTitle: "Arita, in clay.",
+    claySub: "In a land of porcelain, we choose pottery.",
+    clayStanzas: [
+      "In Hizen live two histories: the refined beauty of porcelain, and the quiet warmth of pottery — of clay itself.",
+      "Carrying Arita's exacting technique and cultivated spirit, we deliberately pursue expression in pottery. In a region known for porcelain, this earthenware is rare.",
+      "Glazes that answer the breath of the clay, fired with Arita's advanced skill, yield bowls of gentle touch and lasting dignity. One-of-a-kind scenery born of the highest craft — a bowl of tea that stays with the heart, across generations.",
+    ],
+    quote: "Through pottery, we form a bond.",
+    quoteAuthor: "— With a kiln in Arita, Saga",
+    flowKicker: "How to order",
+    flowTitle: "How ordering works",
+    flowSteps: [
+      {
+        step: "01",
+        title: "Choose style & kind",
+        body: "Pick the mood by color, glaze, and form — and the kind of ware (katakuchi, nodate, wooden box, and more). A direction is enough.",
+      },
+      {
+        step: "02",
+        title: "Consult & quote",
+        body: "Tell us quantity, lead time, and boxing. We confirm feasibility and quote.",
+      },
+      {
+        step: "03",
+        title: "Selected from stock and delivered",
+        body: "From the kiln's stock, we choose the bowl that best matches your mood, inspect it, and ship. As handwork, no two expressions are ever the same.",
+      },
+    ],
+    catalogKicker: "Catalogue",
+    catalogTitle: "Style catalogue",
+    catalogLead:
+      "The body is pottery — earthenware — not porcelain. Browse by kind; choose style (color and glaze) within each. Enjoy differences in expression as the character of each piece.",
+    filterAria: "Filter by kind",
     filterAll: "All",
     itemCount: "{n} items",
-    emptyFilter: "No items in this category.",
+    emptyFilter: "No items in this filter.",
     viewDetail: "View details",
+    colorLabel: "Style",
+    shapeLabel: "Form",
+    useLabel: "Use",
+    sizeLabel: "Approx. size",
+    refLabel: "Reference",
+    madeToOrderNote:
+      "As handwork, no two expressions are ever the same. Enjoy those differences as the character of each piece.",
+    inquireItem: "Inquire about this style",
+    mailSubject: "[SHOJUEN] Matcha bowl (style) inquiry",
     closeLightbox: "Close",
     prevPhoto: "Previous photo",
     nextPhoto: "Next photo",
     photoLabel: "Photo",
-    sizeLabel: "Size",
-    detailLabel: "Finish & notes",
-    refLabel: "Reference",
-    inquireItem: "Inquire about this bowl",
-    mailSubject: "[SHOJUEN] Matcha bowl inquiry",
+    condKicker: "Terms",
+    condTitle: "Trade terms",
+    conditions: [
+      { label: "Minimum lot", value: "Coming soon" },
+      { label: "Lead time", value: "Coming soon" },
+      { label: "Wooden box", value: "Two types (see catalogue)" },
+    ],
+    condNote: "",
+    workshopKicker: "Workshop",
+    workshopTitle: "From the workshop — an Arita kiln",
+    workshopBody:
+      "Every matcha bowl we handle is made by hand at a kiln in Arita, Saga — from throwing and foot-trimming to drying and firing. A glimpse of the maker's process in photographs.",
+    workshopCaptions: [
+      "Freshly thrown greenware bowls lined up on the drying shelves",
+      "The kiln owner trimming a foot ring on the wheel",
+      "Bowls drying upside down, their trimmed foot rings aligned",
+      "Buckets of glaze lined up on the workshop bench",
+    ],
     ctaTitle: "Wholesale & trade inquiries",
     ctaBody:
-      "We quote volume, lead time, tomobako, and branding per project. Custom shapes and glazes outside this catalog are welcome.",
+      "We quote volume, lead time, and tomobako per project.",
     ctaMail: "Email us",
     ctaContact: "Contact page",
-    categories: {
+    colors: {
+      hakuji: { label: "White porcelain", blurb: "Pure white that shows matcha's green at its brightest." },
+      sometsuke: { label: "Sometsuke", blurb: "Blue-and-white brushwork — the essence of Arita." },
+      seiji: { label: "Celadon", blurb: "Pale blue-green glaze — quiet and deep." },
+      ruri: { label: "Ruri (lapis)", blurb: "Deep blue in striking contrast with green." },
+      kuro: { label: "Black / iron", blurb: "Lustrous black and iron glaze; foam stands out." },
+      kohiki: { label: "Kohiki", blurb: "Soft white slip that ages beautifully." },
+    },
+    kinds: {
       matchawan: "Matcha bowl",
-      chasentate: "Chasen stand",
-      kibako: "Wooden box",
       katakuchi: "Katakuchi",
       nodate: "Nodate",
       natsu: "Summer",
+      chasentate: "Chasen stand",
+      kibako: "Wooden box",
     },
   },
 }
@@ -860,39 +1029,108 @@ const zh: Messages = {
       "預覽 — 本文尚未公開，不會出現在 JOURNAL 列表。",
   },
   chawanPage: {
-    heroKicker: "Chawan",
-    title: "抹茶碗型錄",
-    introBefore:
-      "所經手的抹茶碗皆為有田燒。從抹茶碗・茶筅座・片口，到附木箱・野點・夏用。這是松壽園SHOJUEN為",
-    introStrong: "合作夥伴",
-    introAfter:
-      "提案的有田燒系列。口徑、表面處理、能否配合批量等細節，請於各商品或來信洽詢。",
-    filterAria: "依分類篩選",
+    heroKicker: "Chawan · 有田燒",
+    heroBadges: ["有田燒", "陶器（土物）", "從庫存中選定", "世界唯一的表情"],
+    title: "以作風挑選抹茶碗。",
+    heroLead:
+      "所經手的抹茶碗皆為有田燒——但非磁器，而是稀少的陶器（土物）。承載有田的典雅技藝，同時將土的溫潤交到手上。請先從作風與種類挑選氛圍；我們會從窯元庫存中，為您選出最契合的一碗。",
+    heroScroll: "Scroll",
+    philKicker: "Philosophy",
+    philLead: "點茶的時光。",
+    philStanzas: [
+      "那是靜靜與自己深深相對的時刻，\n是為一期一會盡心款待的時刻，\n也是輕輕潤澤日常、小小犒賞自己的時刻。\n無論何種場合，底蘊皆是對人與自身溫柔的凝視。",
+      "由手工孕育的抹茶碗，若以慈心與細意使用，便能比我們的壽命更久地留在世上。您所累積的款待記憶、與自己相對的豐饒時光的溫暖——皆可寄宿於「形」中，從子到孫、跨越世代而傳承。",
+      "兼具凜然之美與非凡堅固、令世界傾心的有田燒。請與這件裹著典雅歷史的器物一道，盡情享受紡織心靈的一碗茶。",
+    ],
+    clayKicker: "Arita · Pottery",
+    clayTitle: "有田的，土物。",
+    claySub: "在磁器之鄉，敢於挑戰陶器。",
+    clayStanzas: [
+      "肥前之地，並存著氣品高雅的磁器之美，與素樸溫暖的陶器（土物）歷史。",
+      "承載有田燒所誇耀的高超技法與洗練精神，我們卻敢於以「陶器」作為表現。在以磁器為主流的有田，這份土物顯得格外稀少。",
+      "應和泥土呼吸的獨特釉藥，經有田高超的燒成技術注入生命——器物兼具土物獨有的柔和觸感，與經得起悠長歲月的格外品格。最高峰技藝所生的、富有深度的一期一會之景。將跨越世代、貼近心靈的一碗茶，送到您手中。",
+    ],
+    quote: "透過燒物，結下緣分。",
+    quoteAuthor: "— 與佐賀・有田窯元同行",
+    flowKicker: "How to order",
+    flowTitle: "訂購流程",
+    flowSteps: [
+      {
+        step: "01",
+        title: "挑選作風・種類",
+        body: "從色・釉調・造型的「作風」，以及片口、野點、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
+      },
+      {
+        step: "02",
+        title: "洽詢・報價",
+        body: "告知數量、交期、木箱等需求，我們確認可行性並報價。",
+      },
+      {
+        step: "03",
+        title: "從庫存選定並交付",
+        body: "從窯元庫存中，選出最契合您希望氛圍的一碗，檢品後交付。因屬手工，絕無完全相同的表情。",
+      },
+    ],
+    catalogKicker: "Catalogue",
+    catalogTitle: "作風型錄",
+    catalogLead:
+      "素地非磁器，而是陶器（土物）。可依種類瀏覽，作風（色・釉調）於各品項中挑選。表情之異，請作為此器的個性盡情欣賞。",
+    filterAria: "依種類篩選",
     filterAll: "全部",
     itemCount: "共 {n} 件",
-    emptyFilter: "沒有符合的商品。",
+    emptyFilter: "沒有符合的品項。",
     viewDetail: "查看詳情",
+    colorLabel: "作風",
+    shapeLabel: "造型",
+    useLabel: "用途",
+    sizeLabel: "參考尺寸",
+    refLabel: "參考",
+    madeToOrderNote:
+      "因屬手工，絕無完全相同的表情。表情之異，請作為此器的個性盡情欣賞。",
+    inquireItem: "以此作風洽詢",
+    mailSubject: "【松壽園SHOJUEN】抹茶碗（作風）洽詢",
     closeLightbox: "關閉",
     prevPhoto: "上一張",
     nextPhoto: "下一張",
     photoLabel: "照片",
-    sizeLabel: "尺寸",
-    detailLabel: "規格與特徵",
-    refLabel: "參考編號",
-    inquireItem: "洽詢此碗",
-    mailSubject: "【松壽園SHOJUEN】抹茶碗洽詢",
+    condKicker: "Terms",
+    condTitle: "交易參考",
+    conditions: [
+      { label: "最小批量", value: "準備中" },
+      { label: "交期", value: "準備中" },
+      { label: "木箱", value: "2 種（見型錄）" },
+    ],
+    condNote: "",
+    workshopKicker: "Workshop",
+    workshopTitle: "製作現場 — 來自有田燒窯元",
+    workshopBody:
+      "我們經手的抹茶碗，皆由佐賀・有田的窯元逐一手工製作——從轆轤成形、削高台，到乾燥與燒成。以照片介紹作手的製作現場。",
+    workshopCaptions: [
+      "剛成形的坯體茶碗排列於棚架上",
+      "窯元主人在轆轤上削出高台",
+      "倒扣晾乾的茶碗，削好的高台整齊排列",
+      "釉藥桶排列於工房作業台",
+    ],
     ctaTitle: "批發・交易洽詢",
     ctaBody:
-      "數量、交期、附木箱、刻名等交易條件將依個案提案。型錄以外的造型・釉色需求也歡迎洽詢。",
+      "數量、交期、附木箱等交易條件將依個案提案。",
     ctaMail: "以 Email 洽詢",
     ctaContact: "聯絡頁面",
-    categories: {
+    colors: {
+      hakuji: { label: "白磁", blurb: "純粹的白，最能映出抹茶的翠綠。" },
+      sometsuke: { label: "染付", blurb: "以吳須之藍描繪，展現有田燒的端正。" },
+      seiji: { label: "青磁", blurb: "淡青綠釉，寧靜而有層次。" },
+      ruri: { label: "瑠璃", blurb: "深藍一色，與綠形成鮮明對比。" },
+      kuro: { label: "黑・鐵", blurb: "潤澤的黑與鐵釉，凸顯泡沫的細緻。" },
+      kohiki: { label: "粉引", blurb: "白化妝土的柔白，亦可欣賞歲月痕跡。" },
+    },
+    kinds: {
       matchawan: "抹茶碗",
-      chasentate: "茶筅座",
-      kibako: "木箱",
       katakuchi: "片口",
       nodate: "野點",
       natsu: "夏用",
+      chasentate: "茶筅座",
+      kibako: "木箱",
     },
   },
 }
