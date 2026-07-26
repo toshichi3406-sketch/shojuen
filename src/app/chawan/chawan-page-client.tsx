@@ -243,16 +243,7 @@ export function ChawanPageClient() {
   const material = (s: ChawanStyle) =>
     locale === "en" ? s.materialEn : s.materialJa
   const care = (s: ChawanStyle) => (locale === "en" ? s.careEn : s.careJa)
-  const colorLabel = (c: ChawanColor) => m.chawanPage.colors[c].label
   const kindLabel = (k: ChawanKind) => m.chawanPage.kinds[k]
-
-  const ColorDot = ({ c }: { c: ChawanColor }) => (
-    <span
-      className="size-2.5 shrink-0 rounded-full ring-1 ring-black/10"
-      style={{ background: glaze[c].dot }}
-      aria-hidden
-    />
-  )
 
   return (
     <div className="bg-[#14110e] text-stone-200">
@@ -427,10 +418,6 @@ export function ChawanPageClient() {
                       alt={name(style)}
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
-                    <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-[0.7rem] font-medium tracking-wide text-stone-700 shadow-sm backdrop-blur-sm">
-                      <ColorDot c={style.color} />
-                      {colorLabel(style.color)}
-                    </span>
                     {styleImages(style).length > 1 ? (
                       <span className="absolute bottom-4 right-4 rounded-full bg-black/55 px-2.5 py-1 text-[0.65rem] tracking-wide text-white/90 backdrop-blur-sm">
                         {styleImages(style).length}{" "}
@@ -882,11 +869,7 @@ export function ChawanPageClient() {
             </div>
 
             <div className="flex flex-1 flex-col overflow-y-auto p-7 sm:p-9">
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/15 px-2.5 py-1 text-xs font-medium tracking-wide text-stone-300">
-                <ColorDot c={selected.color} />
-                {colorLabel(selected.color)}
-              </span>
-              <h2 className="font-heading mt-5 text-2xl font-medium text-stone-50 sm:text-3xl">
+              <h2 className="font-heading text-2xl font-medium text-stone-50 sm:text-3xl">
                 {name(selected)}
               </h2>
               <p className="mt-1 text-sm tracking-wide text-stone-400">
