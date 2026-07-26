@@ -158,6 +158,8 @@ export type Messages = {
     shapeLabel: string
     useLabel: string
     sizeLabel: string
+    materialLabel: string
+    careLabel: string
     refLabel: string
     madeToOrderNote: string
     inquireItem: string
@@ -170,6 +172,9 @@ export type Messages = {
     condTitle: string
     conditions: readonly { label: string; value: string }[]
     condNote: string
+    leadKicker: string
+    leadTitle: string
+    leadBody: string
     workshopKicker: string
     workshopTitle: string
     workshopBody: string
@@ -182,15 +187,11 @@ export type Messages = {
       "hakuji" | "sometsuke" | "seiji" | "ruri" | "kuro" | "kohiki",
       { label: string; blurb: string }
     >
-    kinds: Record<
-      | "matchawan"
-      | "katakuchi"
-      | "nodate"
-      | "natsu"
-      | "chasentate"
-      | "kibako",
-      string
-    >
+    kinds: Record<"katakuchi" | "kibako", string>
+    zoomIn: string
+    zoomOut: string
+    zoomHint: string
+    closeZoom: string
   }
 }
 
@@ -396,10 +397,10 @@ const ja: Messages = {
   },
   chawanPage: {
     heroKicker: "Chawan · 有田焼",
-    heroBadges: ["有田焼", "陶器（土もの）", "在庫から選定", "世界に一つの表情"],
+    heroBadges: ["有田焼", "陶器（土もの）", "受注で仕立てる", "世界に一つの表情"],
     title: "作風で選ぶ、抹茶椀。",
     heroLead:
-      "取り扱う抹茶椀はすべて有田焼——ただし磁器ではなく、希少な陶器（土もの）。有田の格式ある技を宿しながら、土の温もりを手に届ける一碗です。まずは作風と種類から雰囲気をお選びください。窯元の在庫のなかから、ご希望に最も合う一碗をお選びします。",
+      "取り扱う抹茶椀はすべて有田焼——ただし磁器ではなく、希少な陶器（土もの）。有田の格式ある技を宿しながら、土の温もりを手に届ける一碗です。まずは作風と種類から雰囲気をお選びください。窯元とともに、ご要望に応じて丁寧にお仕立てします。",
     heroScroll: "Scroll",
     philKicker: "Philosophy",
     philLead: "抹茶を点てる時間。",
@@ -424,17 +425,17 @@ const ja: Messages = {
       {
         step: "01",
         title: "作風・種類を選ぶ",
-        body: "色・釉調・形の「作風」と、片口・野点・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
+        body: "色・釉調・形の「作風」と、片口・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
       },
       {
         step: "02",
         title: "ご相談・お見積り",
-        body: "数量・納期・箱などのご要望を伺い、可否とお見積りをご案内します。",
+        body: "数量・納期・箱などのご要望を伺い、可否とお見積りをご案内します。量により受注生産となる場合は、リードタイム約1か月が目安です。",
       },
       {
         step: "03",
-        title: "在庫から選定してお届け",
-        body: "窯元の在庫のなかから、ご希望の雰囲気に最も合う一碗を選び、検品のうえお届けします。手仕事のため、まったく同じ表情はほかに一つとしてありません。",
+        title: "窯元で仕立ててお届け",
+        body: "ご注文に応じ、有田の窯元で丁寧に仕立て、検品のうえお届けします。手仕事のため、まったく同じ表情はほかに一つとしてありません。特別な一碗として、お迎えください。",
       },
     ],
     catalogKicker: "Catalogue",
@@ -450,6 +451,8 @@ const ja: Messages = {
     shapeLabel: "形",
     useLabel: "用途",
     sizeLabel: "目安サイズ",
+    materialLabel: "素材",
+    careLabel: "諸説明",
     refLabel: "参照",
     madeToOrderNote:
       "手仕事のため、まったく同じ表情はほかに一つとしてありません。表情の違いは、この器の個性としてお楽しみください。",
@@ -463,10 +466,14 @@ const ja: Messages = {
     condTitle: "お取引の目安",
     conditions: [
       { label: "最小ロット", value: "準備中" },
-      { label: "納期", value: "準備中" },
-      { label: "木箱", value: "2種あり（カタログ参照）" },
+      { label: "納期", value: "量により約1か月" },
+      { label: "木箱", value: "カタログ掲載あり" },
     ],
     condNote: "",
+    leadKicker: "Lead time",
+    leadTitle: "量によっては、受注生産でお届けします。",
+    leadBody:
+      "ご注文の数量によっては、窯元での受注生産となります。一碗ずつ丁寧に焼き上げるため、リードタイムはおよそ1か月ほどご覧いただけると幸いです。窯元と向き合い、あなたのための器を仕立てる——その特別なお時間も含めて、お愉しみください。",
     workshopKicker: "Workshop",
     workshopTitle: "制作の現場 — 有田焼の窯元から",
     workshopBody:
@@ -479,7 +486,7 @@ const ja: Messages = {
     ],
     ctaTitle: "卸・取引のご相談",
     ctaBody:
-      "数量・納期・箱付など、取引条件は案件ごとにご提案します。",
+      "数量・納期・箱付など、取引条件は案件ごとにご提案します。受注生産となる場合は、窯元で丁寧にお仕立てし、リードタイム約1か月を目安にご検討ください。",
     ctaMail: "メールで相談する",
     ctaContact: "お問い合わせページ",
     colors: {
@@ -491,13 +498,13 @@ const ja: Messages = {
       kohiki: { label: "粉引", blurb: "白化粧のやわらかな白。経年の景色も。" },
     },
     kinds: {
-      matchawan: "抹茶椀",
       katakuchi: "片口",
-      nodate: "野点",
-      natsu: "夏用",
-      chasentate: "茶筅たて",
       kibako: "木箱",
     },
+    zoomIn: "拡大",
+    zoomOut: "縮小",
+    zoomHint: "クリックで拡大・ドラッグで移動",
+    closeZoom: "拡大を閉じる",
   },
 }
 
@@ -727,10 +734,10 @@ const en: Messages = {
   },
   chawanPage: {
     heroKicker: "Chawan · Arita ware",
-    heroBadges: ["Arita ware", "Pottery (earthenware)", "Selected from stock", "One of a kind"],
+    heroBadges: ["Arita ware", "Pottery (earthenware)", "Made to order", "One of a kind"],
     title: "Choose your matcha bowl by style.",
     heroLead:
-      "Every bowl we handle is Arita ware — not porcelain, but rare pottery (earthenware). Arita's storied craft, with the warmth of clay in the hand. Start by choosing a style and kind of ware. From the kiln's stock, we select the bowl that best matches your request.",
+      "Every bowl we handle is Arita ware — not porcelain, but rare pottery (earthenware). Arita's storied craft, with the warmth of clay in the hand. Start by choosing a style and kind of ware. Together with the kiln, we carefully craft pieces to your request.",
     heroScroll: "Scroll",
     philKicker: "Philosophy",
     philLead: "The time of whisking matcha.",
@@ -755,17 +762,17 @@ const en: Messages = {
       {
         step: "01",
         title: "Choose style & kind",
-        body: "Pick the mood by color, glaze, and form — and the kind of ware (katakuchi, nodate, wooden box, and more). A direction is enough.",
+        body: "Pick the mood by color, glaze, and form — and the kind of ware (katakuchi, wooden box). A direction is enough.",
       },
       {
         step: "02",
         title: "Consult & quote",
-        body: "Tell us quantity, lead time, and boxing. We confirm feasibility and quote.",
+        body: "Tell us quantity, lead time, and boxing. We confirm feasibility and quote. Larger orders may be made to order — about one month lead time.",
       },
       {
         step: "03",
-        title: "Selected from stock and delivered",
-        body: "From the kiln's stock, we choose the bowl that best matches your mood, inspect it, and ship. As handwork, no two expressions are ever the same.",
+        title: "Crafted at the kiln and delivered",
+        body: "We have each piece carefully made at an Arita kiln, inspected, and shipped. As handwork, no two expressions are ever the same — a bowl made for your order.",
       },
     ],
     catalogKicker: "Catalogue",
@@ -781,6 +788,8 @@ const en: Messages = {
     shapeLabel: "Form",
     useLabel: "Use",
     sizeLabel: "Approx. size",
+    materialLabel: "Material",
+    careLabel: "Care",
     refLabel: "Reference",
     madeToOrderNote:
       "As handwork, no two expressions are ever the same. Enjoy those differences as the character of each piece.",
@@ -794,10 +803,14 @@ const en: Messages = {
     condTitle: "Trade terms",
     conditions: [
       { label: "Minimum lot", value: "Coming soon" },
-      { label: "Lead time", value: "Coming soon" },
-      { label: "Wooden box", value: "Two types (see catalogue)" },
+      { label: "Lead time", value: "About 1 month, by volume" },
+      { label: "Wooden box", value: "See catalogue" },
     ],
     condNote: "",
+    leadKicker: "Lead time",
+    leadTitle: "Larger orders may be made to order.",
+    leadBody:
+      "Depending on quantity, pieces are made to order at the kiln — fired one by one with care. Please allow roughly one month of lead time. That wait is part of the craft: a bowl shaped with the kiln, for you.",
     workshopKicker: "Workshop",
     workshopTitle: "From the workshop — an Arita kiln",
     workshopBody:
@@ -810,7 +823,7 @@ const en: Messages = {
     ],
     ctaTitle: "Wholesale & trade inquiries",
     ctaBody:
-      "We quote volume, lead time, and tomobako per project.",
+      "We quote volume, lead time, and boxing per project. When made to order, pieces are carefully crafted at the kiln — please allow about one month.",
     ctaMail: "Email us",
     ctaContact: "Contact page",
     colors: {
@@ -822,13 +835,13 @@ const en: Messages = {
       kohiki: { label: "Kohiki", blurb: "Soft white slip that ages beautifully." },
     },
     kinds: {
-      matchawan: "Matcha bowl",
       katakuchi: "Katakuchi",
-      nodate: "Nodate",
-      natsu: "Summer",
-      chasentate: "Chasen stand",
       kibako: "Wooden box",
     },
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    zoomHint: "Click to zoom · drag to pan",
+    closeZoom: "Close zoom",
   },
 }
 
@@ -1030,10 +1043,10 @@ const zh: Messages = {
   },
   chawanPage: {
     heroKicker: "Chawan · 有田燒",
-    heroBadges: ["有田燒", "陶器（土物）", "從庫存中選定", "世界唯一的表情"],
+    heroBadges: ["有田燒", "陶器（土物）", "接單調製", "世界唯一的表情"],
     title: "以作風挑選抹茶碗。",
     heroLead:
-      "所經手的抹茶碗皆為有田燒——但非磁器，而是稀少的陶器（土物）。承載有田的典雅技藝，同時將土的溫潤交到手上。請先從作風與種類挑選氛圍；我們會從窯元庫存中，為您選出最契合的一碗。",
+      "所經手的抹茶碗皆為有田燒——但非磁器，而是稀少的陶器（土物）。承載有田的典雅技藝，同時將土的溫潤交到手上。請先從作風與種類挑選氛圍；我們將與窯元一同，依您的需求仔細調製。",
     heroScroll: "Scroll",
     philKicker: "Philosophy",
     philLead: "點茶的時光。",
@@ -1058,17 +1071,17 @@ const zh: Messages = {
       {
         step: "01",
         title: "挑選作風・種類",
-        body: "從色・釉調・造型的「作風」，以及片口、野點、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
+        body: "從色・釉調・造型的「作風」，以及片口、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
       },
       {
         step: "02",
         title: "洽詢・報價",
-        body: "告知數量、交期、木箱等需求，我們確認可行性並報價。",
+        body: "告知數量、交期、木箱等需求，我們確認可行性並報價。依數量接單製作時，交期約一個月。",
       },
       {
         step: "03",
-        title: "從庫存選定並交付",
-        body: "從窯元庫存中，選出最契合您希望氛圍的一碗，檢品後交付。因屬手工，絕無完全相同的表情。",
+        title: "於窯元調製並交付",
+        body: "依訂單於有田窯元仔細調製，檢品後交付。因屬手工，絕無完全相同的表情——請迎接專為您而來的一碗。",
       },
     ],
     catalogKicker: "Catalogue",
@@ -1084,6 +1097,8 @@ const zh: Messages = {
     shapeLabel: "造型",
     useLabel: "用途",
     sizeLabel: "參考尺寸",
+    materialLabel: "素材",
+    careLabel: "使用說明",
     refLabel: "參考",
     madeToOrderNote:
       "因屬手工，絕無完全相同的表情。表情之異，請作為此器的個性盡情欣賞。",
@@ -1097,10 +1112,14 @@ const zh: Messages = {
     condTitle: "交易參考",
     conditions: [
       { label: "最小批量", value: "準備中" },
-      { label: "交期", value: "準備中" },
-      { label: "木箱", value: "2 種（見型錄）" },
+      { label: "交期", value: "依數量約 1 個月" },
+      { label: "木箱", value: "見型錄" },
     ],
     condNote: "",
+    leadKicker: "Lead time",
+    leadTitle: "依數量，可能採接單製作。",
+    leadBody:
+      "視訂購數量，可能於窯元接單製作，逐碗仔細燒成。交期請預留約一個月。與窯元相對、為您調製器物——這段特別的時間，也請一併享受。",
     workshopKicker: "Workshop",
     workshopTitle: "製作現場 — 來自有田燒窯元",
     workshopBody:
@@ -1113,7 +1132,7 @@ const zh: Messages = {
     ],
     ctaTitle: "批發・交易洽詢",
     ctaBody:
-      "數量、交期、附木箱等交易條件將依個案提案。",
+      "數量、交期、附木箱等交易條件將依個案提案。接單製作時，由窯元仔細調製，交期請以約一個月為參考。",
     ctaMail: "以 Email 洽詢",
     ctaContact: "聯絡頁面",
     colors: {
@@ -1125,13 +1144,13 @@ const zh: Messages = {
       kohiki: { label: "粉引", blurb: "白化妝土的柔白，亦可欣賞歲月痕跡。" },
     },
     kinds: {
-      matchawan: "抹茶碗",
       katakuchi: "片口",
-      nodate: "野點",
-      natsu: "夏用",
-      chasentate: "茶筅座",
       kibako: "木箱",
     },
+    zoomIn: "放大",
+    zoomOut: "縮小",
+    zoomHint: "點擊放大・拖曳移動",
+    closeZoom: "關閉放大",
   },
 }
 

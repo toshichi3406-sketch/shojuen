@@ -1,14 +1,23 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRightIcon, MailIcon, XIcon } from "lucide-react"
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  MailIcon,
+  MinusIcon,
+  PlusIcon,
+  SearchIcon,
+  XIcon,
+} from "lucide-react"
 
 import {
+  chawanAtmosphere,
   chawanKinds,
   chawanStyles,
-  chawanWorkshopImages,
+  styleImages,
   type ChawanColor,
   type ChawanKind,
   type ChawanStyle,
@@ -19,13 +28,16 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/i18n/language-context"
 
-const WS = chawanWorkshopImages // [greenware, wheel, drying-foot, glaze-buckets]
 const HERO_IMG = "/images/chawan/room-garden.png"
 const CATALOG_IMG = "/images/chawan/bowls-crate.png"
 const PHIL_IMG_L = "/images/chawan/phil-tsukubai.png"
 const PHIL_IMG_R = "/images/chawan/phil-tea-tray.png"
-const QUOTE_IMG = WS[1]
-const CTA_IMG = WS[0]
+/** リードタイム帯は横長セクション向きの写真を使う（縦写真は無理に入れない） */
+const LEAD_IMG = chawanAtmosphere.dryingFoot
+/** 引用帯：窯元の高台削り出し（bg-fixed でパララックス） */
+const QUOTE_IMG = chawanAtmosphere.wheelTrimming
+/** CTA：横向き写真（縦写真は帯で見切れるため差し替え） */
+const CTA_IMG = chawanAtmosphere.katakuchiCrates
 
 /** 釉調ごとのスウォッチ（実写がない作風のプレースホルダ表現）。すべて仮の色。 */
 const glaze: Record<
@@ -53,21 +65,24 @@ function StyleVisual({
   alt,
   sizes,
   priority,
+  imageSrc,
 }: {
   style: ChawanStyle
   alt: string
   sizes: string
   priority?: boolean
+  imageSrc?: string
 }) {
-  if (style.image) {
+  const src = imageSrc ?? styleImages(style)[0] ?? style.image
+  if (src) {
     return (
       <Image
-        src={style.image}
+        src={src}
         alt={alt}
         fill
         sizes={sizes}
         priority={priority}
-        className="object-cover transition duration-[1200ms] ease-out group-hover:scale-105"
+        className="object-contain transition duration-[1200ms] ease-out group-hover:scale-[1.02]"
       />
     )
   }
@@ -110,6 +125,17 @@ export function ChawanPageClient() {
   const { locale, m } = useLanguage()
   const [activeKind, setActiveKind] = useState<ChawanKind | "all">("all")
   const [selected, setSelected] = useState<ChawanStyle | null>(null)
+  const [photoIdx, setPhotoIdx] = useState(0)
+  const [zoomOpen, setZoomOpen] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [dragging, setDragging] = useState(false)
+  const dragRef = useRef<{
+    x: number
+    y: number
+    panX: number
+    panY: number
+  } | null>(null)
 
   const filtered = useMemo(
     () =>
@@ -119,12 +145,74 @@ export function ChawanPageClient() {
     [activeKind]
   )
 
-  const closeLightbox = useCallback(() => setSelected(null), [])
+  const selectedPhotos = selected ? styleImages(selected) : []
+
+  const openStyle = useCallback((style: ChawanStyle) => {
+    setSelected(style)
+    setPhotoIdx(0)
+    setZoomOpen(false)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const closeZoom = useCallback(() => {
+    setZoomOpen(false)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const closeLightbox = useCallback(() => {
+    setSelected(null)
+    setPhotoIdx(0)
+    setZoomOpen(false)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const openZoom = useCallback(() => {
+    if (!selectedPhotos.length) return
+    setZoomOpen(true)
+    setZoom(1.4)
+    setPan({ x: 0, y: 0 })
+  }, [selectedPhotos.length])
+
+  const bumpZoom = useCallback((delta: number) => {
+    setZoom((z) => Math.min(3.5, Math.max(1, Math.round((z + delta) * 10) / 10)))
+  }, [])
+
+  const showPrevPhoto = useCallback(() => {
+    setPhotoIdx((i) =>
+      selectedPhotos.length
+        ? (i - 1 + selectedPhotos.length) % selectedPhotos.length
+        : 0
+    )
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [selectedPhotos.length])
+
+  const showNextPhoto = useCallback(() => {
+    setPhotoIdx((i) =>
+      selectedPhotos.length ? (i + 1) % selectedPhotos.length : 0
+    )
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [selectedPhotos.length])
 
   useEffect(() => {
     if (!selected) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeLightbox()
+      if (e.key === "Escape") {
+        if (zoomOpen) closeZoom()
+        else closeLightbox()
+        return
+      }
+      if (zoomOpen) {
+        if (e.key === "+" || e.key === "=") bumpZoom(0.3)
+        if (e.key === "-" || e.key === "_") bumpZoom(-0.3)
+        return
+      }
+      if (e.key === "ArrowLeft") showPrevPhoto()
+      if (e.key === "ArrowRight") showNextPhoto()
     }
     document.body.style.overflow = "hidden"
     window.addEventListener("keydown", onKey)
@@ -132,7 +220,15 @@ export function ChawanPageClient() {
       document.body.style.overflow = ""
       window.removeEventListener("keydown", onKey)
     }
-  }, [selected, closeLightbox])
+  }, [
+    selected,
+    zoomOpen,
+    closeLightbox,
+    closeZoom,
+    showPrevPhoto,
+    showNextPhoto,
+    bumpZoom,
+  ])
 
   const email = getContactEmail()
   const mailto = `mailto:${email}?subject=${encodeURIComponent(m.chawanPage.mailSubject)}`
@@ -144,6 +240,9 @@ export function ChawanPageClient() {
   const shape = (s: ChawanStyle) => (locale === "en" ? s.shapeEn : s.shapeJa)
   const use = (s: ChawanStyle) => (locale === "en" ? s.useEn : s.useJa)
   const size = (s: ChawanStyle) => (locale === "en" ? s.sizeEn : s.sizeJa)
+  const material = (s: ChawanStyle) =>
+    locale === "en" ? s.materialEn : s.materialJa
+  const care = (s: ChawanStyle) => (locale === "en" ? s.careEn : s.careJa)
   const colorLabel = (c: ChawanColor) => m.chawanPage.colors[c].label
   const kindLabel = (k: ChawanKind) => m.chawanPage.kinds[k]
 
@@ -202,7 +301,7 @@ export function ChawanPageClient() {
         <div className="grid lg:grid-cols-12">
           <div className="relative min-h-[42vh] lg:col-span-5 lg:min-h-full">
             <Image
-              src={WS[3]}
+              src="/images/chawan/workshop-05-glaze-buckets.png"
               alt=""
               fill
               sizes="(max-width: 1024px) 100vw, 42vw"
@@ -310,16 +409,19 @@ export function ChawanPageClient() {
             {m.chawanPage.itemCount.replace("{n}", String(filtered.length))}
           </p>
 
-          <FadeInStagger className="mt-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          <FadeInStagger
+            key={activeKind}
+            className="mt-12 grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {filtered.map((style, i) => (
               <FadeInItem key={style.id}>
                 <button
                   type="button"
-                  onClick={() => setSelected(style)}
+                  onClick={() => openStyle(style)}
                   className="group block w-full text-left"
                   aria-label={`${m.chawanPage.viewDetail}: ${name(style)}`}
                 >
-                  <figure className="relative aspect-[4/5] overflow-hidden bg-stone-200 shadow-[0_20px_50px_-25px_rgba(60,50,40,0.4)] ring-1 ring-stone-900/5 transition duration-500 group-hover:shadow-[0_30px_60px_-25px_rgba(60,50,40,0.55)]">
+                  <figure className="relative aspect-[4/5] overflow-hidden bg-[#ebe6dc] shadow-[0_20px_50px_-25px_rgba(60,50,40,0.4)] ring-1 ring-stone-900/5 transition duration-500 group-hover:shadow-[0_30px_60px_-25px_rgba(60,50,40,0.55)]">
                     <StyleVisual
                       style={style}
                       alt={name(style)}
@@ -329,6 +431,12 @@ export function ChawanPageClient() {
                       <ColorDot c={style.color} />
                       {colorLabel(style.color)}
                     </span>
+                    {styleImages(style).length > 1 ? (
+                      <span className="absolute bottom-4 right-4 rounded-full bg-black/55 px-2.5 py-1 text-[0.65rem] tracking-wide text-white/90 backdrop-blur-sm">
+                        {styleImages(style).length}{" "}
+                        {m.chawanPage.photoLabel}
+                      </span>
+                    ) : null}
                   </figure>
                   <div className="mt-5 flex items-baseline gap-3">
                     <span className="font-heading text-sm text-emerald-700/60">
@@ -394,7 +502,32 @@ export function ChawanPageClient() {
         </div>
       </div>
 
-      {/* ── How to order (after catalogue) ───────────────────── */}
+      {/* ── Lead time (kiln shelves as atmosphere, not a gallery) */}
+      <section className="relative flex min-h-[78vh] items-end overflow-hidden sm:min-h-[88vh]">
+        <Image
+          src={LEAD_IMG}
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#14110e] via-[#14110e]/55 to-black/35" />
+        <div className="relative mx-auto w-full max-w-3xl px-6 pb-20 sm:pb-28">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.4em] text-emerald-300/90">
+              {m.chawanPage.leadKicker}
+            </p>
+            <h2 className="font-heading mt-5 text-3xl font-medium tracking-wide text-stone-50 sm:text-4xl md:text-[2.6rem]">
+              {m.chawanPage.leadTitle}
+            </h2>
+            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-stone-200/95 sm:text-base">
+              {m.chawanPage.leadBody}
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── How to order ─────────────────────────────────────── */}
       <section className="relative border-t border-stone-500/20 py-20 sm:py-24">
         <div className="mx-auto max-w-6xl px-6">
           <FadeIn>
@@ -425,10 +558,10 @@ export function ChawanPageClient() {
         </div>
       </section>
 
-      {/* ── Quote break (full-bleed image) ───────────────────── */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
+      {/* ── Quote break（背景固定パララックス） ──────────────── */}
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden sm:min-h-[78vh]">
         <div
-          className="absolute inset-0 bg-cover bg-fixed bg-center"
+          className="absolute inset-0 bg-cover bg-center bg-fixed"
           style={{ backgroundImage: `url(${QUOTE_IMG})` }}
           aria-hidden
         />
@@ -445,53 +578,7 @@ export function ChawanPageClient() {
         </FadeIn>
       </section>
 
-      {/* ── Workshop (immersive ink gallery) ─────────────────── */}
-      <section className="relative overflow-hidden py-24 sm:py-32">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,_rgba(34,120,80,0.14),_transparent_55%)]" />
-        <div className="relative mx-auto max-w-6xl px-6">
-          <FadeIn className="mb-14 max-w-2xl">
-            <p className="text-xs font-medium uppercase tracking-[0.4em] text-emerald-400/80">
-              {m.chawanPage.workshopKicker}
-            </p>
-            <h2 className="font-heading mt-4 text-3xl font-medium tracking-wide text-stone-50 sm:text-4xl">
-              {m.chawanPage.workshopTitle}
-            </h2>
-            <p className="mt-5 text-sm leading-relaxed text-stone-400 sm:text-base">
-              {m.chawanPage.workshopBody}
-            </p>
-          </FadeIn>
-
-          <FadeInStagger className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-12">
-            {chawanWorkshopImages.map((src, i) => (
-              <FadeInItem
-                key={src}
-                className={cn(
-                  i === 0 && "col-span-2 lg:col-span-7",
-                  i === 1 && "lg:col-span-5",
-                  i === 2 && "lg:col-span-5",
-                  i === 3 && "col-span-2 lg:col-span-7"
-                )}
-              >
-                <figure className="group relative aspect-[4/3] h-full overflow-hidden border border-white/5 bg-stone-900 shadow-2xl shadow-black/50">
-                  <Image
-                    src={src}
-                    alt={m.chawanPage.workshopCaptions[i] ?? ""}
-                    fill
-                    sizes="(max-width: 1024px) 50vw, 60vw"
-                    className="object-cover transition duration-[1400ms] ease-out group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-80" />
-                  <figcaption className="absolute inset-x-0 bottom-0 px-5 pb-5 text-xs font-medium leading-snug tracking-wide text-white/90 sm:text-sm">
-                    {m.chawanPage.workshopCaptions[i]}
-                  </figcaption>
-                </figure>
-              </FadeInItem>
-            ))}
-          </FadeInStagger>
-        </div>
-      </section>
-
-      {/* ── Philosophy (editorial essay — after catalogue) ───── */}
+      {/* ── Philosophy ───────────────────────────────────────── */}
       <section className="relative overflow-hidden py-28 sm:py-36">
         {/* Dual background: garden basin | tea setting */}
         <div className="pointer-events-none absolute inset-0 grid grid-rows-2 md:grid-cols-2 md:grid-rows-1">
@@ -558,17 +645,17 @@ export function ChawanPageClient() {
         </div>
       </section>
 
-      {/* ── CTA (full-bleed image) ───────────────────────────── */}
-      <section className="relative overflow-hidden">
+      {/* ── CTA (full-bleed landscape) ───────────────────────── */}
+      <section className="relative flex min-h-[62vh] items-center justify-center overflow-hidden sm:min-h-[68vh]">
         <Image
           src={CTA_IMG}
           alt=""
           fill
           sizes="100vw"
-          className="object-cover"
+          className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-black/75" />
-        <div className="relative mx-auto max-w-2xl px-6 py-28 text-center sm:py-36">
+        <div className="absolute inset-0 bg-black/70" />
+        <div className="relative mx-auto w-full max-w-2xl px-6 py-24 text-center sm:py-28">
           <FadeIn>
             <h2 className="font-heading text-3xl font-medium tracking-wide text-stone-50 sm:text-4xl">
               {m.chawanPage.ctaTitle}
@@ -601,6 +688,129 @@ export function ChawanPageClient() {
         </div>
       </section>
 
+      {/* ── Zoom overlay ────────────────────────────────────── */}
+      {selected && zoomOpen && selectedPhotos[photoIdx] ? (
+        <div
+          className="fixed inset-0 z-[60] flex flex-col bg-black/95"
+          role="dialog"
+          aria-modal="true"
+          aria-label={m.chawanPage.zoomIn}
+        >
+          <div className="relative z-10 flex items-center justify-between gap-3 px-4 py-3 text-stone-200">
+            <p className="text-xs tracking-wide text-stone-400">
+              {m.chawanPage.zoomHint}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => bumpZoom(-0.3)}
+                className="rounded-full border border-white/20 bg-white/5 p-2 hover:bg-white/10"
+                aria-label={m.chawanPage.zoomOut}
+              >
+                <MinusIcon className="size-4" aria-hidden />
+              </button>
+              <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-stone-300">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => bumpZoom(0.3)}
+                className="rounded-full border border-white/20 bg-white/5 p-2 hover:bg-white/10"
+                aria-label={m.chawanPage.zoomIn}
+              >
+                <PlusIcon className="size-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={closeZoom}
+                className="rounded-full border border-white/20 bg-white/5 p-2 hover:bg-white/10"
+                aria-label={m.chawanPage.closeZoom}
+              >
+                <XIcon className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+          <div
+            className={cn(
+              "relative min-h-0 flex-1 overflow-hidden touch-none",
+              zoom > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in"
+            )}
+            onClick={() => {
+              if (!dragging && zoom <= 1) bumpZoom(0.6)
+            }}
+            onWheel={(e) => {
+              bumpZoom(e.deltaY > 0 ? -0.15 : 0.15)
+            }}
+            onPointerDown={(e) => {
+              if (zoom <= 1) return
+              setDragging(true)
+              dragRef.current = {
+                x: e.clientX,
+                y: e.clientY,
+                panX: pan.x,
+                panY: pan.y,
+              }
+              ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+            }}
+            onPointerMove={(e) => {
+              const d = dragRef.current
+              if (!d) return
+              setPan({
+                x: d.panX + (e.clientX - d.x),
+                y: d.panY + (e.clientY - d.y),
+              })
+            }}
+            onPointerUp={() => {
+              dragRef.current = null
+              setDragging(false)
+            }}
+            onPointerCancel={() => {
+              dragRef.current = null
+              setDragging(false)
+            }}
+          >
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transition: dragging ? undefined : "transform 160ms ease-out",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedPhotos[photoIdx]}
+                alt={name(selected)}
+                className="max-h-[85vh] max-w-[92vw] select-none object-contain"
+                draggable={false}
+              />
+            </div>
+          </div>
+          {selectedPhotos.length > 1 ? (
+            <div className="relative z-10 flex items-center justify-center gap-4 px-4 py-3">
+              <button
+                type="button"
+                onClick={showPrevPhoto}
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-stone-100 hover:bg-white/10"
+                aria-label={m.chawanPage.prevPhoto}
+              >
+                <ArrowLeftIcon className="size-4" aria-hidden />
+              </button>
+              <span className="text-xs tracking-wide text-stone-400">
+                {photoIdx + 1} / {selectedPhotos.length}
+              </span>
+              <button
+                type="button"
+                onClick={showNextPhoto}
+                className="rounded-full border border-white/20 bg-white/5 p-2 text-stone-100 hover:bg-white/10"
+                aria-label={m.chawanPage.nextPhoto}
+              >
+                <ArrowRightIcon className="size-4" aria-hidden />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* ── Detail modal ─────────────────────────────────────── */}
       {selected && (
         <div
@@ -623,13 +833,52 @@ export function ChawanPageClient() {
               <XIcon className="size-4" aria-hidden />
             </button>
 
-            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-stone-900 sm:aspect-auto sm:w-1/2 sm:min-h-[460px]">
-              <StyleVisual
-                style={selected}
-                alt={name(selected)}
-                sizes="(max-width: 640px) 100vw, 50vw"
-                priority
-              />
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-[#1f1a16] sm:aspect-auto sm:w-1/2 sm:min-h-[460px]">
+              <button
+                type="button"
+                onClick={openZoom}
+                className="absolute inset-0 z-[1] cursor-zoom-in"
+                aria-label={m.chawanPage.zoomIn}
+              >
+                <StyleVisual
+                  style={selected}
+                  alt={name(selected)}
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  priority
+                  imageSrc={selectedPhotos[photoIdx]}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={openZoom}
+                className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-2.5 py-1.5 text-[0.7rem] tracking-wide text-stone-100 transition-colors hover:bg-black/70"
+              >
+                <SearchIcon className="size-3.5" aria-hidden />
+                {m.chawanPage.zoomIn}
+              </button>
+              {selectedPhotos.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={showPrevPhoto}
+                    className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/20 bg-black/45 p-2 text-stone-100 transition-colors hover:bg-black/65"
+                    aria-label={m.chawanPage.prevPhoto}
+                  >
+                    <ArrowLeftIcon className="size-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={showNextPhoto}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/20 bg-black/45 p-2 text-stone-100 transition-colors hover:bg-black/65"
+                    aria-label={m.chawanPage.nextPhoto}
+                  >
+                    <ArrowRightIcon className="size-4" aria-hidden />
+                  </button>
+                  <p className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-[0.7rem] tracking-wide text-stone-100">
+                    {photoIdx + 1} / {selectedPhotos.length}
+                  </p>
+                </>
+              ) : null}
             </div>
 
             <div className="flex flex-1 flex-col overflow-y-auto p-7 sm:p-9">
@@ -654,6 +903,16 @@ export function ChawanPageClient() {
                   </dt>
                   <dd className="mt-1.5 text-stone-100">{size(selected)}</dd>
                 </div>
+                {material(selected) ? (
+                  <div>
+                    <dt className="text-[0.7rem] font-medium uppercase tracking-[0.2em] text-stone-500">
+                      {m.chawanPage.materialLabel}
+                    </dt>
+                    <dd className="mt-1.5 text-stone-100">
+                      {material(selected)}
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className="text-[0.7rem] font-medium uppercase tracking-[0.2em] text-stone-500">
                     {m.chawanPage.shapeLabel}
@@ -666,25 +925,32 @@ export function ChawanPageClient() {
                   </dt>
                   <dd className="mt-1.5 text-stone-100">{use(selected)}</dd>
                 </div>
+                {care(selected) ? (
+                  <div className="col-span-2">
+                    <dt className="text-[0.7rem] font-medium uppercase tracking-[0.2em] text-stone-500">
+                      {m.chawanPage.careLabel}
+                    </dt>
+                    <dd className="mt-1.5 text-stone-100">{care(selected)}</dd>
+                  </div>
+                ) : null}
               </dl>
 
               <p className="mt-7 border-l-2 border-emerald-500/40 pl-4 text-xs leading-relaxed text-stone-400">
                 {m.chawanPage.madeToOrderNote}
               </p>
 
-              <a
-                href={`mailto:${email}?subject=${encodeURIComponent(
-                  `${m.chawanPage.mailSubject} [${selected.id}]`
-                )}`}
+              <Link
+                href={`/contact?from=chawan&id=${encodeURIComponent(selected.id)}&name=${encodeURIComponent(name(selected))}`}
+                onClick={(e) => e.stopPropagation()}
                 className={cn(
                   buttonVariants({ size: "default" }),
-                  "mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full no-underline"
+                  "mt-8 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full no-underline"
                 )}
               >
                 <MailIcon className="size-4 shrink-0" aria-hidden />
                 {m.chawanPage.inquireItem}
                 <ArrowRightIcon className="size-4 shrink-0" aria-hidden />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

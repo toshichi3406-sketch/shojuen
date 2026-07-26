@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { MailIcon } from "lucide-react"
+import { useMemo } from "react"
 
 import { FadeIn } from "@/components/motion/fade-in"
 import { buttonVariants } from "@/components/ui/button"
@@ -12,7 +14,20 @@ import { getContactEmail } from "@/data/site-contact"
 export function ContactPageClient() {
   const { m } = useLanguage()
   const email = getContactEmail()
-  const mailto = `mailto:${email}?subject=${encodeURIComponent(m.contactPage.mailSubject)}`
+  const searchParams = useSearchParams()
+
+  const chawanName = searchParams.get("name")?.trim() || ""
+  const chawanId = searchParams.get("id")?.trim() || ""
+  const fromChawan = searchParams.get("from") === "chawan"
+
+  const mailSubject = useMemo(() => {
+    if (fromChawan && chawanName) {
+      return `${m.chawanPage.mailSubject}「${chawanName}」${chawanId ? `[${chawanId}]` : ""}`
+    }
+    return m.contactPage.mailSubject
+  }, [fromChawan, chawanName, chawanId, m.chawanPage.mailSubject, m.contactPage.mailSubject])
+
+  const mailto = `mailto:${email}?subject=${encodeURIComponent(mailSubject)}`
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16 sm:px-6 sm:py-24">
@@ -20,6 +35,14 @@ export function ContactPageClient() {
         <h1 className="font-heading text-3xl font-medium tracking-wide text-foreground sm:text-4xl">
           {m.contactPage.title}
         </h1>
+        {fromChawan && chawanName ? (
+          <p className="mt-6 rounded-sm border border-border bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground">
+            {m.chawanPage.inquireItem}
+            <span className="mt-1 block font-heading text-base font-medium">
+              {chawanName}
+            </span>
+          </p>
+        ) : null}
         <p className="mt-10 font-mono text-lg text-foreground sm:text-xl">{email}</p>
         <div className="mt-8 flex justify-center">
           <a
@@ -47,7 +70,7 @@ export function ContactPageClient() {
         </p>
         <p className="mt-6 text-sm">
           <a
-            href={`mailto:${email}`}
+            href={mailto}
             className="font-mono text-foreground underline-offset-4 hover:underline"
           >
             {email}
@@ -57,10 +80,10 @@ export function ContactPageClient() {
 
       <FadeIn className="mt-14" delay={0.1}>
         <Link
-          href="/"
+          href={fromChawan ? "/chawan" : "/"}
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          {m.contactPage.backHome}
+          {fromChawan ? m.chawanPage.title : m.contactPage.backHome}
         </Link>
       </FadeIn>
     </div>
