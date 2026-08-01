@@ -187,7 +187,7 @@ export type Messages = {
       "hakuji" | "sometsuke" | "seiji" | "ruri" | "kuro" | "kohiki",
       { label: string; blurb: string }
     >
-    kinds: Record<"wan" | "katakuchi" | "chasen" | "kibako", string>
+    kinds: Record<"wan" | "nodate" | "katakuchi" | "chasen" | "kibako", string>
     zoomIn: string
     zoomOut: string
     zoomHint: string
@@ -425,7 +425,7 @@ const ja: Messages = {
       {
         step: "01",
         title: "作風・種類を選ぶ",
-        body: "色・釉調・形の「作風」と、碗・片口・茶筅立て・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
+        body: "色・釉調・形の「作風」と、碗・野点・片口・茶筅立て・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
       },
       {
         step: "02",
@@ -499,6 +499,7 @@ const ja: Messages = {
     },
     kinds: {
       wan: "碗",
+      nodate: "野点",
       katakuchi: "片口",
       chasen: "茶筅立て",
       kibako: "木箱",
@@ -764,7 +765,7 @@ const en: Messages = {
       {
         step: "01",
         title: "Choose style & kind",
-        body: "Pick the mood by color, glaze, and form — and the kind of ware (bowl, katakuchi, chasen stand, wooden box). A direction is enough.",
+        body: "Pick the mood by color, glaze, and form — and the kind of ware (bowl, nodate, katakuchi, chasen stand, wooden box). A direction is enough.",
       },
       {
         step: "02",
@@ -838,6 +839,7 @@ const en: Messages = {
     },
     kinds: {
       wan: "Bowl",
+      nodate: "Nodate",
       katakuchi: "Katakuchi",
       chasen: "Chasen stand",
       kibako: "Wooden box",
@@ -1075,7 +1077,7 @@ const zh: Messages = {
       {
         step: "01",
         title: "挑選作風・種類",
-        body: "從色・釉調・造型的「作風」，以及碗、片口、茶筅架、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
+        body: "從色・釉調・造型的「作風」，以及碗、野點、片口、茶筅架、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
       },
       {
         step: "02",
@@ -1149,6 +1151,7 @@ const zh: Messages = {
     },
     kinds: {
       wan: "碗",
+      nodate: "野點",
       katakuchi: "片口",
       chasen: "茶筅架",
       kibako: "木箱",

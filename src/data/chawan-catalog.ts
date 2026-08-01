@@ -6,9 +6,15 @@
  */
 const chawanImg = (name: string) => `/images/chawan/${name}` as const
 
-export type ChawanKind = "wan" | "katakuchi" | "chasen" | "kibako"
+export type ChawanKind = "wan" | "nodate" | "katakuchi" | "chasen" | "kibako"
 
-export const chawanKinds: ChawanKind[] = ["wan", "katakuchi", "chasen", "kibako"]
+export const chawanKinds: ChawanKind[] = [
+  "wan",
+  "nodate",
+  "katakuchi",
+  "chasen",
+  "kibako",
+]
 
 export type ChawanColor =
   | "hakuji"
@@ -47,6 +53,20 @@ const wanCommon = {
   shapeEn: "Matcha bowl",
   useJa: "薄茶・濃茶",
   useEn: "Usucha, koicha",
+  sizeJa: "寸法・容量はお問い合わせください",
+  sizeEn: "Size and capacity on request",
+  materialJa: "陶器",
+  materialEn: "Pottery (earthenware)",
+  careJa: "食洗機〇 / 電子レンジ〇 / 重ね〇 / 直火×",
+  careEn: "Dishwasher ✓ · Microwave ✓ · Stackable ✓ · Open flame ✕",
+} as const
+
+/** 野点椀共通 — 寸法は仮（要確認） */
+const nodateCommon = {
+  shapeJa: "野点",
+  shapeEn: "Nodate",
+  useJa: "野点・薄茶",
+  useEn: "Outdoor tea (nodate), usucha",
   sizeJa: "寸法・容量はお問い合わせください",
   sizeEn: "Size and capacity on request",
   materialJa: "陶器",
@@ -183,13 +203,13 @@ export const chawanStyles: ChawanStyle[] = [
   },
   {
     id: "bowl-14",
-    kind: "wan",
+    kind: "nodate",
     color: "kuro",
-    nameJa: "黒地五彩垂れ",
-    nameEn: "Black with five-color drips",
-    taglineJa: "黒地に黄・白・青・赤の釉が垂れる碗。",
-    taglineEn: "Black body with yellow, white, blue, and red glaze drips.",
-    ...wanCommon,
+    nameJa: "野点・黒地五彩垂れ",
+    nameEn: "Nodate — black with five-color drips",
+    taglineJa: "野点向き。黒地に黄・白・青・赤の釉が垂れる碗。",
+    taglineEn: "Nodate form — black body with yellow, white, blue, and red glaze drips.",
+    ...nodateCommon,
     images: bowlAngles(14, 9),
   },
   {
@@ -216,13 +236,13 @@ export const chawanStyles: ChawanStyle[] = [
   },
   {
     id: "bowl-19",
-    kind: "wan",
+    kind: "nodate",
     color: "kohiki",
     nameJa: "野点・赤なまこ",
     nameEn: "Nodate — red namako",
     taglineJa: "野点向きの赤なまこ釉の碗。",
     taglineEn: "Red namako glaze in a nodate form.",
-    ...wanCommon,
+    ...nodateCommon,
     images: bowlAngles(19, 9),
   },
   {
@@ -249,13 +269,13 @@ export const chawanStyles: ChawanStyle[] = [
   },
   {
     id: "bowl-22",
-    kind: "wan",
+    kind: "nodate",
     color: "kohiki",
     nameJa: "野点・クリーム掛分",
     nameEn: "Nodate — cream over brown",
-    taglineJa: "茶褐地にクリーム釉の掛分。（仮名・要確認）",
-    taglineEn: "Cream glaze over brown clay. (draft name)",
-    ...wanCommon,
+    taglineJa: "野点向き。茶褐地にクリーム釉の掛分。（仮名・要確認）",
+    taglineEn: "Nodate form — cream glaze over brown clay. (draft name)",
+    ...nodateCommon,
     images: bowlAngles(22, 9),
   },
 
