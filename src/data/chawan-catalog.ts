@@ -276,7 +276,17 @@ export const chawanStyles: ChawanStyle[] = [
     taglineJa: "野点向き。茶褐地にクリーム釉の掛分。（仮名・要確認）",
     taglineEn: "Nodate form — cream glaze over brown clay. (draft name)",
     ...nodateCommon,
-    images: bowlAngles(22, 9),
+    // -4 omitted
+    images: [
+      chawanImg("bowl-22-1.jpg"),
+      chawanImg("bowl-22-2.jpg"),
+      chawanImg("bowl-22-3.jpg"),
+      chawanImg("bowl-22-5.jpg"),
+      chawanImg("bowl-22-6.jpg"),
+      chawanImg("bowl-22-7.jpg"),
+      chawanImg("bowl-22-8.jpg"),
+      chawanImg("bowl-22-9.jpg"),
+    ],
   },
 
   // ── 片口（Desktop「抹茶椀片口」１〜６ — 各4アングル） ──
