@@ -187,7 +187,7 @@ export type Messages = {
       "hakuji" | "sometsuke" | "seiji" | "ruri" | "kuro" | "kohiki",
       { label: string; blurb: string }
     >
-    kinds: Record<"katakuchi" | "kibako", string>
+    kinds: Record<"wan" | "katakuchi" | "chasen" | "kibako", string>
     zoomIn: string
     zoomOut: string
     zoomHint: string
@@ -425,7 +425,7 @@ const ja: Messages = {
       {
         step: "01",
         title: "作風・種類を選ぶ",
-        body: "色・釉調・形の「作風」と、片口・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
+        body: "色・釉調・形の「作風」と、碗・片口・茶筅立て・木箱などの種類から、店舗やブランドに合う雰囲気をお選びください。方向性でのご指定で構いません。",
       },
       {
         step: "02",
@@ -498,7 +498,9 @@ const ja: Messages = {
       kohiki: { label: "粉引", blurb: "白化粧のやわらかな白。経年の景色も。" },
     },
     kinds: {
+      wan: "碗",
       katakuchi: "片口",
+      chasen: "茶筅立て",
       kibako: "木箱",
     },
     zoomIn: "拡大",
@@ -762,7 +764,7 @@ const en: Messages = {
       {
         step: "01",
         title: "Choose style & kind",
-        body: "Pick the mood by color, glaze, and form — and the kind of ware (katakuchi, wooden box). A direction is enough.",
+        body: "Pick the mood by color, glaze, and form — and the kind of ware (bowl, katakuchi, chasen stand, wooden box). A direction is enough.",
       },
       {
         step: "02",
@@ -835,7 +837,9 @@ const en: Messages = {
       kohiki: { label: "Kohiki", blurb: "Soft white slip that ages beautifully." },
     },
     kinds: {
+      wan: "Bowl",
       katakuchi: "Katakuchi",
+      chasen: "Chasen stand",
       kibako: "Wooden box",
     },
     zoomIn: "Zoom in",
@@ -1071,7 +1075,7 @@ const zh: Messages = {
       {
         step: "01",
         title: "挑選作風・種類",
-        body: "從色・釉調・造型的「作風」，以及片口、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
+        body: "從色・釉調・造型的「作風」，以及碗、片口、茶筅架、木箱等種類中，挑選契合店鋪或品牌的氛圍。指定方向即可。",
       },
       {
         step: "02",
@@ -1144,7 +1148,9 @@ const zh: Messages = {
       kohiki: { label: "粉引", blurb: "白化妝土的柔白，亦可欣賞歲月痕跡。" },
     },
     kinds: {
+      wan: "碗",
       katakuchi: "片口",
+      chasen: "茶筅架",
       kibako: "木箱",
     },
     zoomIn: "放大",
