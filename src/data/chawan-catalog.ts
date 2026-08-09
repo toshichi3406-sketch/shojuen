@@ -1,8 +1,10 @@
 /**
  * 抹茶椀カタログ（有田焼・陶器／土もの）
  *
- * ※ 「抹茶椀片口」フォルダ内の抹茶椀１〜６はすべて片口。各フォルダ＝1品目・アングル別写真。
- * ※ 「抹茶椀v2」フォルダ：抹茶椀7〜22（碗／片口）＋茶筅立て。名称はドラフト（仮）。
+ * ※ 「抹茶椀片口」フォルダ内の片口１〜６は既存カットのまま（v3に未収録）。
+ * ※ 「抹茶椀v3」フォルダ：碗／野点／片口（暗色・紫）／茶筅立て3種／木箱／セット。
+ *    フォルダ名＝商品名。ヒーロー（images[0]）は横からのサイドアングル。
+ * ※ v3フォルダ → id 対応は scripts/process-bowl-v3.mjs / scripts/chawan-v3-mapping.txt を参照。
  */
 const chawanImg = (name: string) => `/images/chawan/${name}` as const
 
@@ -75,6 +77,19 @@ const nodateCommon = {
   careEn: "Dishwasher ✓ · Microwave ✓ · Stackable ✓ · Open flame ✕",
 } as const
 
+const chasenCommon = {
+  shapeJa: "茶筅立て",
+  shapeEn: "Chasen stand",
+  useJa: "茶筅の保管・立て",
+  useEn: "Whisk rest / storage",
+  sizeJa: "寸法はお問い合わせください",
+  sizeEn: "Size on request",
+  materialJa: "陶器",
+  materialEn: "Pottery (earthenware)",
+  careJa: "食洗機〇 / 電子レンジ〇 / 直火×",
+  careEn: "Dishwasher ✓ · Microwave ✓ · Open flame ✕",
+} as const
+
 export type ChawanStyle = {
   id: string
   kind: ChawanKind
@@ -95,7 +110,7 @@ export type ChawanStyle = {
   careEn?: string
   /** 代表画像（カード用）。未設定なら images[0] または釉スウォッチ。 */
   image?: string
-  /** アングル別写真（同一品目）。フォルダ内の複数カット。 */
+  /** アングル別写真（同一品目）。フォルダ内の複数カット。index 0 = 横から。 */
   images?: string[]
 }
 
@@ -109,21 +124,23 @@ const bowlAngles = (n: number, count = 4) =>
     chawanImg(`bowl-${String(n).padStart(2, "0")}-${i + 1}.jpg`)
   )
 
-const chasenAngles = (count: number) =>
-  Array.from({ length: count }, (_, i) => chawanImg(`chasen-01-${i + 1}.jpg`))
+const chasenAngles = (n: number, count: number) =>
+  Array.from({ length: count }, (_, i) =>
+    chawanImg(`chasen-${String(n).padStart(2, "0")}-${i + 1}.jpg`)
+  )
 
 export const chawanStyles: ChawanStyle[] = [
-  // ── 抹茶椀（Desktop「抹茶椀v2」７〜１４・１７〜２２） ──
+  // ── 抹茶椀（Desktop「抹茶椀v3」01〜07・09・10・12・13） ──
   {
     id: "bowl-07",
     kind: "wan",
     color: "seiji",
     nameJa: "水色しのぎ",
     nameEn: "Pale blue shinogi",
-    taglineJa: "水色のしのぎ目がやわらかい景色を作る碗。（仮名）",
-    taglineEn: "Pale blue with soft shinogi ridges. (draft name)",
+    taglineJa: "水色のしのぎ目がやわらかい景色を作る碗。",
+    taglineEn: "Pale blue with soft shinogi ridges.",
     ...wanCommon,
-    images: bowlAngles(7, 9),
+    images: bowlAngles(7, 7),
   },
   {
     id: "bowl-08",
@@ -131,10 +148,10 @@ export const chawanStyles: ChawanStyle[] = [
     color: "kohiki",
     nameJa: "桃紫かいらぎ",
     nameEn: "Peach-purple kairagi",
-    taglineJa: "桃紫の梅花皮（かいらぎ）。（仮名）",
-    taglineEn: "Peach-purple kairagi texture. (draft name)",
+    taglineJa: "桃紫の梅花皮（かいらぎ）が縮れて生まれる景色。",
+    taglineEn: "Peach-purple kairagi texture.",
     ...wanCommon,
-    images: bowlAngles(8, 8),
+    images: bowlAngles(8, 7),
   },
   {
     id: "bowl-09",
@@ -142,10 +159,10 @@ export const chawanStyles: ChawanStyle[] = [
     color: "kuro",
     nameJa: "白黒かいらぎ",
     nameEn: "Black-and-white kairagi",
-    taglineJa: "白と黒が縮れて生まれる梅花皮の碗。（仮名）",
-    taglineEn: "Black-and-white kairagi landscape. (draft name)",
+    taglineJa: "白と黒が縮れて生まれる梅花皮の碗。",
+    taglineEn: "Black-and-white kairagi landscape.",
     ...wanCommon,
-    images: bowlAngles(9, 9),
+    images: bowlAngles(9, 7),
   },
   {
     id: "bowl-10",
@@ -156,7 +173,7 @@ export const chawanStyles: ChawanStyle[] = [
     taglineJa: "赤なまこ釉の景色が広がる碗。",
     taglineEn: "Red namako glaze with a mottled landscape.",
     ...wanCommon,
-    images: bowlAngles(10, 9),
+    images: bowlAngles(10, 7),
   },
   {
     id: "bowl-11",
@@ -164,31 +181,21 @@ export const chawanStyles: ChawanStyle[] = [
     color: "kuro",
     nameJa: "黒横帯天目",
     nameEn: "Black banded tenmoku",
-    taglineJa: "黒地に横帯の入る天目風の碗。（仮名）",
-    taglineEn: "Tenmoku-style bowl with a horizontal band. (draft name)",
+    taglineJa: "黒地に横帯の入る天目風の碗。",
+    taglineEn: "Tenmoku-style bowl with a horizontal band.",
     ...wanCommon,
-    images: bowlAngles(11, 9),
+    images: bowlAngles(11, 7),
   },
   {
     id: "bowl-12",
     kind: "wan",
     color: "hakuji",
-    nameJa: "白灰シンプル",
-    nameEn: "Simple ash white",
-    taglineJa: "白灰釉のシンプルな碗。（仮名）",
-    taglineEn: "Quiet ash-white glaze. (draft name)",
+    nameJa: "白灰",
+    nameEn: "Ash white",
+    taglineJa: "白灰釉の静かな碗。",
+    taglineEn: "Quiet ash-white glaze.",
     ...wanCommon,
-    // -4 omitted: different tea bowl
-    images: [
-      chawanImg("bowl-12-1.jpg"),
-      chawanImg("bowl-12-2.jpg"),
-      chawanImg("bowl-12-3.jpg"),
-      chawanImg("bowl-12-5.jpg"),
-      chawanImg("bowl-12-6.jpg"),
-      chawanImg("bowl-12-7.jpg"),
-      chawanImg("bowl-12-8.jpg"),
-      chawanImg("bowl-12-9.jpg"),
-    ],
+    images: bowlAngles(12, 7),
   },
   {
     id: "bowl-13",
@@ -196,8 +203,8 @@ export const chawanStyles: ChawanStyle[] = [
     color: "kohiki",
     nameJa: "茶褐ドリップ",
     nameEn: "Brown drip",
-    taglineJa: "茶褐色の釉が垂れる碗。（仮名）",
-    taglineEn: "Warm brown glaze with drips. (draft name)",
+    taglineJa: "茶褐色の釉が垂れる碗。",
+    taglineEn: "Warm brown glaze with drips.",
     ...wanCommon,
     images: bowlAngles(13, 7),
   },
@@ -210,7 +217,7 @@ export const chawanStyles: ChawanStyle[] = [
     taglineJa: "野点向き。黒地に黄・白・青・赤の釉が垂れる碗。",
     taglineEn: "Nodate form — black body with yellow, white, blue, and red glaze drips.",
     ...nodateCommon,
-    images: bowlAngles(14, 9),
+    images: bowlAngles(14, 6),
   },
   {
     id: "bowl-17",
@@ -221,18 +228,18 @@ export const chawanStyles: ChawanStyle[] = [
     taglineJa: "金彩が映える、深みのある碗。",
     taglineEn: "A deep bowl lifted by gold accent.",
     ...wanCommon,
-    images: bowlAngles(17, 9),
+    images: bowlAngles(17, 7),
   },
   {
     id: "bowl-18",
     kind: "wan",
-    color: "seiji",
-    nameJa: "青緑ツートン",
-    nameEn: "Blue-green two-tone",
-    taglineJa: "青緑のツートン釉。（仮名）",
-    taglineEn: "Blue-green two-tone glaze. (draft name)",
+    color: "ruri",
+    nameJa: "青銀",
+    nameEn: "Blue-silver",
+    taglineJa: "青と銀のような釉調が重なる碗。",
+    taglineEn: "Blue over a silvery, sandy glaze.",
     ...wanCommon,
-    images: bowlAngles(18, 8),
+    images: bowlAngles(18, 7),
   },
   {
     id: "bowl-19",
@@ -243,18 +250,18 @@ export const chawanStyles: ChawanStyle[] = [
     taglineJa: "野点向きの赤なまこ釉の碗。",
     taglineEn: "Red namako glaze in a nodate form.",
     ...nodateCommon,
-    images: bowlAngles(19, 9),
+    images: bowlAngles(19, 6),
   },
   {
     id: "bowl-20",
     kind: "wan",
     color: "kuro",
-    nameJa: "黒地彩釉垂れ",
-    nameEn: "Black with colored glaze drips",
+    nameJa: "黒地五彩垂れ",
+    nameEn: "Black with five-color drips",
     taglineJa: "黒地に黄・白・赤などの彩釉が垂れる碗。",
     taglineEn: "Black body with yellow, white, and red glaze drips.",
     ...wanCommon,
-    images: bowlAngles(20, 9),
+    images: bowlAngles(20, 7),
   },
   {
     id: "bowl-21",
@@ -262,34 +269,24 @@ export const chawanStyles: ChawanStyle[] = [
     color: "kuro",
     nameJa: "黒釉胴締",
     nameEn: "Black waisted bowl",
-    taglineJa: "胴を締めた黒釉の碗。（仮名・要確認）",
-    taglineEn: "Waisted black-glazed bowl. (draft name)",
+    taglineJa: "胴を締めた黒釉の碗。",
+    taglineEn: "Waisted black-glazed bowl.",
     ...wanCommon,
-    images: bowlAngles(21, 8),
+    images: bowlAngles(21, 6),
   },
   {
     id: "bowl-22",
     kind: "nodate",
     color: "kohiki",
-    nameJa: "野点・クリーム掛分",
-    nameEn: "Nodate — cream over brown",
-    taglineJa: "野点向き。茶褐地にクリーム釉の掛分。（仮名・要確認）",
-    taglineEn: "Nodate form — cream glaze over brown clay. (draft name)",
+    nameJa: "野点抹茶椀・黄土色",
+    nameEn: "Nodate matcha bowl — ochre",
+    taglineJa: "野点向き。黄土色の景色が広がる碗。",
+    taglineEn: "Nodate form — ochre landscape on the clay.",
     ...nodateCommon,
-    // -4 omitted
-    images: [
-      chawanImg("bowl-22-1.jpg"),
-      chawanImg("bowl-22-2.jpg"),
-      chawanImg("bowl-22-3.jpg"),
-      chawanImg("bowl-22-5.jpg"),
-      chawanImg("bowl-22-6.jpg"),
-      chawanImg("bowl-22-7.jpg"),
-      chawanImg("bowl-22-8.jpg"),
-      chawanImg("bowl-22-9.jpg"),
-    ],
+    images: bowlAngles(22, 6),
   },
 
-  // ── 片口（Desktop「抹茶椀片口」１〜６ — 各4アングル） ──
+  // ── 片口（Desktop「抹茶椀片口」１〜６ — 各4アングル・v3未収録） ──
   {
     id: "katakuchi-01",
     kind: "katakuchi",
@@ -356,17 +353,17 @@ export const chawanStyles: ChawanStyle[] = [
     ...katakuchiCommon,
     images: katakuchiAngles(6),
   },
-  // ── 片口（抹茶椀v2：１５・１６） ──
+  // ── 片口（抹茶椀v3：21・22） ──
   {
     id: "katakuchi-07",
     kind: "katakuchi",
     color: "kuro",
-    nameJa: "暗色 片口",
+    nameJa: "片口暗色",
     nameEn: "Dark katakuchi",
-    taglineJa: "落ち着いた暗色の片口。（仮名）",
-    taglineEn: "A calm dark katakuchi. (draft name)",
+    taglineJa: "落ち着いた暗色に淡い垂れの片口。",
+    taglineEn: "A calm dark katakuchi with pale drips.",
     ...katakuchiCommon,
-    images: katakuchiAngles(7, 8),
+    images: katakuchiAngles(7, 7),
   },
   {
     id: "katakuchi-08",
@@ -374,35 +371,48 @@ export const chawanStyles: ChawanStyle[] = [
     color: "ruri",
     nameJa: "紫 片口",
     nameEn: "Purple katakuchi",
-    taglineJa: "紫みがかった釉の片口。（仮名）",
-    taglineEn: "Purple-toned katakuchi. (draft name)",
+    taglineJa: "紫みがかった釉の片口。",
+    taglineEn: "Purple-toned katakuchi.",
     ...katakuchiCommon,
-    images: katakuchiAngles(8, 8),
+    images: katakuchiAngles(8, 6),
   },
 
-  // ── 茶筅立て ────────────────────────────
+  // ── 茶筅立て（v3：3種） ────────────────
   {
     id: "chasen-01",
     kind: "chasen",
     color: "kuro",
-    nameJa: "茶筅立て 黒",
-    nameEn: "Black chasen stand",
-    taglineJa: "黒釉の茶筅立て。（仮名）",
-    taglineEn: "Black-glazed whisk stand. (draft name)",
-    shapeJa: "茶筅立て",
-    shapeEn: "Chasen stand",
-    useJa: "茶筅の保管・立て",
-    useEn: "Whisk rest / storage",
-    sizeJa: "寸法はお問い合わせください",
-    sizeEn: "Size on request",
-    materialJa: "陶器",
-    materialEn: "Pottery (earthenware)",
-    careJa: "食洗機〇 / 電子レンジ〇 / 直火×",
-    careEn: "Dishwasher ✓ · Microwave ✓ · Open flame ✕",
-    images: chasenAngles(6),
+    nameJa: "茶筅立て・黒マット",
+    nameEn: "Black matte chasen stand",
+    taglineJa: "黒マット釉の茶筅立て。",
+    taglineEn: "Black matte-glazed whisk stand.",
+    ...chasenCommon,
+    images: chasenAngles(1, 2),
+  },
+  {
+    id: "chasen-02",
+    kind: "chasen",
+    color: "kuro",
+    nameJa: "茶筅立て・黒アメ釉",
+    nameEn: "Black ame-yu chasen stand",
+    taglineJa: "黒アメ釉の茶筅立て。",
+    taglineEn: "Black ame-yu glazed whisk stand.",
+    ...chasenCommon,
+    images: chasenAngles(2, 2),
+  },
+  {
+    id: "chasen-03",
+    kind: "chasen",
+    color: "kuro",
+    nameJa: "茶筅立て・黒斑点",
+    nameEn: "Black speckled chasen stand",
+    taglineJa: "黒地に斑点のある茶筅立て。",
+    taglineEn: "Black speckled whisk stand.",
+    ...chasenCommon,
+    images: chasenAngles(3, 2),
   },
 
-  // ── 木箱 ────────────────────────────────
+  // ── 木箱・セット ────────────────────────
   {
     id: "kibako-a",
     kind: "kibako",
@@ -424,7 +434,26 @@ export const chawanStyles: ChawanStyle[] = [
       chawanImg("box-02.jpg"),
       chawanImg("box-03.jpg"),
       chawanImg("box-04.jpg"),
+      chawanImg("box-05.jpg"),
     ],
+  },
+  {
+    id: "set-01",
+    kind: "kibako",
+    color: "hakuji",
+    nameJa: "木箱・茶筅・茶筅たてセット",
+    nameEn: "Box, chasen & stand set",
+    taglineJa: "木箱に茶筅と茶筅立てを添えたセット。",
+    taglineEn: "Wooden box with chasen and chasen stand.",
+    shapeJa: "セット",
+    shapeEn: "Set",
+    useJa: "進物・一式",
+    useEn: "Gifting, complete set",
+    sizeJa: "寸法はお問い合わせください",
+    sizeEn: "Size on request",
+    materialJa: "木・竹・陶器",
+    materialEn: "Wood, bamboo, pottery",
+    images: [chawanImg("set-01-1.jpg")],
   },
 ]
 
