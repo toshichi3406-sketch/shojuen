@@ -40,6 +40,11 @@ export type Messages = {
     ctaJournal: string
     scroll: string
   }
+  /** Mid-page brand story. Empty title → section hidden (JA-only content). */
+  homeStory: {
+    title: string
+    paragraphs: readonly string[]
+  }
   wholesaleBanner: {
     kicker: string
     body: string
@@ -226,13 +231,26 @@ const ja: Messages = {
   hero: {
     imageAlt:
       "暗い石目の背景に茶筅と抹茶粉・点てた抹茶の泡が写ったビジュアル",
-    title: "職人のこだわりを味わえる一杯へ。お手伝いします。",
+    title: "五十年先も続く値段で。",
     lead:
-      "松壽園は、茶を並べて流すだけの商社ではありません。こだわった農家と製茶所の仕事に向き合い、Journal で記録しながら、商品開発や輸出など業者様ごとのニーズに応じた最適な一杯をご提案し、抹茶・碾茶・ほうじ茶を国内外へ届けます。",
-    subtagline: "こだわりの農家から · 卸 · 輸出",
+      "産地が続き、お店が続き、私どもも続く。大口と同じ条件で買い付けた茶を小分けし、小ロットのお店へお届けしています。",
+    subtagline: "抹茶・ほうじ茶の卸",
     ctaWholesale: "卸売・輸出のご相談",
     ctaJournal: "Journal を読む",
     scroll: "Scroll",
+  },
+  homeStory: {
+    title: "割を食っているのは、街のお店です。",
+    paragraphs: [
+      "抹茶はいま世界的に品薄で、価格が上がり続けています。",
+      "そのしわ寄せがいちばん大きく出るのが、街のカフェや小さなお店だと感じています。お使いになる量が月に数十グラムから数キロですと、どうしても小ロットの価格になり、割高になってしまう。良いものを使いたいのに手が届かない、というお話をよく伺います。",
+      "仕入れの値段は、量で決まります。",
+      "松壽園は、抹茶とほうじ茶を扱う小さな卸です。宇治・八女・嬉野・鹿児島・宮崎の茶園や茶問屋を自分の足で回り、納得したものだけを取り扱っています。",
+      "そのうち何点かは、海外向けの大口取引と同じ条件でまとめて買い付け、小分けにしてお届けするという形をとっています。仕入れの段階から価格を抑えられますので、小ロットのままでも、大口に近い価格でお使いいただけます。",
+      "この形でご案内している銘柄は、数十グラムからお分けできます。まずは少しだけ試していただく、という形でも構いません。",
+      "ただ、私どもが目指しているのは、安く売ることそのものではありません。",
+      "良いお茶が、作る人にも使う人にも無理のない値段で回り続けること。産地が続き、お店が続き、私どもも続く。そういう関係を五十年先まで作りたいと思って、この仕事をしております。",
+    ],
   },
   wholesaleBanner: {
     kicker: "【業務用・輸出向け】",
@@ -566,6 +584,10 @@ const en: Messages = {
     ctaJournal: "Read the Journal",
     scroll: "Scroll",
   },
+  homeStory: {
+    title: "",
+    paragraphs: [],
+  },
   wholesaleBanner: {
     kicker: "For business & export",
     body:
@@ -888,6 +910,10 @@ const zh: Messages = {
     ctaWholesale: "批發・出口諮詢",
     ctaJournal: "閱讀 Journal",
     scroll: "Scroll",
+  },
+  homeStory: {
+    title: "",
+    paragraphs: [],
   },
   wholesaleBanner: {
     kicker: "【業務用・出口向】",
