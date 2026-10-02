@@ -56,6 +56,9 @@ type WholesaleCopy = {
   flowKicker: string
   flowTitle: string
   steps: readonly { no: string; title: string; body: string }[]
+  faqKicker: string
+  faqTitle: string
+  faqs: readonly { question: string; answer: string }[]
   inquiryKicker: string
   inquiryTitle: string
   inquiryBody: string
@@ -148,6 +151,35 @@ const copy: Record<Locale, WholesaleCopy> = {
         body: "梱包、数量、納期、輸入時の必要事項を確認し、継続取引へつなげます。",
       },
     ],
+    faqKicker: "FAQ",
+    faqTitle: "卸売・輸出について、よくあるご質問",
+    faqs: [
+      {
+        question: "小ロットからでも相談できますか？",
+        answer:
+          "はい。商品によって条件は異なりますが、小ロットやサンプルから試せるものもあります。まずは希望数量をお知らせください。",
+      },
+      {
+        question: "抹茶のグレードや品種が分からなくても大丈夫ですか？",
+        answer:
+          "問題ありません。ラテ、薄茶、菓子、物販などの用途と、味・色・ご予算を伺いながら候補を絞ります。",
+      },
+      {
+        question: "海外への発送・輸出も相談できますか？",
+        answer:
+          "はい。納品国、商品、数量を確認したうえで、梱包や輸送方法、輸入側で必要になる事項を確認しながら進めます。",
+      },
+      {
+        question: "サンプルはありますか？",
+        answer:
+          "対応可能な商品は、サンプルまたは小ロットでの確認をご案内します。商品や時期によって対応内容は異なります。",
+      },
+      {
+        question: "最初の問い合わせでは何を伝えればいいですか？",
+        answer:
+          "会社・ブランド名、納品国、用途、月間のおおよその使用量、ご希望の価格帯が分かるとスムーズです。未定の項目があっても構いません。",
+      },
+    ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "お探しの用途を、まずはお聞かせください。",
     inquiryBody:
@@ -228,6 +260,35 @@ const copy: Record<Locale, WholesaleCopy> = {
       { no: "02", title: "We shortlist", body: "We compare origins and options against the job." },
       { no: "03", title: "Test", body: "Where available, begin with samples or a small lot." },
       { no: "04", title: "Export & supply", body: "We align packing, quantity, timing and importer requirements." },
+    ],
+    faqKicker: "FAQ",
+    faqTitle: "Common wholesale & export questions",
+    faqs: [
+      {
+        question: "Can I start with a small order?",
+        answer:
+          "Yes, depending on the product. Some teas can be tested with samples or a small lot first. Tell us the volume you have in mind and we can suggest practical options.",
+      },
+      {
+        question: "Do I need to know the matcha grade or cultivar?",
+        answer:
+          "No. Tell us how you plan to use the tea, along with your flavor, color and budget preferences. We can narrow the options from there.",
+      },
+      {
+        question: "Can you discuss international shipping and export?",
+        answer:
+          "Yes. We confirm the destination, product and volume first, then work through packing, shipping and importer-side requirements for that market.",
+      },
+      {
+        question: "Are samples available?",
+        answer:
+          "Where available, we can discuss samples or a small test lot. Availability depends on the product and timing.",
+      },
+      {
+        question: "What should I include in my first inquiry?",
+        answer:
+          "Company or brand name, destination country, intended use, approximate monthly volume and target price are helpful. It is fine if some details are still undecided.",
+      },
     ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "Tell us the cup you want to make.",
@@ -318,6 +379,35 @@ const copy: Record<Locale, WholesaleCopy> = {
         no: "04",
         title: "出口與持續供貨",
         body: "確認包裝、數量、交期與進口端所需資訊後，銜接後續供貨。",
+      },
+    ],
+    faqKicker: "FAQ",
+    faqTitle: "批發與出口常見問題",
+    faqs: [
+      {
+        question: "可以從小量開始洽談嗎？",
+        answer:
+          "可以，實際條件依商品而定。部分商品可先從樣品或小量測試開始，請先告訴我們您預計的採購量。",
+      },
+      {
+        question: "不清楚抹茶等級或品種，也可以詢問嗎？",
+        answer:
+          "可以。只要告訴我們用途，例如拿鐵、薄茶、烘焙或零售，以及對風味、色澤與預算的需求，我們會協助縮小選擇範圍。",
+      },
+      {
+        question: "可以洽談海外出貨與出口嗎？",
+        answer:
+          "可以。我們會先確認出貨目的地、商品與數量，再依實際需求確認包裝、運送方式，以及進口端需要準備的事項。",
+      },
+      {
+        question: "可以提供樣品嗎？",
+        answer:
+          "可提供的商品，可洽詢樣品或小量測試。實際方式會依商品與時期而有所不同。",
+      },
+      {
+        question: "第一次詢問需要提供哪些資訊？",
+        answer:
+          "公司或品牌名稱、出貨目的地、用途、預估每月用量與預算會很有幫助。若有尚未決定的項目，也可以先洽詢。",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
@@ -709,6 +799,42 @@ export function WholesalePageClient() {
                     {step.body}
                   </p>
                 </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-border/70 bg-muted/25">
+        <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:py-28">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
+              {t.faqKicker}
+            </p>
+            <h2 className="mt-5 font-heading text-3xl font-medium leading-tight tracking-wide text-foreground sm:text-5xl">
+              {t.faqTitle}
+            </h2>
+          </FadeIn>
+
+          <div className="mt-10 divide-y divide-border border-y border-border">
+            {t.faqs.map((item, i) => (
+              <FadeIn key={item.question} delay={i * 0.03}>
+                <details className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+                    <span className="font-heading text-lg font-medium text-foreground sm:text-xl">
+                      {item.question}
+                    </span>
+                    <span
+                      className="mt-1 text-xl leading-none text-primary transition-transform group-open:rotate-45"
+                      aria-hidden
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-4 max-w-3xl pr-10 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                    {item.answer}
+                  </p>
+                </details>
               </FadeIn>
             ))}
           </div>
