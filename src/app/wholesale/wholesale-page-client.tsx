@@ -543,14 +543,7 @@ export function WholesalePageClient() {
   const { locale } = useLanguage()
   const t = copy[locale]
   const email = getContactEmail()
-  const subject = encodeURIComponent(
-    locale === "ja"
-      ? "【松壽園SHOJUEN】卸売・輸出のお問い合わせ"
-      : locale === "zh"
-        ? "【松壽園SHOJUEN】批發・出口諮詢"
-        : "[SHOJUEN] Wholesale & export inquiry"
-  )
-  const mailto = `mailto:${email}?subject=${subject}`
+  const contactHref = "/contact?from=wholesale"
 
   return (
     <div className="bg-background">
@@ -584,15 +577,15 @@ export function WholesalePageClient() {
               {t.heroLead}
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <a
-                href={mailto}
+              <Link
+                href={contactHref}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "rounded-full px-7 no-underline"
                 )}
               >
                 {t.heroCta}
-              </a>
+              </Link>
               <Link
                 href="/journal"
                 className={cn(
@@ -830,6 +823,12 @@ export function WholesalePageClient() {
                   <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
                     {item.body}
                   </p>
+                  <Link
+                    href={`/contact?from=wholesale&interest=${encodeURIComponent(item.title)}`}
+                    className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {t.inquiryCta}
+                  </Link>
                 </div>
               </FadeIn>
             ))}
@@ -997,15 +996,15 @@ export function WholesalePageClient() {
                   {t.inquiryBody}
                 </p>
                 <div className="mt-9">
-                  <a
-                    href={mailto}
+                  <Link
+                    href={contactHref}
                     className={cn(
                       buttonVariants({ size: "lg" }),
                       "rounded-full px-8 no-underline"
                     )}
                   >
                     {t.inquiryCta}
-                  </a>
+                  </Link>
                 </div>
                 <p className="mt-4 font-mono text-xs text-muted-foreground">
                   {email}
