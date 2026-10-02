@@ -40,13 +40,28 @@ export function ContactPageClient() {
   const chawanName = searchParams.get("name")?.trim() || ""
   const chawanId = searchParams.get("id")?.trim() || ""
   const fromChawan = searchParams.get("from") === "chawan"
+  const fromWholesale = searchParams.get("from") === "wholesale"
+  const wholesaleInterest = searchParams.get("interest")?.trim() || ""
 
   const mailSubject = useMemo(() => {
     if (fromChawan && chawanName) {
       return `${m.chawanPage.mailSubject}「${chawanName}」${chawanId ? `[${chawanId}]` : ""}`
     }
+
+    if (fromWholesale) {
+      return m.contactPage.wholesaleTitle.replace(/^■\s*/, "")
+    }
+
     return m.contactPage.mailSubject
-  }, [fromChawan, chawanName, chawanId, m.chawanPage.mailSubject, m.contactPage.mailSubject])
+  }, [
+    fromChawan,
+    fromWholesale,
+    chawanName,
+    chawanId,
+    m.chawanPage.mailSubject,
+    m.contactPage.mailSubject,
+    m.contactPage.wholesaleTitle,
+  ])
 
   const basicMailto = `mailto:${email}?subject=${encodeURIComponent(mailSubject)}`
 
@@ -70,11 +85,20 @@ export function ContactPageClient() {
       )
     }
 
+    if (fromWholesale && wholesaleInterest) {
+      lines.unshift(
+        `${m.contactPage.form.product}: ${wholesaleInterest}`,
+        ""
+      )
+    }
+
     return `mailto:${email}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(lines.join("\n"))}`
   }, [
     email,
     form,
     fromChawan,
+    fromWholesale,
+    wholesaleInterest,
     chawanId,
     chawanName,
     m.chawanPage.inquireItem,
@@ -112,6 +136,16 @@ export function ContactPageClient() {
             </span>
           </p>
         ) : null}
+
+        {fromWholesale && wholesaleInterest ? (
+          <p className="mt-6 rounded-2xl border border-border bg-primary/[0.04] px-4 py-3 text-sm leading-relaxed text-foreground">
+            {m.contactPage.form.product}
+            <span className="mt-1 block font-heading text-base font-medium">
+              {wholesaleInterest}
+            </span>
+          </p>
+        ) : null}
+
         <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
           {m.contactPage.wholesaleIntro}
         </p>
@@ -246,10 +280,14 @@ export function ContactPageClient() {
 
       <FadeIn className="mt-12" delay={0.1}>
         <Link
-          href={fromChawan ? "/chawan" : "/"}
+          href={fromChawan ? "/chawan" : fromWholesale ? "/wholesale" : "/"}
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          {fromChawan ? m.chawanPage.title : m.contactPage.backHome}
+          {fromChawan
+            ? m.chawanPage.title
+            : fromWholesale
+              ? m.contactPage.wholesaleTitle.replace(/^■\s*/, "")
+              : m.contactPage.backHome}
         </Link>
       </FadeIn>
     </div>
