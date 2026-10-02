@@ -36,7 +36,7 @@ export function WholesaleBanner() {
           </p>
           <div className="mt-8">
             <Link
-              href="/contact"
+              href="/wholesale"
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "rounded-full no-underline"
