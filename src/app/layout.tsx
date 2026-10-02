@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
-import { cookies } from "next/headers"
 import { Geist_Mono, Noto_Sans_JP, Noto_Serif_JP } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { Providers } from "@/app/providers"
-import { LOCALE_COOKIE, htmlLang, parseLocale } from "@/i18n/types"
+import { htmlLang } from "@/i18n/types"
+import { getSeoRequestContext, getSiteMetadata } from "@/i18n/server"
 
 import "./globals.css"
 
@@ -30,33 +30,8 @@ const geistMono = Geist_Mono({
   display: "swap",
 })
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://ochanoshojuen.com"),
-  title: {
-    default:
-      "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
-    template: "%s | 松壽園",
-  },
-  description:
-    "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。職人のこだわりが伝わる一杯を、お手伝いします。info@ochanoshojuen.com",
-  openGraph: {
-    type: "website",
-    url: "https://ochanoshojuen.com",
-    siteName: "松壽園",
-    title: "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
-    description:
-      "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。職人のこだわりが伝わる一杯を、お手伝いします。",
-    locale: "ja_JP",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "松壽園｜茶農家のこだわりとともに。抹茶・碾茶 卸・輸出",
-    description:
-      "こだわった農家の抹茶・碾茶・ほうじ茶を、Journal を通じて国内外へ卸。",
-  },
-  alternates: {
-    canonical: "https://ochanoshojuen.com",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  return getSiteMetadata()
 }
 
 export default async function RootLayout({
@@ -64,17 +39,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const cookieStore = await cookies()
-  const initialLocale = parseLocale(cookieStore.get(LOCALE_COOKIE)?.value)
+  const { locale } = await getSeoRequestContext()
 
   return (
     <html
-      lang={htmlLang(initialLocale)}
+      lang={htmlLang(locale)}
       suppressHydrationWarning
       className={`${notoSans.variable} ${notoSerif.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
-        <Providers initialLocale={initialLocale}>
+        <Providers initialLocale={locale}>
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
