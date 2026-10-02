@@ -106,26 +106,34 @@ const copy: Record<Locale, WholesaleCopy> = {
       "カフェ用途では、ミルクやレシピとの相性もチェック",
       "商品化に必要な価格、数量、供給の安定性まで考慮",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "用途が違えば、選ぶ抹茶も変わります。",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "用途に合わせて、必要な茶を選ぶ。",
     useLead:
-      "ラテ、薄茶、菓子、物販では、求められる色、香り、味、価格のバランスが異なります。まず用途をお聞かせいただければ、条件に合う候補を絞り込みます。",
+      "ラテ、薄茶、菓子、原料、物販では、求められる茶が違います。用途と条件を伺いながら、商品を絞り込んでご提案します。",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "ミルクに合わせたときの香り・色・価格のバランスを重視して選びます。",
+        title: "MATCHA / LATTE",
+        body: "ミルクに合わせても色と香りが残りやすく、日々の運用で使いやすい価格とのバランスを重視します。",
       },
       {
-        title: "Straight tea",
-        body: "薄茶やストレートで楽しむ場合は、旨味、香り、余韻を重視します。",
+        title: "MATCHA / STRAIGHT",
+        body: "薄茶やストレート向け。旨味、香り、口当たり、余韻を重視して選びます。",
       },
       {
-        title: "Retail / Brand",
-        body: "小売・自社ブランド向け。価格帯やストーリー性、継続供給まで含めてご相談いただけます。",
+        title: "MATCHA / FOOD",
+        body: "菓子・製菓・料理向け。焼成後の色や香り、レシピ原価とのバランスを見ながら選定します。",
       },
       {
-        title: "Bakery / Food",
-        body: "焼成後の色残りや香り、原価とのバランスを見ながら選定します。",
+        title: "TENCHA",
+        body: "原料用途や商品開発向け。必要量や用途に合わせて、産地や特徴を比較しながらご提案します。",
+      },
+      {
+        title: "HOJICHA",
+        body: "ラテ、菓子、飲料などの業務用途向け。香ばしさ、色、価格、使いやすさのバランスで選びます。",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "小売・自社ブランド向け。中身、価格帯、商品設計、継続供給まで含めてご相談いただけます。",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
@@ -256,26 +264,34 @@ const copy: Record<Locale, WholesaleCopy> = {
       "For cafe use, check how the tea behaves with milk and recipes",
       "Consider price, volume and continuity before proposing an option",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "Not just “what grade?” — what are you making?",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "Tea selected around the product you are making.",
     useLead:
-      "A latte, usucha, pastry and retail tin need different tea. Tell us the job first and we can narrow the options faster.",
+      "Latte, straight tea, food production, ingredient use and retail each call for different qualities. We narrow the range around your application, volume and price target.",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "A practical balance of aroma, green color and cost that holds up in milk.",
+        title: "MATCHA / LATTE",
+        body: "Selected for color and aroma that still show through milk, with a practical balance of quality and cost for daily cafe use.",
       },
       {
-        title: "Straight tea",
-        body: "For usucha and straight serves where umami, aroma and finish matter.",
+        title: "MATCHA / STRAIGHT",
+        body: "For usucha and straight serves, with more emphasis on umami, aroma, texture and finish.",
       },
       {
-        title: "Retail / Brand",
-        body: "For resale and branded products, including price positioning, story and continuity.",
+        title: "MATCHA / FOOD",
+        body: "For bakery, confectionery and food production, considering color after processing, aroma retention and recipe cost.",
       },
       {
-        title: "Bakery / Food",
-        body: "Selected with baked color, aroma retention and recipe cost in mind.",
+        title: "TENCHA",
+        body: "For ingredient sourcing and product development. We compare origin and character against your intended use and required volume.",
+      },
+      {
+        title: "HOJICHA",
+        body: "For lattes, drinks, bakery and food applications, balancing roast aroma, color, price and ease of use.",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "For retail and own-brand products, including product positioning, contents, price range and continuity of supply.",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
@@ -384,26 +400,34 @@ const copy: Record<Locale, WholesaleCopy> = {
       "咖啡館用途會確認與牛奶、配方的搭配表現",
       "提案時同時考量價格、採購量與供貨穩定性",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "用途不同，適合的抹茶也不同。",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "依用途，選擇真正需要的茶。",
     useLead:
-      "拿鐵、薄茶、烘焙與零售商品，各自需要不同的色澤、香氣、風味與成本條件。先告訴我們用途，就能更快縮小適合的選擇。",
+      "拿鐵、薄茶、烘焙、原料與零售商品，各自需要不同的條件。我們會依實際用途、採購量與預算，協助縮小合適的商品範圍。",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "重視與牛奶搭配後仍能保有香氣、色澤，以及整體成本的平衡。",
+        title: "MATCHA / LATTE",
+        body: "重視加入牛奶後仍能呈現色澤與香氣，同時兼顧咖啡館日常使用所需的成本平衡。",
       },
       {
-        title: "Straight tea",
-        body: "適合薄茶或直接品飲，著重鮮味、香氣與尾韻。",
+        title: "MATCHA / STRAIGHT",
+        body: "適合薄茶或直接品飲，著重鮮味、香氣、口感與尾韻。",
       },
       {
-        title: "Retail / Brand",
-        body: "適合零售與自有品牌，也可一併討論價格帶、產品故事與穩定供貨。",
+        title: "MATCHA / FOOD",
+        body: "適合烘焙、甜點與食品加工，考量加熱後的色澤、香氣保留與配方成本。",
       },
       {
-        title: "Bakery / Food",
-        body: "考量烘焙後的色澤、香氣保留與配方成本。",
+        title: "TENCHA",
+        body: "適合原料採購與商品開發，可依用途與需求量，比較不同產地與風味特色。",
+      },
+      {
+        title: "HOJICHA",
+        body: "適合拿鐵、飲品、烘焙與食品用途，依焙香、色澤、價格與操作性進行選擇。",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "適合零售與自有品牌，可一併討論商品內容、價格帶、產品定位與穩定供貨。",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
@@ -796,7 +820,7 @@ export function WholesalePageClient() {
             </p>
           </FadeIn>
 
-          <div className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2">
+          <div className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
             {t.uses.map((item, i) => (
               <FadeIn key={item.title} delay={i * 0.04}>
                 <div className="border-t border-border pt-5">
