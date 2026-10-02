@@ -5,6 +5,7 @@ export type NavKey =
   | "producers"
   | "journal"
   | "howTo"
+  | "wholesale"
   | "contact"
 
 export type NavRoute = {
@@ -21,5 +22,6 @@ export const mainNav: NavRoute[] = [
   { href: "/producers", key: "producers" },
   { href: "/journal", key: "journal" },
   { href: "/how-to", key: "howTo" },
+  { href: "/wholesale", key: "wholesale" },
   { href: "/contact", key: "contact" },
 ]

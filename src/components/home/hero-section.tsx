@@ -80,7 +80,7 @@ export function HeroSection() {
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
-            href="/contact"
+            href="/wholesale"
             className={cn(
               buttonVariants({ size: "lg" }),
               "rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-emerald-950/50 no-underline"
