@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "CONTACT · お問い合わせ",
-  description: "松壽園SHOJUENへのお問い合わせ（info@ochanoshojuen.com）。",
+import { getRouteMetadata } from "@/i18n/server"
+
+export async function generateMetadata(): Promise<Metadata> {
+  return getRouteMetadata("contact")
 }
 
 export default function ContactLayout({
