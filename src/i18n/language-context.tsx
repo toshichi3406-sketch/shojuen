@@ -8,15 +8,17 @@ import {
   useMemo,
   useState,
 } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { getMessages, type Messages } from "@/i18n/messages"
+import { localizePath } from "@/i18n/routing"
 import { LOCALE_COOKIE, type Locale, htmlLang, parseLocale } from "@/i18n/types"
 
 type LanguageContextValue = {
   locale: Locale
   setLocale: (next: Locale) => void
   m: Messages
+  hrefForLocale: (pathname: string) => string
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -28,6 +30,7 @@ export function LanguageProvider({
   initialLocale: Locale
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
   const router = useRouter()
   const [locale, setLocaleState] = useState<Locale>(initialLocale)
 
@@ -39,6 +42,11 @@ export function LanguageProvider({
     document.documentElement.lang = htmlLang(locale)
   }, [locale])
 
+  const hrefForLocale = useCallback(
+    (targetPathname: string) => localizePath(targetPathname, locale),
+    [locale]
+  )
+
   const setLocale = useCallback(
     (next: Locale) => {
       setLocaleState(next)
@@ -49,16 +57,17 @@ export function LanguageProvider({
       } catch {
         /* ignore */
       }
-      router.refresh()
+
+      router.push(localizePath(pathname, next))
     },
-    [router]
+    [pathname, router]
   )
 
   const m = useMemo(() => getMessages(locale), [locale])
 
   const value = useMemo(
-    () => ({ locale, setLocale, m }),
-    [locale, setLocale, m]
+    () => ({ locale, setLocale, m, hrefForLocale }),
+    [locale, setLocale, m, hrefForLocale]
   )
 
   return (
