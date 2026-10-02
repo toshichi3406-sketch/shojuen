@@ -1,21 +1,10 @@
 import type { Metadata } from "next"
 
+import { getRouteMetadata } from "@/i18n/server"
 import { WholesalePageClient } from "./wholesale-page-client"
 
-export const metadata: Metadata = {
-  title: "Wholesale & Export · Japanese Matcha, Tencha & Hojicha",
-  description:
-    "SHOJUEN wholesale and export consultation for Japanese matcha, tencha and hojicha. For cafes, brands, importers, distributors and retailers.",
-  alternates: {
-    canonical: "https://ochanoshojuen.com/wholesale",
-  },
-  openGraph: {
-    title: "Wholesale & Export | SHOJUEN",
-    description:
-      "Japanese matcha, tencha and hojicha for cafes, brands, importers and distributors.",
-    url: "https://ochanoshojuen.com/wholesale",
-    type: "website",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  return getRouteMetadata("wholesale")
 }
 
 export default function WholesalePage() {
