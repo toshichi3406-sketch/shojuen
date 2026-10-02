@@ -7,6 +7,7 @@ import { MenuIcon } from "lucide-react"
 import { LanguageSwitcher } from "@/components/i18n/language-switcher"
 import { mainNav } from "@/data/navigation"
 import { useLanguage } from "@/i18n/language-context"
+import { stripLocalePrefix } from "@/i18n/routing"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,12 +25,13 @@ const brand = {
 
 export function SiteHeader() {
   const pathname = usePathname()
-  const { m } = useLanguage()
+  const basePathname = stripLocalePrefix(pathname)
+  const { m, hrefForLocale } = useLanguage()
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="group flex min-w-0 flex-col gap-0 leading-none">
+        <Link href={hrefForLocale("/")} className="group flex min-w-0 flex-col gap-0 leading-none">
           <span className="font-heading text-lg tracking-wide text-foreground transition-colors group-hover:text-primary">
             {brand.name}
           </span>
@@ -66,12 +68,13 @@ export function SiteHeader() {
 
               const active =
                 item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href)
+                  ? basePathname === "/"
+                  : basePathname.startsWith(item.href)
+
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={hrefForLocale(item.href)}
                   className={cn(
                     "rounded-lg px-3 py-2 text-sm transition-colors",
                     active
@@ -130,7 +133,7 @@ export function SiteHeader() {
                     return (
                       <Link
                         key={item.href}
-                        href={item.href}
+                        href={hrefForLocale(item.href)}
                         className="rounded-lg px-3 py-3 text-base text-foreground hover:bg-muted"
                       >
                         <span className="block font-medium">{itemMsg.label}</span>
