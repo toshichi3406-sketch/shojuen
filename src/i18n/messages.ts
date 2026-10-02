@@ -69,6 +69,21 @@ export type Messages = {
     wholesaleTitle: string
     wholesaleIntro: string
     wholesaleFields: string
+    form: {
+      company: string
+      country: string
+      useCase: string
+      product: string
+      volume: string
+      timing: string
+      message: string
+      optional: string
+      selectPlaceholder: string
+      useOptions: readonly string[]
+      productOptions: readonly string[]
+      submit: string
+      note: string
+    }
   }
   latest: {
     kicker: string
@@ -298,6 +313,21 @@ const ja: Messages = {
       "以下をお知らせください（すべて不要・分かる範囲で可）：",
     wholesaleFields:
       "・会社名 / 用途（飲料・烘焙・再販）\n・希望商品・数量（kg）\n・納品国・希望時期",
+    form: {
+      company: "会社名・ブランド名",
+      country: "納品国",
+      useCase: "用途",
+      product: "希望商品",
+      volume: "月間のおおよその使用量",
+      timing: "希望時期",
+      message: "ご相談内容",
+      optional: "任意",
+      selectPlaceholder: "選択してください",
+      useOptions: ["カフェ・ラテ", "薄茶・ストレート", "菓子・食品", "小売・自社ブランド", "輸入・卸売", "その他"],
+      productOptions: ["抹茶", "碾茶", "ほうじ茶", "茶碗", "まだ決まっていない"],
+      submit: "入力内容でメールを作成",
+      note: "ボタンを押すと、お使いのメールアプリに入力内容が入った状態で開きます。",
+    },
   },
   latest: {
     kicker: "Journal",
@@ -638,6 +668,21 @@ const en: Messages = {
       "Please share what you can (all fields optional):",
     wholesaleFields:
       "· Company name / use (beverage, baking, resale)\n· Product & quantity (kg)\n· Destination country & timing",
+    form: {
+      company: "Company / brand",
+      country: "Destination country",
+      useCase: "Use",
+      product: "Product",
+      volume: "Approx. monthly volume",
+      timing: "Preferred timing",
+      message: "Message",
+      optional: "Optional",
+      selectPlaceholder: "Select",
+      useOptions: ["Cafe / latte", "Straight tea", "Bakery / food", "Retail / own brand", "Import / distribution", "Other"],
+      productOptions: ["Matcha", "Tencha", "Hojicha", "Chawan", "Not decided yet"],
+      submit: "Create email with these details",
+      note: "This opens your email app with the information filled in so you can review it before sending.",
+    },
   },
   latest: {
     kicker: "Journal",
@@ -963,6 +1008,21 @@ const zh: Messages = {
     wholesaleIntro: "請告知以下資訊（全部非必填，能提供的範圍即可）：",
     wholesaleFields:
       "・公司名 / 用途（飲料・烘焙・再販）\n・希望商品・數量（kg）\n・交貨國・希望時期",
+    form: {
+      company: "公司 / 品牌名稱",
+      country: "出貨目的地",
+      useCase: "用途",
+      product: "希望商品",
+      volume: "預估每月用量",
+      timing: "希望時程",
+      message: "洽詢內容",
+      optional: "選填",
+      selectPlaceholder: "請選擇",
+      useOptions: ["咖啡館 / 拿鐵", "薄茶 / 純飲", "烘焙 / 食品", "零售 / 自有品牌", "進口 / 經銷", "其他"],
+      productOptions: ["抹茶", "碾茶", "焙茶", "抹茶碗", "尚未決定"],
+      submit: "帶入內容並開啟 Email",
+      note: "點擊後會開啟您的 Email App，並自動帶入上述內容，送出前仍可自行修改。",
+    },
   },
   latest: {
     kicker: "Journal",

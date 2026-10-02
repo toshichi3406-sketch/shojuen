@@ -53,9 +53,17 @@ type WholesaleCopy = {
   originsKicker: string
   originsTitle: string
   originsBody: string
+  tradeKicker: string
+  tradeTitle: string
+  tradeLead: string
+  tradeItems: readonly { title: string; body: string }[]
+  tradeNote: string
   flowKicker: string
   flowTitle: string
   steps: readonly { no: string; title: string; body: string }[]
+  faqKicker: string
+  faqTitle: string
+  faqs: readonly { question: string; answer: string }[]
   inquiryKicker: string
   inquiryTitle: string
   inquiryBody: string
@@ -98,32 +106,64 @@ const copy: Record<Locale, WholesaleCopy> = {
       "カフェ用途では、ミルクやレシピとの相性もチェック",
       "商品化に必要な価格、数量、供給の安定性まで考慮",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "用途が違えば、選ぶ抹茶も変わります。",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "用途に合わせて、必要な茶を選ぶ。",
     useLead:
-      "ラテ、薄茶、菓子、物販では、求められる色、香り、味、価格のバランスが異なります。まず用途をお聞かせいただければ、条件に合う候補を絞り込みます。",
+      "ラテ、薄茶、菓子、原料、物販では、求められる茶が違います。用途と条件を伺いながら、商品を絞り込んでご提案します。",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "ミルクに合わせたときの香り・色・価格のバランスを重視して選びます。",
+        title: "MATCHA / LATTE",
+        body: "ミルクに合わせても色と香りが残りやすく、日々の運用で使いやすい価格とのバランスを重視します。",
       },
       {
-        title: "Straight tea",
-        body: "薄茶やストレートで楽しむ場合は、旨味、香り、余韻を重視します。",
+        title: "MATCHA / STRAIGHT",
+        body: "薄茶やストレート向け。旨味、香り、口当たり、余韻を重視して選びます。",
       },
       {
-        title: "Retail / Brand",
-        body: "小売・自社ブランド向け。価格帯やストーリー性、継続供給まで含めてご相談いただけます。",
+        title: "MATCHA / FOOD",
+        body: "菓子・製菓・料理向け。焼成後の色や香り、レシピ原価とのバランスを見ながら選定します。",
       },
       {
-        title: "Bakery / Food",
-        body: "焼成後の色残りや香り、原価とのバランスを見ながら選定します。",
+        title: "TENCHA",
+        body: "原料用途や商品開発向け。必要量や用途に合わせて、産地や特徴を比較しながらご提案します。",
+      },
+      {
+        title: "HOJICHA",
+        body: "ラテ、菓子、飲料などの業務用途向け。香ばしさ、色、価格、使いやすさのバランスで選びます。",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "小売・自社ブランド向け。中身、価格帯、商品設計、継続供給まで含めてご相談いただけます。",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
     originsTitle: "産地を限定せず、条件に合うものを。",
     originsBody:
       "宇治、八女、嬉野、鹿児島、宮崎など、各地の茶を比較しながら、時期、用途、ご予算、必要量に合わせてご提案します。",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "商品選びから、輸出の相談まで。",
+    tradeLead:
+      "最初から細かな条件が決まっていなくても大丈夫です。用途と取引条件を伺いながら、現実的な進め方を一緒に整理します。",
+    tradeItems: [
+      {
+        title: "取扱商品",
+        body: "抹茶・碾茶・ほうじ茶を中心に、用途に合わせて候補をご提案します。",
+      },
+      {
+        title: "数量・サンプル",
+        body: "商品によっては、サンプルや小ロットから確認できます。継続供給を前提としたご相談にも対応します。",
+      },
+      {
+        title: "価格・条件",
+        body: "商品、数量、納品国などを確認したうえで個別にご案内します。ご希望の価格帯があれば、候補選定の参考にします。",
+      },
+      {
+        title: "輸出・発送",
+        body: "納品国に合わせて、梱包、輸送方法、必要書類や輸入側の確認事項を案件ごとに整理します。",
+      },
+    ],
+    tradeNote:
+      "取扱可否、サンプル、数量、書類などの条件は、商品・時期・納品国によって異なります。まずは分かる範囲でご相談ください。",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "ご相談からお取引まで。",
     steps: [
@@ -146,6 +186,35 @@ const copy: Record<Locale, WholesaleCopy> = {
         no: "04",
         title: "輸出・継続供給",
         body: "梱包、数量、納期、輸入時の必要事項を確認し、継続取引へつなげます。",
+      },
+    ],
+    faqKicker: "FAQ",
+    faqTitle: "卸売・輸出について、よくあるご質問",
+    faqs: [
+      {
+        question: "小ロットからでも相談できますか？",
+        answer:
+          "はい。商品によって条件は異なりますが、小ロットやサンプルから試せるものもあります。まずは希望数量をお知らせください。",
+      },
+      {
+        question: "抹茶のグレードや品種が分からなくても大丈夫ですか？",
+        answer:
+          "問題ありません。ラテ、薄茶、菓子、物販などの用途と、味・色・ご予算を伺いながら候補を絞ります。",
+      },
+      {
+        question: "海外への発送・輸出も相談できますか？",
+        answer:
+          "はい。納品国、商品、数量を確認したうえで、梱包や輸送方法、輸入側で必要になる事項を確認しながら進めます。",
+      },
+      {
+        question: "サンプルはありますか？",
+        answer:
+          "対応可能な商品は、サンプルまたは小ロットでの確認をご案内します。商品や時期によって対応内容は異なります。",
+      },
+      {
+        question: "最初の問い合わせでは何を伝えればいいですか？",
+        answer:
+          "会社・ブランド名、納品国、用途、月間のおおよその使用量、ご希望の価格帯が分かるとスムーズです。未定の項目があっても構いません。",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
@@ -195,32 +264,64 @@ const copy: Record<Locale, WholesaleCopy> = {
       "For cafe use, check how the tea behaves with milk and recipes",
       "Consider price, volume and continuity before proposing an option",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "Not just “what grade?” — what are you making?",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "Tea selected around the product you are making.",
     useLead:
-      "A latte, usucha, pastry and retail tin need different tea. Tell us the job first and we can narrow the options faster.",
+      "Latte, straight tea, food production, ingredient use and retail each call for different qualities. We narrow the range around your application, volume and price target.",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "A practical balance of aroma, green color and cost that holds up in milk.",
+        title: "MATCHA / LATTE",
+        body: "Selected for color and aroma that still show through milk, with a practical balance of quality and cost for daily cafe use.",
       },
       {
-        title: "Straight tea",
-        body: "For usucha and straight serves where umami, aroma and finish matter.",
+        title: "MATCHA / STRAIGHT",
+        body: "For usucha and straight serves, with more emphasis on umami, aroma, texture and finish.",
       },
       {
-        title: "Retail / Brand",
-        body: "For resale and branded products, including price positioning, story and continuity.",
+        title: "MATCHA / FOOD",
+        body: "For bakery, confectionery and food production, considering color after processing, aroma retention and recipe cost.",
       },
       {
-        title: "Bakery / Food",
-        body: "Selected with baked color, aroma retention and recipe cost in mind.",
+        title: "TENCHA",
+        body: "For ingredient sourcing and product development. We compare origin and character against your intended use and required volume.",
+      },
+      {
+        title: "HOJICHA",
+        body: "For lattes, drinks, bakery and food applications, balancing roast aroma, color, price and ease of use.",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "For retail and own-brand products, including product positioning, contents, price range and continuity of supply.",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
     originsTitle: "One origin is not the only answer.",
     originsBody:
       "Uji, Yame, Ureshino, Kagoshima, Miyazaki and more. We compare by season, use, budget and required volume.",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "From tea selection to export planning.",
+    tradeLead:
+      "You do not need every detail fixed before contacting us. We can work through the product, volume, price range and destination together and define a practical next step.",
+    tradeItems: [
+      {
+        title: "Products",
+        body: "Matcha, tencha and hojicha are the core range. We shortlist options around how the tea will actually be used.",
+      },
+      {
+        title: "Volume & samples",
+        body: "Where available, samples or small test lots can be discussed before moving to ongoing supply.",
+      },
+      {
+        title: "Pricing & terms",
+        body: "Pricing is discussed case by case based on the product, volume and destination. A target price helps us narrow the options.",
+      },
+      {
+        title: "Export & shipping",
+        body: "We work through packing, shipping method, documentation and importer-side requirements according to the destination.",
+      },
+    ],
+    tradeNote:
+      "Availability, samples, quantities and document requirements vary by product, timing and destination. Share what you know and we will confirm the rest case by case.",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "Keep the first conversation simple.",
     steps: [
@@ -228,6 +329,35 @@ const copy: Record<Locale, WholesaleCopy> = {
       { no: "02", title: "We shortlist", body: "We compare origins and options against the job." },
       { no: "03", title: "Test", body: "Where available, begin with samples or a small lot." },
       { no: "04", title: "Export & supply", body: "We align packing, quantity, timing and importer requirements." },
+    ],
+    faqKicker: "FAQ",
+    faqTitle: "Common wholesale & export questions",
+    faqs: [
+      {
+        question: "Can I start with a small order?",
+        answer:
+          "Yes, depending on the product. Some teas can be tested with samples or a small lot first. Tell us the volume you have in mind and we can suggest practical options.",
+      },
+      {
+        question: "Do I need to know the matcha grade or cultivar?",
+        answer:
+          "No. Tell us how you plan to use the tea, along with your flavor, color and budget preferences. We can narrow the options from there.",
+      },
+      {
+        question: "Can you discuss international shipping and export?",
+        answer:
+          "Yes. We confirm the destination, product and volume first, then work through packing, shipping and importer-side requirements for that market.",
+      },
+      {
+        question: "Are samples available?",
+        answer:
+          "Where available, we can discuss samples or a small test lot. Availability depends on the product and timing.",
+      },
+      {
+        question: "What should I include in my first inquiry?",
+        answer:
+          "Company or brand name, destination country, intended use, approximate monthly volume and target price are helpful. It is fine if some details are still undecided.",
+      },
     ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "Tell us the cup you want to make.",
@@ -270,32 +400,64 @@ const copy: Record<Locale, WholesaleCopy> = {
       "咖啡館用途會確認與牛奶、配方的搭配表現",
       "提案時同時考量價格、採購量與供貨穩定性",
     ],
-    useKicker: "CHOOSE BY USE",
-    useTitle: "用途不同，適合的抹茶也不同。",
+    useKicker: "PRODUCT RANGE",
+    useTitle: "依用途，選擇真正需要的茶。",
     useLead:
-      "拿鐵、薄茶、烘焙與零售商品，各自需要不同的色澤、香氣、風味與成本條件。先告訴我們用途，就能更快縮小適合的選擇。",
+      "拿鐵、薄茶、烘焙、原料與零售商品，各自需要不同的條件。我們會依實際用途、採購量與預算，協助縮小合適的商品範圍。",
     uses: [
       {
-        title: "Cafe / Latte",
-        body: "重視與牛奶搭配後仍能保有香氣、色澤，以及整體成本的平衡。",
+        title: "MATCHA / LATTE",
+        body: "重視加入牛奶後仍能呈現色澤與香氣，同時兼顧咖啡館日常使用所需的成本平衡。",
       },
       {
-        title: "Straight tea",
-        body: "適合薄茶或直接品飲，著重鮮味、香氣與尾韻。",
+        title: "MATCHA / STRAIGHT",
+        body: "適合薄茶或直接品飲，著重鮮味、香氣、口感與尾韻。",
       },
       {
-        title: "Retail / Brand",
-        body: "適合零售與自有品牌，也可一併討論價格帶、產品故事與穩定供貨。",
+        title: "MATCHA / FOOD",
+        body: "適合烘焙、甜點與食品加工，考量加熱後的色澤、香氣保留與配方成本。",
       },
       {
-        title: "Bakery / Food",
-        body: "考量烘焙後的色澤、香氣保留與配方成本。",
+        title: "TENCHA",
+        body: "適合原料採購與商品開發，可依用途與需求量，比較不同產地與風味特色。",
+      },
+      {
+        title: "HOJICHA",
+        body: "適合拿鐵、飲品、烘焙與食品用途，依焙香、色澤、價格與操作性進行選擇。",
+      },
+      {
+        title: "RETAIL / PRIVATE LABEL",
+        body: "適合零售與自有品牌，可一併討論商品內容、價格帶、產品定位與穩定供貨。",
       },
     ],
     originsKicker: "MULTIPLE ORIGINS",
     originsTitle: "不綁定單一產地，依條件選擇。",
     originsBody:
       "宇治、八女、嬉野、鹿兒島、宮崎等地皆可納入比較，並依季節、用途、預算與需求量提供建議。",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "從選茶到出口，都可以一起討論。",
+    tradeLead:
+      "第一次洽詢時，不需要把所有條件都準備完整。我們會依用途、採購量、預算與出貨目的地，一起整理適合的方式。",
+    tradeItems: [
+      {
+        title: "商品",
+        body: "以抹茶、碾茶與焙茶為主，依實際用途協助篩選合適的選項。",
+      },
+      {
+        title: "數量與樣品",
+        body: "部分商品可先從樣品或小量測試開始，也可進一步討論長期穩定供貨。",
+      },
+      {
+        title: "價格與條件",
+        body: "會依商品、數量與出貨目的地個別確認。若有目標價格，也可作為篩選商品的參考。",
+      },
+      {
+        title: "出口與運送",
+        body: "依目的地確認包裝、運送方式、所需文件，以及進口端需要準備的事項。",
+      },
+    ],
+    tradeNote:
+      "商品供應、樣品、數量與文件需求會依商品、時期及出貨目的地而不同。提供目前已知的資訊即可，我們會逐項確認。",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "從洽詢到長期供應。",
     steps: [
@@ -318,6 +480,35 @@ const copy: Record<Locale, WholesaleCopy> = {
         no: "04",
         title: "出口與持續供貨",
         body: "確認包裝、數量、交期與進口端所需資訊後，銜接後續供貨。",
+      },
+    ],
+    faqKicker: "FAQ",
+    faqTitle: "批發與出口常見問題",
+    faqs: [
+      {
+        question: "可以從小量開始洽談嗎？",
+        answer:
+          "可以，實際條件依商品而定。部分商品可先從樣品或小量測試開始，請先告訴我們您預計的採購量。",
+      },
+      {
+        question: "不清楚抹茶等級或品種，也可以詢問嗎？",
+        answer:
+          "可以。只要告訴我們用途，例如拿鐵、薄茶、烘焙或零售，以及對風味、色澤與預算的需求，我們會協助縮小選擇範圍。",
+      },
+      {
+        question: "可以洽談海外出貨與出口嗎？",
+        answer:
+          "可以。我們會先確認出貨目的地、商品與數量，再依實際需求確認包裝、運送方式，以及進口端需要準備的事項。",
+      },
+      {
+        question: "可以提供樣品嗎？",
+        answer:
+          "可提供的商品，可洽詢樣品或小量測試。實際方式會依商品與時期而有所不同。",
+      },
+      {
+        question: "第一次詢問需要提供哪些資訊？",
+        answer:
+          "公司或品牌名稱、出貨目的地、用途、預估每月用量與預算會很有幫助。若有尚未決定的項目，也可以先洽詢。",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
@@ -352,14 +543,7 @@ export function WholesalePageClient() {
   const { locale } = useLanguage()
   const t = copy[locale]
   const email = getContactEmail()
-  const subject = encodeURIComponent(
-    locale === "ja"
-      ? "【松壽園SHOJUEN】卸売・輸出のお問い合わせ"
-      : locale === "zh"
-        ? "【松壽園SHOJUEN】批發・出口諮詢"
-        : "[SHOJUEN] Wholesale & export inquiry"
-  )
-  const mailto = `mailto:${email}?subject=${subject}`
+  const contactHref = "/contact?from=wholesale"
 
   return (
     <div className="bg-background">
@@ -393,15 +577,15 @@ export function WholesalePageClient() {
               {t.heroLead}
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <a
-                href={mailto}
+              <Link
+                href={contactHref}
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "rounded-full px-7 no-underline"
                 )}
               >
                 {t.heroCta}
-              </a>
+              </Link>
               <Link
                 href="/journal"
                 className={cn(
@@ -629,7 +813,7 @@ export function WholesalePageClient() {
             </p>
           </FadeIn>
 
-          <div className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2">
+          <div className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
             {t.uses.map((item, i) => (
               <FadeIn key={item.title} delay={i * 0.04}>
                 <div className="border-t border-border pt-5">
@@ -639,6 +823,12 @@ export function WholesalePageClient() {
                   <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
                     {item.body}
                   </p>
+                  <Link
+                    href={`/contact?from=wholesale&interest=${encodeURIComponent(item.title)}`}
+                    className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    {t.inquiryCta}
+                  </Link>
                 </div>
               </FadeIn>
             ))}
@@ -684,6 +874,46 @@ export function WholesalePageClient() {
         </div>
       </section>
 
+      <section className="border-b border-border/70 bg-stone-950 text-white">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.35em] text-emerald-200/85">
+              {t.tradeKicker}
+            </p>
+            <h2 className="mt-5 max-w-4xl font-heading text-3xl font-medium leading-tight tracking-wide sm:text-5xl">
+              {t.tradeTitle}
+            </h2>
+            <p className="mt-6 max-w-3xl text-base leading-relaxed text-stone-300 sm:text-lg">
+              {t.tradeLead}
+            </p>
+          </FadeIn>
+
+          <div className="mt-12 grid gap-x-8 gap-y-8 md:grid-cols-2">
+            {t.tradeItems.map((item, i) => (
+              <FadeIn key={item.title} delay={i * 0.04}>
+                <div className="border-t border-white/15 pt-5">
+                  <p className="font-mono text-xs tracking-[0.18em] text-emerald-200/70">
+                    0{i + 1}
+                  </p>
+                  <h3 className="mt-4 font-heading text-2xl font-medium">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-300">
+                    {item.body}
+                  </p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn className="mt-10" delay={0.08}>
+            <p className="max-w-4xl border-t border-white/15 pt-5 text-xs leading-relaxed text-stone-400 sm:text-sm">
+              {t.tradeNote}
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
       <section className="border-b border-border/70">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
           <FadeIn>
@@ -715,6 +945,42 @@ export function WholesalePageClient() {
         </div>
       </section>
 
+      <section className="border-b border-border/70 bg-muted/25">
+        <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:py-28">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
+              {t.faqKicker}
+            </p>
+            <h2 className="mt-5 font-heading text-3xl font-medium leading-tight tracking-wide text-foreground sm:text-5xl">
+              {t.faqTitle}
+            </h2>
+          </FadeIn>
+
+          <div className="mt-10 divide-y divide-border border-y border-border">
+            {t.faqs.map((item, i) => (
+              <FadeIn key={item.question} delay={i * 0.03}>
+                <details className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-6 text-left">
+                    <span className="font-heading text-lg font-medium text-foreground sm:text-xl">
+                      {item.question}
+                    </span>
+                    <span
+                      className="mt-1 text-xl leading-none text-primary transition-transform group-open:rotate-45"
+                      aria-hidden
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-4 max-w-3xl pr-10 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                    {item.answer}
+                  </p>
+                </details>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section>
         <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 sm:py-28">
           <FadeIn>
@@ -730,15 +996,15 @@ export function WholesalePageClient() {
                   {t.inquiryBody}
                 </p>
                 <div className="mt-9">
-                  <a
-                    href={mailto}
+                  <Link
+                    href={contactHref}
                     className={cn(
                       buttonVariants({ size: "lg" }),
                       "rounded-full px-8 no-underline"
                     )}
                   >
                     {t.inquiryCta}
-                  </a>
+                  </Link>
                 </div>
                 <p className="mt-4 font-mono text-xs text-muted-foreground">
                   {email}
