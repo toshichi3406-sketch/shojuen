@@ -53,6 +53,11 @@ type WholesaleCopy = {
   originsKicker: string
   originsTitle: string
   originsBody: string
+  tradeKicker: string
+  tradeTitle: string
+  tradeLead: string
+  tradeItems: readonly { title: string; body: string }[]
+  tradeNote: string
   flowKicker: string
   flowTitle: string
   steps: readonly { no: string; title: string; body: string }[]
@@ -127,6 +132,30 @@ const copy: Record<Locale, WholesaleCopy> = {
     originsTitle: "産地を限定せず、条件に合うものを。",
     originsBody:
       "宇治、八女、嬉野、鹿児島、宮崎など、各地の茶を比較しながら、時期、用途、ご予算、必要量に合わせてご提案します。",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "商品選びから、輸出の相談まで。",
+    tradeLead:
+      "最初から細かな条件が決まっていなくても大丈夫です。用途と取引条件を伺いながら、現実的な進め方を一緒に整理します。",
+    tradeItems: [
+      {
+        title: "取扱商品",
+        body: "抹茶・碾茶・ほうじ茶を中心に、用途に合わせて候補をご提案します。",
+      },
+      {
+        title: "数量・サンプル",
+        body: "商品によっては、サンプルや小ロットから確認できます。継続供給を前提としたご相談にも対応します。",
+      },
+      {
+        title: "価格・条件",
+        body: "商品、数量、納品国などを確認したうえで個別にご案内します。ご希望の価格帯があれば、候補選定の参考にします。",
+      },
+      {
+        title: "輸出・発送",
+        body: "納品国に合わせて、梱包、輸送方法、必要書類や輸入側の確認事項を案件ごとに整理します。",
+      },
+    ],
+    tradeNote:
+      "取扱可否、サンプル、数量、書類などの条件は、商品・時期・納品国によって異なります。まずは分かる範囲でご相談ください。",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "ご相談からお取引まで。",
     steps: [
@@ -253,6 +282,30 @@ const copy: Record<Locale, WholesaleCopy> = {
     originsTitle: "One origin is not the only answer.",
     originsBody:
       "Uji, Yame, Ureshino, Kagoshima, Miyazaki and more. We compare by season, use, budget and required volume.",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "From tea selection to export planning.",
+    tradeLead:
+      "You do not need every detail fixed before contacting us. We can work through the product, volume, price range and destination together and define a practical next step.",
+    tradeItems: [
+      {
+        title: "Products",
+        body: "Matcha, tencha and hojicha are the core range. We shortlist options around how the tea will actually be used.",
+      },
+      {
+        title: "Volume & samples",
+        body: "Where available, samples or small test lots can be discussed before moving to ongoing supply.",
+      },
+      {
+        title: "Pricing & terms",
+        body: "Pricing is discussed case by case based on the product, volume and destination. A target price helps us narrow the options.",
+      },
+      {
+        title: "Export & shipping",
+        body: "We work through packing, shipping method, documentation and importer-side requirements according to the destination.",
+      },
+    ],
+    tradeNote:
+      "Availability, samples, quantities and document requirements vary by product, timing and destination. Share what you know and we will confirm the rest case by case.",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "Keep the first conversation simple.",
     steps: [
@@ -357,6 +410,30 @@ const copy: Record<Locale, WholesaleCopy> = {
     originsTitle: "不綁定單一產地，依條件選擇。",
     originsBody:
       "宇治、八女、嬉野、鹿兒島、宮崎等地皆可納入比較，並依季節、用途、預算與需求量提供建議。",
+    tradeKicker: "BUSINESS SUPPORT",
+    tradeTitle: "從選茶到出口，都可以一起討論。",
+    tradeLead:
+      "第一次洽詢時，不需要把所有條件都準備完整。我們會依用途、採購量、預算與出貨目的地，一起整理適合的方式。",
+    tradeItems: [
+      {
+        title: "商品",
+        body: "以抹茶、碾茶與焙茶為主，依實際用途協助篩選合適的選項。",
+      },
+      {
+        title: "數量與樣品",
+        body: "部分商品可先從樣品或小量測試開始，也可進一步討論長期穩定供貨。",
+      },
+      {
+        title: "價格與條件",
+        body: "會依商品、數量與出貨目的地個別確認。若有目標價格，也可作為篩選商品的參考。",
+      },
+      {
+        title: "出口與運送",
+        body: "依目的地確認包裝、運送方式、所需文件，以及進口端需要準備的事項。",
+      },
+    ],
+    tradeNote:
+      "商品供應、樣品、數量與文件需求會依商品、時期及出貨目的地而不同。提供目前已知的資訊即可，我們會逐項確認。",
     flowKicker: "HOW WHOLESALE WORKS",
     flowTitle: "從洽詢到長期供應。",
     steps: [
@@ -770,6 +847,46 @@ export function WholesalePageClient() {
                 )
               )}
             </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <section className="border-b border-border/70 bg-stone-950 text-white">
+        <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+          <FadeIn>
+            <p className="text-xs font-medium uppercase tracking-[0.35em] text-emerald-200/85">
+              {t.tradeKicker}
+            </p>
+            <h2 className="mt-5 max-w-4xl font-heading text-3xl font-medium leading-tight tracking-wide sm:text-5xl">
+              {t.tradeTitle}
+            </h2>
+            <p className="mt-6 max-w-3xl text-base leading-relaxed text-stone-300 sm:text-lg">
+              {t.tradeLead}
+            </p>
+          </FadeIn>
+
+          <div className="mt-12 grid gap-x-8 gap-y-8 md:grid-cols-2">
+            {t.tradeItems.map((item, i) => (
+              <FadeIn key={item.title} delay={i * 0.04}>
+                <div className="border-t border-white/15 pt-5">
+                  <p className="font-mono text-xs tracking-[0.18em] text-emerald-200/70">
+                    0{i + 1}
+                  </p>
+                  <h3 className="mt-4 font-heading text-2xl font-medium">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-300">
+                    {item.body}
+                  </p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn className="mt-10" delay={0.08}>
+            <p className="max-w-4xl border-t border-white/15 pt-5 text-xs leading-relaxed text-stone-400 sm:text-sm">
+              {t.tradeNote}
+            </p>
           </FadeIn>
         </div>
       </section>
