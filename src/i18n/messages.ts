@@ -23,6 +23,7 @@ export type Messages = {
     | "producers"
     | "journal"
     | "howTo"
+    | "wholesale"
     | "contact",
     { label: string; description: string }
   >
@@ -220,6 +221,7 @@ const ja: Messages = {
     producers: { label: "生産者紹介", description: "茶農家・茶師のこだわり" },
     journal: { label: "JOURNAL", description: "産地取材と碾茶の記録" },
     howTo: { label: "点て方", description: "濃茶・薄茶・モダンな楽しみ方" },
+    wholesale: { label: "WHOLESALE", description: "卸売・輸出のご相談" },
     contact: { label: "お問い合わせ", description: "卸・取引・ご相談（メール）" },
   },
   footer: {
@@ -561,6 +563,10 @@ const en: Messages = {
       label: "HOW TO",
       description: "Koicha, usucha & modern serves",
     },
+    wholesale: {
+      label: "WHOLESALE",
+      description: "Wholesale & export",
+    },
     contact: {
       label: "CONTACT",
       description: "Email us",
@@ -893,6 +899,7 @@ const zh: Messages = {
     producers: { label: "生產者介紹", description: "茶農與茶師的講究" },
     journal: { label: "JOURNAL", description: "產地取材與碾茶紀錄" },
     howTo: { label: "點茶方式", description: "濃茶・薄茶・現代喝法" },
+    wholesale: { label: "WHOLESALE", description: "批發・出口諮詢" },
     contact: { label: "聯絡我們", description: "批發・交易・諮詢（Email）" },
   },
   footer: {
