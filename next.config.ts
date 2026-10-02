@@ -1,15 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "otsukaen.com",
-        pathname: "/wp-content/uploads/**",
-      },
-    ],
-  },
   async redirects() {
     return [
       { source: "/blog", destination: "/journal", permanent: true },
