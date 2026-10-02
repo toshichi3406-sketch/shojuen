@@ -35,17 +35,17 @@ type WholesaleCopy = {
   originKicker: string
   originTitle: string
   originBody: string
-  originOtsukaCaption: string
-  originUreshinoCaption: string
-  otsukaKicker: string
-  otsukaTitle: string
-  otsukaLead: string
-  otsukaPoints: readonly string[]
-  otsukaPhotoCaption: string
-  ureshinoKicker: string
-  ureshinoTitle: string
-  ureshinoLead: string
-  ureshinoNotes: readonly string[]
+  originPhotoCaption: string
+  fieldPhotoCaption: string
+  processKicker: string
+  processTitle: string
+  processLead: string
+  processPoints: readonly string[]
+  processPhotoCaption: string
+  fieldKicker: string
+  fieldTitle: string
+  fieldLead: string
+  fieldNotes: readonly string[]
   useKicker: string
   useTitle: string
   useLead: string
@@ -66,37 +66,37 @@ type WholesaleCopy = {
 const copy: Record<Locale, WholesaleCopy> = {
   ja: {
     heroKicker: "SHOJUEN · 卸売 / 輸出",
-    heroTitle: "日本の産地から、あなたの一杯へ。",
+    heroTitle: "日本の抹茶・茶葉を、あなたのビジネスへ。",
     heroLead:
       "抹茶・碾茶・ほうじ茶を、カフェ、ブランド、輸入業者、ディストリビューターへ。産地や銘柄ありきではなく、用途・味・色・数量・価格から一緒に選びます。",
     heroCta: "卸売・輸出を相談する",
     journalCta: "産地の記録を見る",
     heroNote: "小ロットのテストから、大口の継続取引までご相談ください。",
     trustLabels: ["MATCHA", "TENCHA", "HOJICHA", "SMALL LOT", "EXPORT"],
-    originKicker: "ORIGIN FIRST",
-    originTitle: "売る前に、産地を見る。",
+    originKicker: "WHOLESALE APPROACH",
+    originTitle: "用途から、茶を選ぶ。",
     originBody:
-      "松壽園は、ひとつの産地だけを正解にしません。現地で畑や製茶を見て、飲み比べ、用途に合うものを探します。宮崎の茶園の仕事も、嬉野で自分たちが見た風景も、その判断材料です。",
-    originOtsukaCaption: "宮崎県川南町 · 大塚園",
-    originUreshinoCaption: "佐賀県嬉野 · 松壽園の現地記録",
-    otsukaKicker: "MIYAZAKI · OTSUKA-EN",
-    otsukaTitle: "畑から碾茶製造まで、一つの現場で。",
-    otsukaLead:
-      "宮崎県川南町の大塚園。茶畑の管理から製茶・加工・販売まで自社で行い、2025年には有機認証の碾茶工場を整備。産地の仕事が見える写真を、許可をいただいて紹介しています。",
-    otsukaPoints: [
-      "茶畑・工場ともに有機JAS認証",
-      "土づくりから栽培、製造、粉末化まで一貫",
-      "用途に合わせて、味・香り・色を見ながら仕上げる",
+      "松壽園は、特定の農園や一つの産地を売るための卸ではありません。茶畑や製茶の現場を見て、飲み比べた上で、用途・味・色・数量・価格に合う選択肢を提案します。写真は、その背景を伝えるために使っています。",
+    originPhotoCaption: "日本の茶産地",
+    fieldPhotoCaption: "産地での現地記録",
+    processKicker: "FROM FIELD TO PRODUCT",
+    processTitle: "写真は背景。主役は、あなたの用途。",
+    processLead:
+      "茶畑、製造、粉末化までを見ながら、色・香り・味・扱いやすさを確認します。特定の農園を紹介するためではなく、カフェやブランドの商品設計に合う茶を探すための視点です。",
+    processPoints: [
+      "ラテ・薄茶・菓子など、用途ごとに必要な特性を整理",
+      "味と色だけでなく、価格と必要量も合わせて比較",
+      "輸出先や継続供給の条件も含めて候補を絞る",
     ],
-    otsukaPhotoCaption: "Photography from Otsuka-en official website · used with permission",
-    ureshinoKicker: "URESHINO · FIELD NOTES",
-    ureshinoTitle: "嬉野で、実際に見て、飲んだ記録。",
-    ureshinoLead:
-      "霧の茶畑、雨に濡れた新芽、碾茶の質感、飲み比べ。仕入れはスペック表だけでは決めません。現地の空気と、実際に茶碗にしたときの色・香り・味を重ねて判断します。",
-    ureshinoNotes: [
-      "現地で茶園と製造背景を確認",
-      "粉の色だけでなく、飲用時の香りと余韻も比較",
-      "カフェ用途なら、ミルクやレシピとの相性まで考える",
+    processPhotoCaption: "日本の茶畑・製造風景",
+    fieldKicker: "HOW WE SELECT",
+    fieldTitle: "スペック表だけでなく、実際の一杯まで見る。",
+    fieldLead:
+      "産地で見たことと、実際に点てたとき・抽出したときの色、香り、味を重ねて判断します。卸では、その違いをお客様の用途に置き換えて提案します。",
+    fieldNotes: [
+      "粉の色だけでなく、抽出後の香りと余韻を確認",
+      "カフェ用途なら、ミルクやレシピとの相性を見る",
+      "商品化に必要な価格・数量・継続性まで含めて判断",
     ],
     useKicker: "CHOOSE BY USE",
     useTitle: "「何級の抹茶？」より、「何に使う？」から。",
@@ -141,37 +141,37 @@ const copy: Record<Locale, WholesaleCopy> = {
   },
   en: {
     heroKicker: "SHOJUEN · WHOLESALE / EXPORT",
-    heroTitle: "Japanese tea, closer to origin.",
+    heroTitle: "Japanese matcha & tea for your business.",
     heroLead:
       "Matcha, tencha and hojicha for cafes, brands, importers and distributors. We do not start with a grade name. We start with your use, flavor, color, volume and target price.",
     heroCta: "Start a wholesale inquiry",
     journalCta: "See our field notes",
     heroNote: "From small test orders to ongoing wholesale supply.",
     trustLabels: ["MATCHA", "TENCHA", "HOJICHA", "SMALL LOT", "EXPORT"],
-    originKicker: "ORIGIN FIRST",
-    originTitle: "Before we sell tea, we look at where it comes from.",
+    originKicker: "WHOLESALE APPROACH",
+    originTitle: "Choose tea by the job it needs to do.",
     originBody:
-      "SHOJUEN does not treat one origin as the only answer. We visit, taste and compare. The work of producers in Miyazaki and our own field notes from Ureshino are part of how we judge fit for each buyer.",
-    originOtsukaCaption: "Kawaminami, Miyazaki · Otsuka-en",
-    originUreshinoCaption: "Ureshino, Saga · SHOJUEN field notes",
-    otsukaKicker: "MIYAZAKI · OTSUKA-EN",
-    otsukaTitle: "From tea garden to tencha production.",
-    otsukaLead:
-      "Otsuka-en in Kawaminami, Miyazaki manages tea gardens, processing and sales in-house. Its organic-certified tencha factory was established in 2025. These photographs are shown with permission to make the work at origin visible.",
-    otsukaPoints: [
-      "Organic JAS-certified tea gardens and factory",
-      "Soil, cultivation, processing and powder production handled as one chain",
-      "Flavor, aroma and color adjusted with the final use in mind",
+      "SHOJUEN is not a wholesale page for promoting one farm or one origin. We visit, taste and compare, then propose options around your use, flavor, color, volume and target price. The photography is here to show the background behind that work.",
+    originPhotoCaption: "Tea fields in Japan",
+    fieldPhotoCaption: "Field notes from tea country",
+    processKicker: "FROM FIELD TO PRODUCT",
+    processTitle: "The photos are context. Your product is the focus.",
+    processLead:
+      "We look across cultivation, processing and powder production to understand color, aroma, flavor and handling. The goal is not to feature one producer, but to find tea that fits a cafe, brand, importer or distributor.",
+    processPoints: [
+      "Define the right traits for latte, usucha, bakery or resale",
+      "Compare flavor and color together with price and required volume",
+      "Narrow options with destination and continuity of supply in mind",
     ],
-    otsukaPhotoCaption: "Photography from Otsuka-en official website · used with permission",
-    ureshinoKicker: "URESHINO · FIELD NOTES",
-    ureshinoTitle: "What we saw and tasted in Ureshino.",
-    ureshinoLead:
-      "Misty fields, rain-wet buds, the texture of tencha, and side-by-side tastings. We do not buy from a specification sheet alone. We look at the field and then at what happens in the bowl.",
-    ureshinoNotes: [
-      "See the garden and production context in person",
+    processPhotoCaption: "Tea fields and production in Japan",
+    fieldKicker: "HOW WE SELECT",
+    fieldTitle: "We look beyond the specification sheet.",
+    fieldLead:
+      "What we see at origin matters, but so does what happens in the cup. We compare color, aroma and taste, then translate those differences into practical choices for wholesale buyers.",
+    fieldNotes: [
       "Compare aroma and finish, not only powder color",
-      "For cafe use, test how the tea behaves with milk and recipes",
+      "For cafe use, check how the tea behaves with milk and recipes",
+      "Consider price, volume and continuity before proposing an option",
     ],
     useKicker: "CHOOSE BY USE",
     useTitle: "Not just “what grade?” — what are you making?",
@@ -216,37 +216,37 @@ const copy: Record<Locale, WholesaleCopy> = {
   },
   zh: {
     heroKicker: "SHOJUEN · 批發 / 出口",
-    heroTitle: "從日本產地，走進你的每一杯。",
+    heroTitle: "日本抹茶與茶葉，為你的生意而選。",
     heroLead:
       "為咖啡館、品牌、進口商與經銷商提供抹茶、碾茶與焙茶。不是先從等級名稱出發，而是從用途、風味、色澤、數量與目標價格一起找答案。",
     heroCta: "洽詢批發・出口",
     journalCta: "查看產地紀錄",
     heroNote: "從小量測試，到長期批發供應皆可洽談。",
     trustLabels: ["MATCHA", "TENCHA", "HOJICHA", "SMALL LOT", "EXPORT"],
-    originKicker: "ORIGIN FIRST",
-    originTitle: "先看產地，再談銷售。",
+    originKicker: "WHOLESALE APPROACH",
+    originTitle: "從用途出發，選擇適合的茶。",
     originBody:
-      "松壽園不把單一產地當成唯一答案。我們到現場、品飲、比較。宮崎生產者的工作，以及我們在嬉野親自記錄的風景，都是判斷是否適合客戶的重要依據。",
-    originOtsukaCaption: "宮崎縣川南町 · 大塚園",
-    originUreshinoCaption: "佐賀縣嬉野 · 松壽園現地紀錄",
-    otsukaKicker: "MIYAZAKI · OTSUKA-EN",
-    otsukaTitle: "從茶園，到碾茶製造。",
-    otsukaLead:
-      "位於宮崎縣川南町的大塚園，從茶園管理、製茶加工到銷售皆由自家團隊進行，並於2025年建置取得有機認證的碾茶工廠。以下照片經許可使用，讓產地的工作真正被看見。",
-    otsukaPoints: [
-      "茶園與工廠皆取得有機JAS認證",
-      "從土壤、栽培、製造到粉末化形成一條完整鏈",
-      "依最終用途觀察風味、香氣與色澤",
+      "松壽園的批發不是為了推廣某一家茶園或單一產地。我們會到現場、品飲、比較，再依用途、風味、色澤、數量與目標價格提出選擇。照片只是用來呈現這份工作的背景。",
+    originPhotoCaption: "日本茶產地",
+    fieldPhotoCaption: "產地現地紀錄",
+    processKicker: "FROM FIELD TO PRODUCT",
+    processTitle: "照片是背景，重點是你的商品。",
+    processLead:
+      "從栽培、製造到粉末化，我們會觀察色澤、香氣、風味與實際使用性。目的不是介紹特定生產者，而是替咖啡館、品牌、進口商與經銷商找到合適的茶。",
+    processPoints: [
+      "依拿鐵、薄茶、烘焙或零售用途整理所需特性",
+      "同時比較風味、色澤、價格與需求量",
+      "把目的國與持續供應條件一起納入候選",
     ],
-    otsukaPhotoCaption: "大塚園官方網站照片 · 經許可使用",
-    ureshinoKicker: "URESHINO · FIELD NOTES",
-    ureshinoTitle: "在嬉野，親眼看、親自喝的紀錄。",
-    ureshinoLead:
-      "霧中的茶園、雨後的新芽、碾茶的質地，以及並排品飲比較。我們不只看規格表，也看產地，最後再看一碗茶裡呈現的色、香與味。",
-    ureshinoNotes: [
-      "親自確認茶園與製造背景",
-      "不只比較粉色，也比較香氣與尾韻",
-      "若用於咖啡館，也會考慮與牛奶和配方的相性",
+    processPhotoCaption: "日本茶園與製造風景",
+    fieldKicker: "HOW WE SELECT",
+    fieldTitle: "不只看規格表，也看真正的一杯茶。",
+    fieldLead:
+      "產地所見很重要，但實際沖泡後的色、香、味同樣重要。我們把這些差異轉換成批發買家能實際使用的選擇。",
+    fieldNotes: [
+      "不只看粉末顏色，也比較沖泡後的香氣與尾韻",
+      "咖啡館用途會確認與牛奶、配方的相性",
+      "提案時同時考慮價格、數量與持續供應",
     ],
     useKicker: "CHOOSE BY USE",
     useTitle: "與其先問「什麼等級」，不如先問「要做什麼」。",
@@ -321,7 +321,7 @@ export function WholesalePageClient() {
       <section className="relative min-h-[76vh] overflow-hidden border-b border-border/70 bg-stone-950">
         <Image
           src={otsuka.hero}
-          alt={t.originOtsukaCaption}
+          alt={t.originPhotoCaption}
           fill
           priority
           sizes="100vw"
@@ -404,26 +404,26 @@ export function WholesalePageClient() {
               <div className="group relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-muted">
                 <Image
                   src={otsuka.hero}
-                  alt={t.originOtsukaCaption}
+                  alt={t.originPhotoCaption}
                   fill
                   sizes="(min-width: 768px) 50vw, 100vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                 />
               </div>
-              <PhotoCaption>{t.originOtsukaCaption}</PhotoCaption>
+              <PhotoCaption>{t.originPhotoCaption}</PhotoCaption>
             </FadeIn>
 
             <FadeIn delay={0.08}>
               <div className="group relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-muted">
                 <Image
                   src={ureshino.field}
-                  alt={t.originUreshinoCaption}
+                  alt={t.fieldPhotoCaption}
                   fill
                   sizes="(min-width: 768px) 50vw, 100vw"
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.025]"
                 />
               </div>
-              <PhotoCaption>{t.originUreshinoCaption}</PhotoCaption>
+              <PhotoCaption>{t.fieldPhotoCaption}</PhotoCaption>
             </FadeIn>
           </div>
         </div>
@@ -434,16 +434,16 @@ export function WholesalePageClient() {
           <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
             <FadeIn>
               <p className="text-xs font-medium uppercase tracking-[0.35em] text-emerald-200/85">
-                {t.otsukaKicker}
+                {t.processKicker}
               </p>
               <h2 className="mt-5 font-heading text-3xl font-medium leading-tight tracking-wide sm:text-5xl">
-                {t.otsukaTitle}
+                {t.processTitle}
               </h2>
               <p className="mt-6 text-base leading-relaxed text-stone-300">
-                {t.otsukaLead}
+                {t.processLead}
               </p>
               <div className="mt-8 space-y-4">
-                {t.otsukaPoints.map((point, i) => (
+                {t.processPoints.map((point, i) => (
                   <div
                     key={point}
                     className="flex gap-4 border-t border-white/12 pt-4"
@@ -464,7 +464,7 @@ export function WholesalePageClient() {
                 <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-stone-900">
                   <Image
                     src={otsuka.cultivation}
-                    alt={t.otsukaTitle}
+                    alt={t.processTitle}
                     fill
                     sizes="(min-width: 640px) 30vw, 100vw"
                     className="object-cover"
@@ -475,7 +475,7 @@ export function WholesalePageClient() {
                 <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-stone-900">
                   <Image
                     src={otsuka.process}
-                    alt={t.otsukaTitle}
+                    alt={t.processTitle}
                     fill
                     sizes="(min-width: 640px) 30vw, 100vw"
                     className="object-cover"
@@ -486,14 +486,14 @@ export function WholesalePageClient() {
                 <div className="relative aspect-[16/7] overflow-hidden rounded-[2rem] bg-stone-900">
                   <Image
                     src={otsuka.grinding}
-                    alt={t.otsukaTitle}
+                    alt={t.processTitle}
                     fill
                     sizes="(min-width: 1024px) 55vw, 100vw"
                     className="object-cover"
                   />
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-stone-400">
-                  {t.otsukaPhotoCaption}
+                  {t.processPhotoCaption}
                 </p>
               </FadeIn>
             </div>
@@ -505,14 +505,14 @@ export function WholesalePageClient() {
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
           <FadeIn>
             <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
-              {t.ureshinoKicker}
+              {t.fieldKicker}
             </p>
             <div className="mt-5 grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-end">
               <h2 className="font-heading text-3xl font-medium leading-tight tracking-wide text-foreground sm:text-5xl">
-                {t.ureshinoTitle}
+                {t.fieldTitle}
               </h2>
               <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                {t.ureshinoLead}
+                {t.fieldLead}
               </p>
             </div>
           </FadeIn>
@@ -522,7 +522,7 @@ export function WholesalePageClient() {
               <div className="relative aspect-[16/10] overflow-hidden rounded-[2rem] bg-muted">
                 <Image
                   src={ureshino.rows}
-                  alt={t.originUreshinoCaption}
+                  alt={t.fieldPhotoCaption}
                   fill
                   sizes="(min-width: 1024px) 58vw, 100vw"
                   className="object-cover"
@@ -534,7 +534,7 @@ export function WholesalePageClient() {
                 <div className="relative aspect-[16/9] overflow-hidden rounded-[2rem] bg-muted">
                   <Image
                     src={ureshino.powder}
-                    alt={t.ureshinoTitle}
+                    alt={t.fieldTitle}
                     fill
                     sizes="(min-width: 1024px) 40vw, 50vw"
                     className="object-cover"
@@ -545,7 +545,7 @@ export function WholesalePageClient() {
                 <div className="relative aspect-[16/9] overflow-hidden rounded-[2rem] bg-muted">
                   <Image
                     src={ureshino.tasting}
-                    alt={t.ureshinoTitle}
+                    alt={t.fieldTitle}
                     fill
                     sizes="(min-width: 1024px) 40vw, 50vw"
                     className="object-cover"
@@ -556,7 +556,7 @@ export function WholesalePageClient() {
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {t.ureshinoNotes.map((note, i) => (
+            {t.fieldNotes.map((note, i) => (
               <FadeIn key={note} delay={i * 0.05}>
                 <div className="border-t border-border pt-4">
                   <span className="font-mono text-xs text-primary">0{i + 1}</span>
@@ -605,7 +605,7 @@ export function WholesalePageClient() {
         <div className="absolute inset-0">
           <Image
             src={ureshino.field}
-            alt={t.originUreshinoCaption}
+            alt={t.fieldPhotoCaption}
             fill
             sizes="100vw"
             className="object-cover"
