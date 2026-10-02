@@ -11,14 +11,10 @@ import type { Locale } from "@/i18n/types"
 import { cn } from "@/lib/utils"
 
 const otsuka = {
-  hero:
-    "https://otsukaen.com/wp-content/uploads/2025/05/%E3%80%90%E3%83%AA%E3%82%B5%E3%82%A4%E3%82%BA%E3%80%91hv_02-1024x746.jpg",
-  cultivation:
-    "https://otsukaen.com/wp-content/uploads/2025/09/%E3%80%90PC%E3%80%91%E6%8A%B9%E8%8C%B602-%E6%A0%BD%E5%9F%B9.jpg",
-  process:
-    "https://otsukaen.com/wp-content/uploads/2025/08/%E8%A3%BD%E9%80%A0%E5%B7%A5%E7%A8%8B-1024x723.jpg",
-  grinding:
-    "https://otsukaen.com/wp-content/uploads/2025/09/%E3%80%90PC%E3%80%91%E6%8A%B9%E8%8C%B604-%E7%B2%89%E7%A0%95%E5%8C%96.jpg",
+  hero: "/images/wholesale/otsuka-hero.jpg",
+  cultivation: "/images/wholesale/otsuka-cultivation.jpg",
+  process: "/images/wholesale/otsuka-process.jpg",
+  grinding: "/images/wholesale/otsuka-grinding.jpg",
 } as const
 
 const ureshino = {
