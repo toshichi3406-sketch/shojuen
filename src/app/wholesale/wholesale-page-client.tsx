@@ -540,10 +540,10 @@ function PhotoCaption({
 }
 
 export function WholesalePageClient() {
-  const { locale } = useLanguage()
+  const { locale, hrefForLocale } = useLanguage()
   const t = copy[locale]
   const email = getContactEmail()
-  const contactHref = "/contact?from=wholesale"
+  const contactHref = hrefForLocale("/contact?from=wholesale")
 
   return (
     <div className="bg-background">
@@ -587,7 +587,7 @@ export function WholesalePageClient() {
                 {t.heroCta}
               </Link>
               <Link
-                href="/journal"
+                href={hrefForLocale("/journal")}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
                   "rounded-full border-white/35 bg-white/10 px-7 text-white no-underline backdrop-blur-sm hover:bg-white/20"
@@ -824,7 +824,7 @@ export function WholesalePageClient() {
                     {item.body}
                   </p>
                   <Link
-                    href={`/contact?from=wholesale&interest=${encodeURIComponent(item.title)}`}
+                    href={hrefForLocale(`/contact?from=wholesale&interest=${encodeURIComponent(item.title)}`)}
                     className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
                   >
                     {t.inquiryCta}
