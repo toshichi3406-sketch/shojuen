@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "HOW TO · 点て方・楽しみ方",
-  description:
-    "濃茶・薄茶の基本。湯温、抹茶量、茶筅の動きと、モダンな楽しみ方のヒント。",
+import { getRouteMetadata } from "@/i18n/server"
+
+export async function generateMetadata(): Promise<Metadata> {
+  return getRouteMetadata("howTo")
 }
 
 export default function HowToLayout({

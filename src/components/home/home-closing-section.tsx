@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { useLanguage } from "@/i18n/language-context"
 
 export function HomeClosingSection() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
 
   return (
     <section className="relative overflow-hidden border-t border-border/60 bg-background py-20 sm:py-28">
@@ -29,7 +29,7 @@ export function HomeClosingSection() {
           </p>
           <div className="mt-6 flex justify-center">
             <Link
-              href="/contact"
+              href={hrefForLocale("/contact")}
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
                 "rounded-full border-primary/30 no-underline"

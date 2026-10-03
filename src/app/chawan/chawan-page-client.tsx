@@ -122,7 +122,7 @@ function StyleVisual({
 }
 
 export function ChawanPageClient() {
-  const { locale, m } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const [activeKind, setActiveKind] = useState<ChawanKind | "all">("all")
   const [selected, setSelected] = useState<ChawanStyle | null>(null)
   const [photoIdx, setPhotoIdx] = useState(0)
@@ -662,7 +662,7 @@ export function ChawanPageClient() {
                 {m.chawanPage.ctaMail}
               </a>
               <Link
-                href="/contact"
+                href={hrefForLocale("/contact")}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
                   "rounded-full border-white/40 bg-transparent text-stone-100 no-underline hover:bg-white/10 hover:text-white"
@@ -923,7 +923,7 @@ export function ChawanPageClient() {
               </p>
 
               <Link
-                href={`/contact?from=chawan&id=${encodeURIComponent(selected.id)}&name=${encodeURIComponent(name(selected))}`}
+                href={hrefForLocale(`/contact?from=chawan&id=${encodeURIComponent(selected.id)}&name=${encodeURIComponent(name(selected))}`)}
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
                   buttonVariants({ size: "default" }),

@@ -32,7 +32,7 @@ const emptyForm: InquiryForm = {
 }
 
 export function ContactPageClient() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
   const searchParams = useSearchParams()
   const [form, setForm] = useState<InquiryForm>(emptyForm)
@@ -280,7 +280,7 @@ export function ContactPageClient() {
 
       <FadeIn className="mt-12" delay={0.1}>
         <Link
-          href={fromChawan ? "/chawan" : fromWholesale ? "/wholesale" : "/"}
+          href={hrefForLocale(fromChawan ? "/chawan" : fromWholesale ? "/wholesale" : "/")}
           className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           {fromChawan
