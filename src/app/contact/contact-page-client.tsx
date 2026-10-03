@@ -36,13 +36,17 @@ export function ContactPageClient() {
   const { locale, m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
   const searchParams = useSearchParams()
-  const [form, setForm] = useState<InquiryForm>(emptyForm)
+  const [form, setForm] = useState<InquiryForm>(() => ({
+    ...emptyForm,
+    country: searchParams.get("country")?.trim() || "",
+  }))
 
   const chawanName = searchParams.get("name")?.trim() || ""
   const chawanId = searchParams.get("id")?.trim() || ""
   const fromChawan = searchParams.get("from") === "chawan"
   const fromWholesale = searchParams.get("from") === "wholesale"
   const wholesaleInterest = searchParams.get("interest")?.trim() || ""
+  const presetCountry = searchParams.get("country")?.trim() || ""
 
   const mailSubject = useMemo(() => {
     if (fromChawan && chawanName) {
@@ -100,6 +104,7 @@ export function ContactPageClient() {
     fromChawan,
     fromWholesale,
     wholesaleInterest,
+    presetCountry,
     chawanId,
     chawanName,
     m.chawanPage.inquireItem,

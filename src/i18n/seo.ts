@@ -18,6 +18,7 @@ export type SeoRoute =
   | "journal"
   | "howTo"
   | "contact"
+  | "singapore"
 
 export const siteSeo: Record<Locale, SeoText> = {
   ja: {
@@ -155,6 +156,23 @@ const routeSeo: Record<SeoRoute, Record<Locale, SeoText>> = {
       title: "CONTACT · 聯絡松壽園",
       description:
         "聯絡松壽園 SHOJUEN，洽詢批發、出口、商品與商務合作。",
+    },
+  },
+  singapore: {
+    ja: {
+      title: "Singapore · シンガポール向け抹茶・日本茶卸",
+      description:
+        "シンガポールのカフェ、飲料ブランド、小売、輸入事業者向けに、抹茶・碾茶・ほうじ茶をご提案。用途、味、色、数量、ご予算に合わせて候補を絞ります。",
+    },
+    en: {
+      title: "Singapore · Japanese Matcha Wholesale",
+      description:
+        "Japanese matcha, tencha and hojicha wholesale for cafes, beverage brands, retailers and importers in Singapore. Selected around use, flavor, color, volume and target cost.",
+    },
+    zh: {
+      title: "Singapore · 新加坡日本抹茶批發",
+      description:
+        "面向新加坡咖啡館、飲品品牌、零售商與進口商的日本抹茶、碾茶與焙茶批發，依用途、風味、色澤、採購量與預算協助選品。",
     },
   },
 }
