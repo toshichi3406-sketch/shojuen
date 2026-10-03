@@ -7,9 +7,10 @@ import { buttonVariants } from "@/components/ui/button"
 import { getContactEmail } from "@/data/site-contact"
 import { useLanguage } from "@/i18n/language-context"
 import { cn } from "@/lib/utils"
+import { trackLeadEvent } from "@/lib/lead-tracking"
 
 export function WholesaleBanner() {
-  const { m, hrefForLocale } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
 
   return (
@@ -29,6 +30,12 @@ export function WholesaleBanner() {
             {m.wholesaleBanner.replyNote}{" "}
             <a
               href={`mailto:${email}`}
+              onClick={() =>
+                trackLeadEvent("direct_email_click", {
+                  location: "home_wholesale_banner",
+                  locale,
+                })
+              }
               className="font-mono text-foreground underline-offset-4 hover:underline"
             >
               {email}
@@ -37,6 +44,12 @@ export function WholesaleBanner() {
           <div className="mt-8">
             <Link
               href={hrefForLocale("/wholesale")}
+              onClick={() =>
+                trackLeadEvent("wholesale_cta_click", {
+                  location: "home_wholesale_banner",
+                  locale,
+                })
+              }
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "rounded-full no-underline"
