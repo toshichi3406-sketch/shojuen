@@ -19,7 +19,7 @@ import { FadeIn, FadeInItem, FadeInStagger } from "@/components/motion/fade-in"
 import { useLanguage } from "@/i18n/language-context"
 
 export function LatestArticles() {
-  const { locale, m } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const latest = getPublishedArticles().slice(0, 3)
 
   return (
@@ -66,7 +66,7 @@ export function LatestArticles() {
                 <Card className="group h-full overflow-hidden border-border/80 bg-card/80 shadow-sm transition-all duration-500 hover:-translate-y-1 hover:border-primary/25 hover:shadow-md">
                   {cover && (
                     <Link
-                      href={`/journal/${article.slug}`}
+                      href={hrefForLocale(`/journal/${article.slug}`)}
                       className="relative block aspect-[16/10] overflow-hidden bg-muted"
                     >
                       <Image
@@ -90,7 +90,7 @@ export function LatestArticles() {
                     </div>
                     <CardTitle className="font-heading text-lg leading-snug transition-colors group-hover:text-primary">
                       <Link
-                        href={`/journal/${article.slug}`}
+                        href={hrefForLocale(`/journal/${article.slug}`)}
                         className="inline-flex items-start gap-1 no-underline outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {localize(article.title, locale)}
@@ -117,7 +117,7 @@ export function LatestArticles() {
 
         <FadeIn className="mt-12 flex justify-center" delay={0.15}>
           <Link
-            href="/journal"
+            href={hrefForLocale("/journal")}
             className="text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline"
           >
             {m.latest.viewAll}
