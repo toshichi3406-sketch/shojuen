@@ -16,6 +16,7 @@ const staticRoutes = [
   "/how-to",
   "/wholesale",
   "/contact",
+  "/singapore",
 ]
 
 export default function sitemap(): MetadataRoute.Sitemap {
