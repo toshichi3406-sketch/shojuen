@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils"
 import { FloatingOrbs } from "@/components/motion/floating-orbs"
 import { useLanguage } from "@/i18n/language-context"
 import { siteImages } from "@/data/site-images"
+import { trackLeadEvent } from "@/lib/lead-tracking"
 
 export function HeroSection() {
-  const { m, hrefForLocale } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const sectionRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -81,6 +82,12 @@ export function HeroSection() {
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href={hrefForLocale("/wholesale")}
+            onClick={() =>
+              trackLeadEvent("wholesale_cta_click", {
+                location: "home_hero",
+                locale,
+              })
+            }
             className={cn(
               buttonVariants({ size: "lg" }),
               "rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-emerald-950/50 no-underline"

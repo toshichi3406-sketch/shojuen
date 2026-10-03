@@ -9,6 +9,7 @@ import { getContactEmail } from "@/data/site-contact"
 import { useLanguage } from "@/i18n/language-context"
 import type { Locale } from "@/i18n/types"
 import { cn } from "@/lib/utils"
+import { trackLeadEvent } from "@/lib/lead-tracking"
 
 const otsuka = {
   hero: "/images/wholesale/otsuka-hero.jpg",
@@ -579,6 +580,12 @@ export function WholesalePageClient() {
             <div className="mt-9 flex flex-wrap gap-3">
               <Link
                 href={contactHref}
+                onClick={() =>
+                  trackLeadEvent("wholesale_cta_click", {
+                    location: "wholesale_hero",
+                    locale,
+                  })
+                }
                 className={cn(
                   buttonVariants({ size: "lg" }),
                   "rounded-full px-7 no-underline"
@@ -825,6 +832,12 @@ export function WholesalePageClient() {
                   </p>
                   <Link
                     href={hrefForLocale(`/contact?from=wholesale&interest=${encodeURIComponent(item.title)}`)}
+                    onClick={() =>
+                      trackLeadEvent("wholesale_product_inquiry_click", {
+                        location: item.title,
+                        locale,
+                      })
+                    }
                     className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
                   >
                     {t.inquiryCta}
@@ -998,6 +1011,12 @@ export function WholesalePageClient() {
                 <div className="mt-9">
                   <Link
                     href={contactHref}
+                    onClick={() =>
+                      trackLeadEvent("wholesale_cta_click", {
+                        location: "wholesale_bottom",
+                        locale,
+                      })
+                    }
                     className={cn(
                       buttonVariants({ size: "lg" }),
                       "rounded-full px-8 no-underline"
