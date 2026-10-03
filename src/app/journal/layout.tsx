@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "JOURNAL",
-  description:
-    "碾茶・抹茶の産地、栽培、石臼挽き、茶道。プロの視点で綴る JOURNAL。",
+import { getRouteMetadata } from "@/i18n/server"
+
+export async function generateMetadata(): Promise<Metadata> {
+  return getRouteMetadata("journal")
 }
 
 export default function JournalLayout({
