@@ -12,7 +12,7 @@ import { useLanguage } from "@/i18n/language-context"
 import { siteImages } from "@/data/site-images"
 
 export function ProducersPreview() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const featured = producers.slice(0, 2)
 
   return (
@@ -32,7 +32,7 @@ export function ProducersPreview() {
             </p>
           </div>
           <Link
-            href="/producers"
+            href={hrefForLocale("/producers")}
             className={cn(
               buttonVariants({ variant: "outline" }),
               "w-fit shrink-0 rounded-full border-primary/30 bg-background/80"
@@ -77,7 +77,7 @@ export function ProducersPreview() {
                 <div className="flex flex-1 flex-col p-6 sm:p-8">
                   <h3 className="font-heading text-xl font-medium text-foreground">
                     <Link
-                      href={`/producers#${p.id}`}
+                      href={hrefForLocale(`/producers#${p.id}`)}
                       className="no-underline transition-colors hover:text-primary"
                     >
                       {p.name}
