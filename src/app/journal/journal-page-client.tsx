@@ -19,7 +19,7 @@ import { FadeIn, FadeInItem, FadeInStagger } from "@/components/motion/fade-in"
 import { useLanguage } from "@/i18n/language-context"
 
 export function JournalPageClient() {
-  const { locale, m } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const published = getPublishedArticles()
   const countLabel = m.journalPage.articleCount.replace(
     "{n}",
@@ -82,7 +82,7 @@ export function JournalPageClient() {
                 <Card className="group h-full overflow-hidden border-border/80 bg-card/90 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
                   {cover && (
                     <Link
-                      href={`/journal/${article.slug}`}
+                      href={hrefForLocale(`/journal/${article.slug}`)}
                       className="relative block aspect-[16/10] overflow-hidden bg-muted"
                     >
                       <Image
@@ -107,7 +107,7 @@ export function JournalPageClient() {
                     </div>
                     <CardTitle className="font-heading text-xl leading-snug sm:text-2xl">
                       <Link
-                        href={`/journal/${article.slug}`}
+                        href={hrefForLocale(`/journal/${article.slug}`)}
                         className="text-foreground no-underline transition-colors group-hover:text-primary"
                       >
                         {localize(article.title, locale)}
@@ -119,7 +119,7 @@ export function JournalPageClient() {
                   </CardHeader>
                   <CardContent>
                     <Link
-                      href={`/journal/${article.slug}`}
+                      href={hrefForLocale(`/journal/${article.slug}`)}
                       className="text-sm font-medium text-primary underline-offset-4 hover:underline"
                     >
                       {m.journalPage.readArticle}
