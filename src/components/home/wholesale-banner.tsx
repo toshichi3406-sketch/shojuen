@@ -9,7 +9,7 @@ import { useLanguage } from "@/i18n/language-context"
 import { cn } from "@/lib/utils"
 
 export function WholesaleBanner() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
 
   return (
@@ -36,7 +36,7 @@ export function WholesaleBanner() {
           </p>
           <div className="mt-8">
             <Link
-              href="/wholesale"
+              href={hrefForLocale("/wholesale")}
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "rounded-full no-underline"
