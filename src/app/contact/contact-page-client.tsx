@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/i18n/language-context"
 import { getContactEmail } from "@/data/site-contact"
+import { trackLeadEvent } from "@/lib/lead-tracking"
 
 type InquiryForm = {
   company: string
@@ -32,7 +33,7 @@ const emptyForm: InquiryForm = {
 }
 
 export function ContactPageClient() {
-  const { m, hrefForLocale } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
   const searchParams = useSearchParams()
   const [form, setForm] = useState<InquiryForm>(emptyForm)
@@ -156,6 +157,14 @@ export function ContactPageClient() {
           className="grid gap-5 rounded-[2rem] border border-border bg-muted/20 p-5 sm:grid-cols-2 sm:p-7"
           onSubmit={(event) => {
             event.preventDefault()
+            trackLeadEvent("inquiry_mail_open", {
+              location: fromWholesale
+                ? "contact_wholesale_form"
+                : fromChawan
+                  ? "contact_chawan_form"
+                  : "contact_form",
+              locale,
+            })
             window.location.href = formMailto
           }}
         >
@@ -271,6 +280,12 @@ export function ContactPageClient() {
           <p className="text-sm text-muted-foreground">{email}</p>
           <a
             href={basicMailto}
+            onClick={() =>
+              trackLeadEvent("direct_email_click", {
+                location: "contact_page",
+                locale,
+              })
+            }
             className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
             {m.contactPage.mailCta}
