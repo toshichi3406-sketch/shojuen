@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 
-export const metadata: Metadata = {
-  title: "THE MATCHA · 抹茶図鑑",
-  description:
-    "宇治・西尾・静岡。産地、品種、石臼挽き、濃緑の色味と味わいをテイスティングノート形式で。",
+import { getRouteMetadata } from "@/i18n/server"
+
+export async function generateMetadata(): Promise<Metadata> {
+  return getRouteMetadata("matcha")
 }
 
 export default function TheMatchaLayout({
