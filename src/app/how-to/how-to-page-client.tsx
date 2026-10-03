@@ -11,7 +11,7 @@ import { useLanguage } from "@/i18n/language-context"
 import { siteImages } from "@/data/site-images"
 
 export function HowToPageClient() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const blocks = m.howToPage.blocks
 
   return (
@@ -82,7 +82,7 @@ export function HowToPageClient() {
       </FadeIn>
 
       <Link
-        href="/"
+        href={hrefForLocale("/")}
         className={cn(
           buttonVariants({ variant: "outline" }),
           "mt-10 inline-flex rounded-full"
