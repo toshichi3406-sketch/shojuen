@@ -13,7 +13,7 @@ import { useLanguage } from "@/i18n/language-context"
 import { siteImages } from "@/data/site-images"
 
 export function HeroSection() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const sectionRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -80,7 +80,7 @@ export function HeroSection() {
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
-            href="/wholesale"
+            href={hrefForLocale("/wholesale")}
             className={cn(
               buttonVariants({ size: "lg" }),
               "rounded-full bg-primary px-7 text-primary-foreground shadow-lg shadow-emerald-950/50 no-underline"
@@ -89,7 +89,7 @@ export function HeroSection() {
             {m.hero.ctaWholesale}
           </Link>
           <Link
-            href="/journal"
+            href={hrefForLocale("/journal")}
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
               "rounded-full border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20 no-underline"
