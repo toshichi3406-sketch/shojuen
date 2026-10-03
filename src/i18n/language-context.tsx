@@ -59,7 +59,8 @@ export function LanguageProvider({
         /* ignore */
       }
 
-      router.push(localizePath(pathname, next))
+      const currentHref = `${pathname}${window.location.search}${window.location.hash}`
+      router.push(localizePath(currentHref, next))
     },
     [pathname, router]
   )
