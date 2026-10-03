@@ -8,7 +8,7 @@ import { getContactEmail } from "@/data/site-contact"
 import { useLanguage } from "@/i18n/language-context"
 
 export function SiteFooter() {
-  const { m } = useLanguage()
+  const { m, hrefForLocale } = useLanguage()
   const email = getContactEmail()
 
   return (
@@ -51,7 +51,7 @@ export function SiteFooter() {
               ) : (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={hrefForLocale(item.href)}
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {m.navItems[item.key].label}
