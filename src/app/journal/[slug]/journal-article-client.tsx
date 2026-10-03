@@ -23,7 +23,7 @@ export function JournalArticleClient({
   slug: string
   article: Article
 }) {
-  const { locale, m } = useLanguage()
+  const { locale, m, hrefForLocale } = useLanguage()
 
   const paragraphs = useMemo(() => {
     const body = journalArticleBodies[slug]
@@ -61,7 +61,7 @@ export function JournalArticleClient({
     <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
       <FadeIn>
         <Link
-          href="/journal"
+          href={hrefForLocale("/journal")}
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           {m.journalArticle.back}
