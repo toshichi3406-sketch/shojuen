@@ -63,7 +63,15 @@ export function trackLeadEvent(
   data: { location: string; locale: string }
 ): void {
   try {
-    track(name, data)
+    const attribution = getLeadAttribution()
+
+    track(name, {
+      ...data,
+      landingPath: attribution?.landingPath ?? "",
+      utmSource: attribution?.utmSource ?? "",
+      utmMedium: attribution?.utmMedium ?? "",
+      utmCampaign: attribution?.utmCampaign ?? "",
+    })
   } catch {
     /* Analytics must never interrupt navigation or inquiry actions. */
   }
