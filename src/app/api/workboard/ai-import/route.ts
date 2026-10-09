@@ -453,9 +453,56 @@ export async function PUT(request: NextRequest) {
 
     if (candidateType === "price_candidate") {
       const classification = String(payload.price_classification || "")
+
+      if (classification === "customer_quoted") {
+        const customerId = String(payload.customer_id || "").trim()
+        const productId = String(payload.product_id || "").trim()
+        if (!customerId || !productId) {
+          return NextResponse.json({ error: "取引先と商品を選択してください。" }, { status: 400 })
+        }
+
+        const amountRaw = payload.amount ?? payload.price
+        const amount = Number(String(amountRaw ?? "").replace(/[,\s¥￥]/g, ""))
+        if (!Number.isFinite(amount) || amount < 0) {
+          return NextResponse.json({ error: "提示価格を数値として確認できません。" }, { status: 400 })
+        }
+
+        await sb("customer_prices", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            customer_id: customerId,
+            product_id: productId,
+            price: amount,
+            currency: payload.currency || "JPY",
+            unit: payload.unit || "kg",
+            moq: payload.moq || null,
+            shipping_terms: payload.shipping_terms || null,
+            payment_terms: payload.payment_terms || null,
+            effective_from: payload.effective_from || new Date().toISOString().slice(0, 10),
+            is_current: true,
+            ai_locked: true,
+            approved_at: now,
+            note: payload.note || payload.memo || body.title || null,
+          }),
+        })
+
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "approved",
+            reviewed_at: now,
+            decision_note: `取引先価格履歴へ反映（${customerId} / ${productId}）`,
+          }),
+        })
+
+        return NextResponse.json({ ok: true, applied: "customer_price", customerId, productId })
+      }
+
       if (classification !== "shipping_rate") {
         return NextResponse.json(
-          { error: "価格候補は分類済みでも、送料・運賃以外はまだ正式反映対象外です。" },
+          { error: "この価格種別の正式反映はまだ手動確認対象です。" },
           { status: 409 }
         )
       }
