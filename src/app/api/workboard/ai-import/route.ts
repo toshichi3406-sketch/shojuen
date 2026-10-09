@@ -246,6 +246,7 @@ export async function PUT(request: NextRequest) {
           id: idValue,
           title: body.title || "AI取込業務",
           status,
+          customer_id: payload.customer_id || null,
           work_type: payload.work_type || payload.workType || null,
           assignee: payload.assignee || null,
           priority: ["低","中","高","緊急"].includes(payload.priority) ? payload.priority : null,
@@ -258,6 +259,20 @@ export async function PUT(request: NextRequest) {
           updated_at: now,
         }),
       })
+
+      if (Array.isArray(payload.product_ids) && payload.product_ids.length > 0) {
+        await sb("work_item_products", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(
+            payload.product_ids.map((productId: string) => ({
+              work_item_id: idValue,
+              product_id: productId,
+              relation_type: "related",
+            }))
+          ),
+        })
+      }
 
       await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
         method: "PATCH",
