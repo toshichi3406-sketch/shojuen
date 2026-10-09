@@ -1234,9 +1234,9 @@ export default function SalesKanbanPage() {
                                 >
                                   分類だけ保存
                                 </button>
-                                {candidate.payload?.price_classification && (
+                                {Boolean(candidate.payload?.price_classification) && (
                                   <p className="mt-2 text-[10px] leading-4 text-amber-100/50">
-                                    保存済み: {String(candidate.payload.price_classification)}
+                                    保存済み: {String(candidate.payload?.price_classification || "")}
                                   </p>
                                 )}
                               </div>
