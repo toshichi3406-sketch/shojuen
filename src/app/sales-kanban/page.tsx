@@ -1553,6 +1553,55 @@ export default function SalesKanbanPage() {
                     })}
                 </div>
               )}
+
+              {salesCases.some((item) => ["won", "lost", "hold"].includes(item.stage)) && (
+                <section className="mt-8 border-t border-white/10 pt-6">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-sm font-semibold">クローズ済み案件</h2>
+                      <p className="mt-1 text-xs text-white/40">成約・失注・保留になった案件。履歴はここに残ります。</p>
+                    </div>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/50">
+                      {salesCases.filter((item) => ["won", "lost", "hold"].includes(item.stage)).length}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {salesCases
+                      .filter((item) => ["won", "lost", "hold"].includes(item.stage))
+                      .sort((a, b) => (b.closedAt || b.updatedAt || "").localeCompare(a.closedAt || a.updatedAt || ""))
+                      .map((item) => {
+                        const customer = customers.find((row) => row.id === item.customerId)
+                        return (
+                          <article
+                            key={item.id}
+                            onClick={() => setEditingSalesCase(item)}
+                            className="cursor-pointer rounded-[20px] border border-white/10 bg-white/[0.02] p-5 opacity-80 transition hover:border-white/20 hover:opacity-100"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-xs text-white/40">{customer?.name || item.customerId}</div>
+                                <h3 className="mt-1 text-sm font-semibold leading-5">{item.theme || item.title}</h3>
+                              </div>
+                              <Tag>{SALES_STAGE_LABELS[item.stage]}</Tag>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              <Tag>{item.caseType === "new_business" ? "新規営業" : "既存顧客"}</Tag>
+                              <Tag>{(item.productIds || []).length}商品</Tag>
+                            </div>
+                            <div className="mt-3 text-xs text-white/35">
+                              {item.stage === "won" && item.wonAt
+                                ? `成約 ${new Date(item.wonAt).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`
+                                : item.closedAt
+                                  ? `クローズ ${new Date(item.closedAt).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`
+                                  : "クローズ済み"}
+                            </div>
+                          </article>
+                        )
+                      })}
+                  </div>
+                </section>
+              )}
             </div>
           </section>
         )}
