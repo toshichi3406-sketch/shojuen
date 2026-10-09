@@ -45,6 +45,7 @@ function workToDb(item: any) {
     origin_type: item.originType || null,
     channel: item.channel || null,
     memo: item.memo || null,
+    sales_case_id: item.salesCaseId || null,
     updated_at: new Date().toISOString(),
   }
 }
@@ -90,7 +91,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts] = await Promise.all([
+    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
       sb("customer_prices_current?select=*", token),
@@ -100,6 +101,8 @@ export async function GET() {
       sb("work_events?select=*&order=event_date.desc", token),
       sb("shipping_rates?select=*&order=created_at.desc", token),
       sb("product_costs?select=*&order=created_at.desc", token),
+      sb("sales_cases?select=*&order=created_at.desc", token),
+      sb("sales_case_products?select=*", token),
     ])
 
     const mappedProducts = (products || []).map((p: any) => ({
@@ -202,6 +205,29 @@ export async function GET() {
       createdAt: r.created_at,
     }))
 
+    const mappedSalesCases = (salesCases || []).map((row: any) => ({
+      id: row.id,
+      customerId: row.customer_id,
+      title: row.title,
+      theme: row.theme,
+      caseType: row.case_type,
+      stage: row.stage,
+      heat: row.heat,
+      nextFollowUpDate: row.next_follow_up_date || "",
+      nextAction: row.next_action || "",
+      assignee: row.assignee || "",
+      lastContactAt: row.last_contact_at || "",
+      closeReason: row.close_reason || "",
+      closeNote: row.close_note || "",
+      wonAt: row.won_at || "",
+      closedAt: row.closed_at || "",
+      productIds: (salesCaseProducts || [])
+        .filter((link: any) => link.sales_case_id === row.id)
+        .map((link: any) => link.product_id),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }))
+
     const mappedWork = (workItems || []).map((w: any) => ({
       id: w.id,
       title: w.title,
@@ -216,6 +242,7 @@ export async function GET() {
       originType: w.origin_type || undefined,
       channel: w.channel || "",
       memo: w.memo || "",
+      salesCaseId: w.sales_case_id || "",
       productIds: (links || [])
         .filter((l: any) => l.work_item_id === w.id)
         .map((l: any) => l.product_id),
@@ -228,6 +255,7 @@ export async function GET() {
       events: mappedEvents,
       shippingRates: mappedShippingRates,
       productCosts: mappedProductCosts,
+      salesCases: mappedSalesCases,
     })
   } catch (error) {
     return NextResponse.json(
@@ -270,12 +298,75 @@ export async function POST(request: NextRequest) {
           ),
         })
       }
+    } else if (type === "sales_case") {
+      if (!data.customerId || !data.title || !data.theme || !data.caseType || !data.stage || !data.heat || !data.assignee) {
+        return NextResponse.json({ error: "営業案件の必須項目を確認してください。" }, { status: 400 })
+      }
+
+      const payload = {
+        customer_id: data.customerId,
+        title: data.title,
+        theme: data.theme,
+        case_type: data.caseType,
+        stage: data.stage,
+        heat: data.heat,
+        next_follow_up_date: data.nextFollowUpDate || null,
+        next_action: data.nextAction || null,
+        assignee: data.assignee,
+        last_contact_at: data.lastContactAt || null,
+        close_reason: data.closeReason || null,
+        close_note: data.closeNote || null,
+        won_at: data.wonAt || null,
+        closed_at: data.closedAt || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      let salesCaseId = data.id
+      if (salesCaseId) {
+        await sb(`sales_cases?id=eq.${encodeURIComponent(salesCaseId)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        const inserted = await sb("sales_cases", token, {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify(payload),
+        })
+        salesCaseId = inserted?.[0]?.id
+      }
+
+      if (!salesCaseId) {
+        return NextResponse.json({ error: "営業案件IDを取得できませんでした。" }, { status: 500 })
+      }
+
+      await sb(`sales_case_products?sales_case_id=eq.${encodeURIComponent(salesCaseId)}`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+
+      if ((data.productIds || []).length) {
+        await sb("sales_case_products", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(
+            data.productIds.map((productId: string) => ({
+              sales_case_id: salesCaseId,
+              product_id: productId,
+            }))
+          ),
+        })
+      }
+
+      return NextResponse.json({ ok: true, id: salesCaseId })
     } else if (type === "work_event") {
       await sb("work_events", token, {
         method: "POST",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
           work_item_id: data.workItemId || null,
+          sales_case_id: data.salesCaseId || null,
           event_type: data.eventType || "note",
           event_date: data.eventDate || new Date().toISOString(),
           channel: data.channel || null,
@@ -412,6 +503,7 @@ export async function DELETE(request: NextRequest) {
       type === "work" ? "work_items" :
       type === "customer" ? "customers" :
       type === "product" ? "products" :
+      type === "sales_case" ? "sales_cases" :
       null
 
     if (!table) return NextResponse.json({ error: "Unsupported entity type" }, { status: 400 })
