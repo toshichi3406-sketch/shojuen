@@ -1151,6 +1151,16 @@ export default function SalesKanbanPage() {
                             {candidate.target_id && (
                               <p className="mt-2 text-xs text-white/35">対象ID: {candidate.target_id}</p>
                             )}
+                            {candidate.candidate_type === "customer_update" && candidate.payload && (
+                              <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs md:grid-cols-2">
+                                <div><span className="text-white/35">会社名</span><div className="mt-1 text-white/75">{String(candidate.payload.company_name || "未設定")}</div></div>
+                                <div><span className="text-white/35">国</span><div className="mt-1 text-white/75">{String(candidate.payload.country || "未設定")}</div></div>
+                                <div><span className="text-white/35">担当者</span><div className="mt-1 text-white/75">{String(candidate.payload.contact_name || "未設定")}</div></div>
+                                <div><span className="text-white/35">メール</span><div className="mt-1 break-all text-white/75">{String(candidate.payload.email || "未設定")}</div></div>
+                                <div><span className="text-white/35">接点区分</span><div className="mt-1 text-white/75">{String(candidate.payload.contact_origin || "未設定")}</div></div>
+                                <div><span className="text-white/35">媒体</span><div className="mt-1 text-white/75">{String(candidate.payload.channel || "未設定")}</div></div>
+                              </div>
+                            )}
                             {candidate.payload && Object.keys(candidate.payload).length > 0 && (
                               <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
                                 {JSON.stringify(candidate.payload, null, 2)}
