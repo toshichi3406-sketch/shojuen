@@ -215,6 +215,9 @@ export default function SalesKanbanPage() {
   const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
   const [aiCandidates, setAiCandidates] = useState<AiImportCandidate[]>([])
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiImportJson, setAiImportJson] = useState("")
+  const [aiImportMessage, setAiImportMessage] = useState("")
+  const [aiImportBusy, setAiImportBusy] = useState(false)
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -321,6 +324,34 @@ export default function SalesKanbanPage() {
     if (!response.ok) throw new Error(result.error || "共有DBからの削除に失敗しました。")
   }
 
+
+
+  async function importAiJson() {
+    setAiImportBusy(true)
+    setAiImportMessage("")
+    try {
+      const payload = JSON.parse(aiImportJson)
+      const response = await fetch("/api/workboard/ai-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "AI取込に失敗しました。")
+      setAiImportMessage(`取込完了: ${result.candidateCount}件を候補として追加しました。`)
+      setAiImportJson("")
+      const refreshed = await fetch("/api/workboard/ai-import", { cache: "no-store" })
+      const refreshedData = await refreshed.json().catch(() => ({}))
+      if (refreshed.ok) {
+        setAiBatches(Array.isArray(refreshedData.batches) ? refreshedData.batches : [])
+        setAiCandidates(Array.isArray(refreshedData.candidates) ? refreshedData.candidates : [])
+      }
+    } catch (error) {
+      setAiImportMessage(error instanceof Error ? error.message : "AI取込に失敗しました。")
+    } finally {
+      setAiImportBusy(false)
+    }
+  }
 
   async function updateAiCandidate(id: string, status: AiImportCandidate["status"]) {
     const response = await fetch("/api/workboard/ai-import", {
@@ -879,6 +910,35 @@ export default function SalesKanbanPage() {
         {tab === "ai" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
+              <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold">テスト取込</h2>
+                    <p className="mt-1 text-xs leading-5 text-white/45">
+                      Claude / ChatGPTが出した共通JSONをここに貼ります。正式DBにはまだ反映せず、AI取込候補にだけ追加します。
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={aiImportBusy || !aiImportJson.trim()}
+                    onClick={() => importAiJson()}
+                    className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-40"
+                  >
+                    {aiImportBusy ? "確認中..." : "候補として取込"}
+                  </button>
+                </div>
+                <textarea
+                  rows={10}
+                  value={aiImportJson}
+                  onChange={(e) => setAiImportJson(e.target.value)}
+                  className={`${inputClass} mt-3 min-h-52 resize-y py-3 font-mono text-xs`}
+                  placeholder='{"source":"claude","session_title":"...","summary":"...","candidates":[...]}'
+                />
+                {aiImportMessage && (
+                  <p className="mt-2 text-xs leading-5 text-white/55">{aiImportMessage}</p>
+                )}
+              </div>
+
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="未確認" value={pendingAiCount} />
                 <Kpi label="承認" value={aiCandidates.filter((item) => item.status === "approved").length} />
