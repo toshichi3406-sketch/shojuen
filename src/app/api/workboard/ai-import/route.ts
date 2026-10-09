@@ -283,6 +283,71 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ ok: true, createdId: idValue })
     }
 
+
+    if (candidateType === "customer_update") {
+      const requestedCustomerId = payload.customer_id || null
+      let customerId = requestedCustomerId
+
+      if (!customerId) {
+        const existingCustomers = await sb("customers?select=id&order=id.asc", token)
+        const next = (existingCustomers || []).reduce((max: number, row: any) => {
+          const m = String(row.id || "").match(/^C(\d+)$/i)
+          return m ? Math.max(max, Number(m[1])) : max
+        }, 0) + 1
+        customerId = `C${String(next).padStart(3, "0")}`
+      }
+
+      const existingRows = await sb(
+        `customers?select=*&id=eq.${encodeURIComponent(customerId)}&limit=1`,
+        token
+      )
+      const existingCustomer = Array.isArray(existingRows) ? existingRows[0] : null
+
+      const pick = (incoming: any, existing: any) =>
+        incoming === undefined || incoming === null || incoming === "" ? (existing ?? null) : incoming
+
+      const companyName = pick(payload.company_name || payload.name, existingCustomer?.name)
+      if (!companyName) {
+        return NextResponse.json({ error: "取引先名がないため正式反映できません。" }, { status: 400 })
+      }
+
+      await sb("customers?on_conflict=id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({
+          id: customerId,
+          name: companyName,
+          country: pick(payload.country, existingCustomer?.country),
+          category: pick(payload.business_type || payload.category, existingCustomer?.category),
+          contact_name: pick(payload.contact_name, existingCustomer?.contact_name),
+          email: pick(payload.email, existingCustomer?.email),
+          phone: pick(payload.phone, existingCustomer?.phone),
+          instagram: pick(payload.instagram, existingCustomer?.instagram),
+          linkedin: pick(payload.linkedin, existingCustomer?.linkedin),
+          note: pick(payload.memo || payload.note || payload.requirements, existingCustomer?.note),
+          updated_at: now,
+        }),
+      })
+
+      await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "approved",
+          reviewed_at: now,
+          decision_note: existingCustomer
+            ? `既存取引先 ${customerId} を更新`
+            : `新規取引先 ${customerId} として登録`,
+        }),
+      })
+
+      return NextResponse.json({
+        ok: true,
+        customerId,
+        mode: existingCustomer ? "updated" : "created",
+      })
+    }
+
     if (candidateType === "work_event") {
       await sb("work_events", token, {
         method: "POST",
