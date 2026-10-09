@@ -220,6 +220,9 @@ export default function SalesKanbanPage() {
   const [aiImportBusy, setAiImportBusy] = useState(false)
   const [aiTypeFilter, setAiTypeFilter] = useState("all")
   const [aiStatusFilter, setAiStatusFilter] = useState("pending")
+  const [aiMatchCustomer, setAiMatchCustomer] = useState<Record<string, string>>({})
+  const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
+  const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -358,6 +361,58 @@ export default function SalesKanbanPage() {
     } finally {
       setAiImportBusy(false)
     }
+  }
+
+
+  async function applyAiCandidate(candidate: AiImportCandidate) {
+    const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
+
+    if (aiMatchCustomer[candidate.id]) {
+      payload.customer_id = aiMatchCustomer[candidate.id]
+    }
+    if (aiMatchWork[candidate.id]) {
+      payload.work_item_id = aiMatchWork[candidate.id]
+    }
+    if (aiMatchProducts[candidate.id]?.length) {
+      payload.product_ids = aiMatchProducts[candidate.id]
+    }
+
+    const response = await fetch("/api/workboard/ai-import", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: candidate.id,
+        candidate_type: candidate.candidate_type,
+        title: candidate.title,
+        payload,
+      }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || "正式反映に失敗しました。")
+
+    setAiCandidates((current) =>
+      current.map((item) => (item.id === candidate.id ? { ...item, status: "approved" } : item))
+    )
+
+    const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
+    const refreshedData = await refreshed.json().catch(() => ({}))
+    if (refreshed.ok) {
+      setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
+      setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
+      setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
+    }
+  }
+
+  function toggleAiProduct(candidateId: string, productId: string) {
+    setAiMatchProducts((current) => {
+      const selected = current[candidateId] || []
+      return {
+        ...current,
+        [candidateId]: selected.includes(productId)
+          ? selected.filter((id) => id !== productId)
+          : [...selected, productId],
+      }
+    })
   }
 
   async function updateAiCandidate(id: string, status: AiImportCandidate["status"]) {
@@ -1034,25 +1089,86 @@ export default function SalesKanbanPage() {
                             )}
                           </div>
 
-                          <div className="flex shrink-0 flex-wrap gap-2">
-                            <button
-                              onClick={() => updateAiCandidate(candidate.id, "approved").catch(console.error)}
-                              className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
-                            >
-                              承認
-                            </button>
-                            <button
-                              onClick={() => updateAiCandidate(candidate.id, "needs_edit").catch(console.error)}
-                              className="rounded-full border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-xs text-amber-100"
-                            >
-                              要修正
-                            </button>
-                            <button
-                              onClick={() => updateAiCandidate(candidate.id, "rejected").catch(console.error)}
-                              className="rounded-full border border-red-300/15 px-4 py-2 text-xs text-red-300"
-                            >
-                              却下
-                            </button>
+                          <div className="w-full shrink-0 space-y-2 md:w-72">
+                            {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event") && (
+                              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                                <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-white/35">紐付け確認</div>
+
+                                {candidate.candidate_type === "new_work" && (
+                                  <select
+                                    value={aiMatchCustomer[candidate.id] || ""}
+                                    onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                    className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                  >
+                                    <option value="">取引先なし / 未確定</option>
+                                    {customers.map((customer) => (
+                                      <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>
+                                    ))}
+                                  </select>
+                                )}
+
+                                {candidate.candidate_type === "work_event" && (
+                                  <select
+                                    value={aiMatchWork[candidate.id] || ""}
+                                    onChange={(e) => setAiMatchWork((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                    className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                  >
+                                    <option value="">既存業務を選択</option>
+                                    {work.map((item) => (
+                                      <option key={item.id} value={item.id}>{item.id} {item.title}</option>
+                                    ))}
+                                  </select>
+                                )}
+
+                                {candidate.candidate_type === "new_work" && products.length > 0 && (
+                                  <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto">
+                                    {products.map((product) => {
+                                      const active = (aiMatchProducts[candidate.id] || []).includes(product.id)
+                                      return (
+                                        <button
+                                          key={product.id}
+                                          type="button"
+                                          onClick={() => toggleAiProduct(candidate.id, product.id)}
+                                          className={`rounded-md border px-2 py-1 text-[10px] ${active ? "border-[#66845c] bg-[#66845c]/20 text-[#d6e5d1]" : "border-white/10 text-white/45"}`}
+                                        >
+                                          {product.id}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex flex-wrap gap-2">
+                              {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event") && (
+                                <button
+                                  onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
+                                  disabled={candidate.candidate_type === "work_event" && !aiMatchWork[candidate.id]}
+                                  className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-35"
+                                >
+                                  正式反映
+                                </button>
+                              )}
+                              <button
+                                onClick={() => updateAiCandidate(candidate.id, "approved").catch(console.error)}
+                                className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/65"
+                              >
+                                候補だけ承認
+                              </button>
+                              <button
+                                onClick={() => updateAiCandidate(candidate.id, "needs_edit").catch(console.error)}
+                                className="rounded-full border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-xs text-amber-100"
+                              >
+                                要修正
+                              </button>
+                              <button
+                                onClick={() => updateAiCandidate(candidate.id, "rejected").catch(console.error)}
+                                className="rounded-full border border-red-300/15 px-4 py-2 text-xs text-red-300"
+                              >
+                                却下
+                              </button>
+                            </div>
                           </div>
                         </div>
 
