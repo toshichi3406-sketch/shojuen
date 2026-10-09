@@ -293,6 +293,7 @@ export default function SalesKanbanPage() {
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
+  const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -906,6 +907,19 @@ export default function SalesKanbanPage() {
   const decisionCount = work.filter((item) => item.status === "decision").length
   const dueCount = work.filter((item) => item.dueDate && item.status !== "done").length
 
+  const isSystemEvent = (event: WorkEvent) =>
+    event.source === "workboard_auto" ||
+    ["work_updated", "work_created", "status_changed"].includes(event.eventType)
+
+  const salesActivityEvents = events.filter((event) => !isSystemEvent(event))
+  const systemActivityEvents = events.filter((event) => isSystemEvent(event))
+  const visibleActivityEvents =
+    activityFilter === "sales"
+      ? salesActivityEvents
+      : activityFilter === "system"
+        ? systemActivityEvents
+        : events
+
   async function moveWork(id: string, status: Status) {
     const currentItem = work.find((item) => item.id === id)
     if (!currentItem || currentItem.status === status) return
@@ -1363,9 +1377,30 @@ export default function SalesKanbanPage() {
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-5xl">
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3">
-                <Kpi label="履歴件数" value={events.length} />
-                <Kpi label="単独履歴" value={events.filter((event) => !event.workItemId).length} />
-                <Kpi label="業務紐付け済み" value={events.filter((event) => event.workItemId).length} />
+                <Kpi label="営業活動" value={salesActivityEvents.length} />
+                <Kpi label="変更履歴" value={systemActivityEvents.length} />
+                <Kpi label="履歴合計" value={events.length} />
+              </div>
+
+              <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+                {[
+                  { id: "sales" as const, label: "営業活動", count: salesActivityEvents.length },
+                  { id: "system" as const, label: "変更履歴", count: systemActivityEvents.length },
+                  { id: "all" as const, label: "すべて", count: events.length },
+                ].map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setActivityFilter(filter.id)}
+                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                      activityFilter === filter.id
+                        ? "bg-[#eef3ea] text-[#11150f]"
+                        : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                    }`}
+                  >
+                    {filter.label} ({filter.count})
+                  </button>
+                ))}
               </div>
 
               {events.length === 0 ? (
@@ -1376,14 +1411,26 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {events.map((event) => {
+                  {visibleActivityEvents.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-8 text-center text-sm text-white/45">
+                      この分類の履歴はまだありません。
+                    </div>
+                  )}
+                  {visibleActivityEvents.map((event) => {
                     const linkedWork = work.find((item) => item.id === event.workItemId)
                     const date = event.eventDate ? new Date(event.eventDate) : null
                     const dateLabel = date && !Number.isNaN(date.getTime())
                       ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
                       : event.eventDate || "日時不明"
                     return (
-                      <article key={event.id} className="rounded-2xl border border-white/10 bg-[#111311] p-4 md:p-5">
+                      <article
+                        key={event.id}
+                        className={`rounded-2xl border p-4 md:p-5 ${
+                          isSystemEvent(event)
+                            ? "border-white/[0.07] bg-white/[0.025]"
+                            : "border-white/10 bg-[#111311]"
+                        }`}
+                      >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.1em] text-white/35">
