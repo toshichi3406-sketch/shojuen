@@ -91,7 +91,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts] = await Promise.all([
+    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts, orders, orderItems] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
       sb("customer_prices_current?select=*", token),
@@ -103,6 +103,8 @@ export async function GET() {
       sb("product_costs?select=*&order=created_at.desc", token),
       sb("sales_cases?select=*&order=created_at.desc", token),
       sb("sales_case_products?select=*", token),
+      sb("orders?select=*&order=order_date.desc,created_at.desc", token),
+      sb("order_items?select=*&order=created_at.asc", token),
     ])
 
     const mappedProducts = (products || []).map((p: any) => ({
@@ -229,6 +231,32 @@ export async function GET() {
       updatedAt: row.updated_at,
     }))
 
+    const mappedOrders = (orders || []).map((row: any) => ({
+      id: row.id,
+      customerId: row.customer_id,
+      salesCaseId: row.sales_case_id || "",
+      orderType: row.order_type,
+      orderStatus: row.order_status,
+      orderDate: row.order_date,
+      currency: row.currency || "JPY",
+      shippingAmount: row.shipping_amount == null ? "" : String(row.shipping_amount),
+      totalAmount: row.total_amount == null ? "" : String(row.total_amount),
+      externalOrderRef: row.external_order_ref || "",
+      note: row.note || "",
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      items: (orderItems || [])
+        .filter((item: any) => item.order_id === row.id)
+        .map((item: any) => ({
+          id: item.id,
+          productId: item.product_id,
+          quantity: item.quantity == null ? "" : String(item.quantity),
+          unit: item.unit || "kg",
+          unitPrice: item.unit_price == null ? "" : String(item.unit_price),
+          lineAmount: item.line_amount == null ? "" : String(item.line_amount),
+        })),
+    }))
+
     const mappedWork = (workItems || []).map((w: any) => ({
       id: w.id,
       title: w.title,
@@ -257,6 +285,7 @@ export async function GET() {
       shippingRates: mappedShippingRates,
       productCosts: mappedProductCosts,
       salesCases: mappedSalesCases,
+      orders: mappedOrders,
     })
   } catch (error) {
     return NextResponse.json(
@@ -361,6 +390,91 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ ok: true, id: salesCaseId })
+    } else if (type === "order") {
+      if (!data.customerId || !data.orderDate || !data.orderType || !data.orderStatus || !data.currency) {
+        return NextResponse.json({ error: "受注履歴の必須項目を確認してください。" }, { status: 400 })
+      }
+
+      const items = Array.isArray(data.items) ? data.items : []
+      if (!items.length) {
+        return NextResponse.json({ error: "受注明細を1件以上追加してください。" }, { status: 400 })
+      }
+
+      const normalizedItems = items.map((item: any) => {
+        const quantity = Number(String(item.quantity ?? "").replace(/,/g, ""))
+        const unitPrice = Number(String(item.unitPrice ?? "").replace(/[,s¥￥]/g, ""))
+        if (!item.productId || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+          throw new Error("受注明細の商品・数量・単価を確認してください。")
+        }
+        return {
+          product_id: item.productId,
+          quantity,
+          unit: item.unit || "kg",
+          unit_price: unitPrice,
+          line_amount: quantity * unitPrice,
+        }
+      })
+
+      const computedSubtotal = normalizedItems.reduce((sum: number, item: any) => sum + item.line_amount, 0)
+      const shippingAmount = data.shippingAmount === "" || data.shippingAmount == null
+        ? null
+        : Number(String(data.shippingAmount).replace(/[,s¥￥]/g, ""))
+
+      if (shippingAmount != null && (!Number.isFinite(shippingAmount) || shippingAmount < 0)) {
+        return NextResponse.json({ error: "送料を確認してください。" }, { status: 400 })
+      }
+
+      const payload = {
+        customer_id: data.customerId,
+        sales_case_id: data.salesCaseId || null,
+        order_type: data.orderType,
+        order_status: data.orderStatus,
+        order_date: data.orderDate,
+        currency: data.currency || "JPY",
+        shipping_amount: shippingAmount,
+        total_amount: computedSubtotal + (shippingAmount || 0),
+        external_order_ref: data.externalOrderRef || null,
+        note: data.note || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      let orderId = data.id
+      if (orderId) {
+        await sb(`orders?id=eq.${encodeURIComponent(orderId)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        const inserted = await sb("orders", token, {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify(payload),
+        })
+        orderId = inserted?.[0]?.id
+      }
+
+      if (!orderId) {
+        return NextResponse.json({ error: "受注IDを取得できませんでした。" }, { status: 500 })
+      }
+
+      await sb(`order_items?order_id=eq.${encodeURIComponent(orderId)}`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+
+      await sb("order_items", token, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(
+          normalizedItems.map((item: any) => ({
+            ...item,
+            order_id: orderId,
+          }))
+        ),
+      })
+
+      return NextResponse.json({ ok: true, id: orderId, totalAmount: payload.total_amount })
     } else if (type === "work_event") {
       await sb("work_events", token, {
         method: "POST",
@@ -505,6 +619,7 @@ export async function DELETE(request: NextRequest) {
       type === "customer" ? "customers" :
       type === "product" ? "products" :
       type === "sales_case" ? "sales_cases" :
+      type === "order" ? "orders" :
       null
 
     if (!table) return NextResponse.json({ error: "Unsupported entity type" }, { status: 400 })
