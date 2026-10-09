@@ -267,6 +267,7 @@ export default function SalesKanbanPage() {
   const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
   const [aiShippingStage, setAiShippingStage] = useState<Record<string, string>>({})
   const [aiShippingDraft, setAiShippingDraft] = useState<Record<string, Record<string, string>>>({})
+  const [aiPriceDraft, setAiPriceDraft] = useState<Record<string, Record<string, string>>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -443,6 +444,23 @@ export default function SalesKanbanPage() {
       if (draft.weight_kg) payload.weight_kg = draft.weight_kg
       if (draft.shipment_date) payload.shipment_date = draft.shipment_date
       if (draft.actual_weight_kg) payload.actual_weight_kg = draft.actual_weight_kg
+    }
+
+    if (
+      candidate.candidate_type === "price_candidate" &&
+      String(payload.price_classification || "") === "customer_quoted"
+    ) {
+      const draft = aiPriceDraft[candidate.id] || {}
+      if (draft.amount) payload.amount = draft.amount
+      if (draft.currency) payload.currency = draft.currency
+      if (draft.unit) payload.unit = draft.unit
+      if (draft.moq) payload.moq = draft.moq
+      if (draft.effective_from) payload.effective_from = draft.effective_from
+      if (draft.shipping_terms) payload.shipping_terms = draft.shipping_terms
+      if (draft.payment_terms) payload.payment_terms = draft.payment_terms
+      if (aiMatchCustomer[candidate.id]) payload.customer_id = aiMatchCustomer[candidate.id]
+      const selectedProduct = aiMatchProducts[candidate.id]?.[0]
+      if (selectedProduct) payload.product_id = selectedProduct
     }
 
     const response = await fetch("/api/workboard/ai-import", {
@@ -1356,6 +1374,76 @@ export default function SalesKanbanPage() {
                                   <option value="shipping_rate">送料・運賃</option>
                                   <option value="other">その他 / 要確認</option>
                                 </select>
+                                {(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) === "customer_quoted" && (
+                                  <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-black/10 p-2">
+                                    <div className="text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">提示済み価格の紐付け</div>
+                                    <select
+                                      value={aiMatchCustomer[candidate.id] || ""}
+                                      onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">取引先を選択</option>
+                                      {customers.map((customer) => (
+                                        <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>
+                                      ))}
+                                    </select>
+                                    <select
+                                      value={(aiMatchProducts[candidate.id] || [])[0] || ""}
+                                      onChange={(e) => setAiMatchProducts((current) => ({ ...current, [candidate.id]: e.target.value ? [e.target.value] : [] }))}
+                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">商品を選択</option>
+                                      {products.map((product) => (
+                                        <option key={product.id} value={product.id}>{product.id} {product.name}</option>
+                                      ))}
+                                    </select>
+                                    <div className="grid grid-cols-[1fr_80px] gap-2">
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="価格"
+                                        value={aiPriceDraft[candidate.id]?.amount ?? String(candidate.payload?.amount || candidate.payload?.price || "")}
+                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), amount: e.target.value } }))}
+                                      />
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="JPY"
+                                        value={aiPriceDraft[candidate.id]?.currency ?? String(candidate.payload?.currency || "JPY")}
+                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), currency: e.target.value } }))}
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="単位 例: kg"
+                                        value={aiPriceDraft[candidate.id]?.unit ?? String(candidate.payload?.unit || "kg")}
+                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), unit: e.target.value } }))}
+                                      />
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="MOQ"
+                                        value={aiPriceDraft[candidate.id]?.moq ?? String(candidate.payload?.moq || "")}
+                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), moq: e.target.value } }))}
+                                      />
+                                    </div>
+                                    <input
+                                      type="date"
+                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                      value={aiPriceDraft[candidate.id]?.effective_from ?? String(candidate.payload?.effective_from || "")}
+                                      onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), effective_from: e.target.value } }))}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "取引先価格への反映に失敗しました。"))}
+                                      className="w-full rounded-lg bg-[#eef3ea] px-3 py-2 text-xs font-semibold text-[#11150f]"
+                                    >
+                                      取引先の価格履歴へ正式反映
+                                    </button>
+                                    <p className="text-[10px] leading-4 text-amber-100/45">
+                                      既存価格は上書きせず、新しい価格履歴として追加します。
+                                    </p>
+                                  </div>
+                                )}
+
                                 {(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) === "shipping_rate" && (
                                   <div className="mt-3">
                                     <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">送料の状態</div>
