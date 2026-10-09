@@ -1473,7 +1473,7 @@ export default function SalesKanbanPage() {
                 <Kpi label="進行中" value={salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="Aランク" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
-                <Kpi label="クローズ済み" value={salesCases.filter((item) => ["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="見積提示中" value={salesCases.filter((item) => item.stage === "quoted").length} />
               </div>
 
               {salesCases.length === 0 ? (
