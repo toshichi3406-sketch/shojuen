@@ -168,9 +168,22 @@ export async function PATCH(request: NextRequest) {
     const id = body?.id
     const status = body?.status
     const decisionNote = body?.decisionNote ?? null
+    const payloadPatch = body?.payloadPatch && typeof body.payloadPatch === "object" ? body.payloadPatch : null
 
-    if (!id || !["approved", "rejected", "needs_edit"].includes(status)) {
+    if (!id || !["approved", "rejected", "needs_edit", "pending"].includes(status)) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+
+    let nextPayload: Record<string, unknown> | undefined
+    if (payloadPatch) {
+      const rows = await sb(
+        `ai_import_candidates?select=payload&id=eq.${encodeURIComponent(id)}&limit=1`,
+        token
+      )
+      const currentPayload = Array.isArray(rows) && rows[0]?.payload && typeof rows[0].payload === "object"
+        ? rows[0].payload
+        : {}
+      nextPayload = { ...currentPayload, ...payloadPatch }
     }
 
     await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
@@ -179,7 +192,8 @@ export async function PATCH(request: NextRequest) {
       body: JSON.stringify({
         status,
         decision_note: decisionNote,
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: status === "pending" ? null : new Date().toISOString(),
+        ...(nextPayload ? { payload: nextPayload } : {}),
       }),
     })
 
