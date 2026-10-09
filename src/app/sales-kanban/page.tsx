@@ -1469,11 +1469,12 @@ export default function SalesKanbanPage() {
 {tab === "sales" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
                 <Kpi label="進行中" value={salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="Aランク" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="見積提示中" value={salesCases.filter((item) => item.stage === "quoted").length} />
+                <Kpi label="サンプル案件" value={salesCases.filter((item) => ["sample_requested", "sample_sent"].includes(item.stage)).length} />
               </div>
 
               {salesCases.length === 0 ? (
