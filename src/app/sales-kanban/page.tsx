@@ -289,6 +289,7 @@ export default function SalesKanbanPage() {
   const [aiCostGroupProduct, setAiCostGroupProduct] = useState<Record<string, string>>({})
   const [aiCostGroupVendor, setAiCostGroupVendor] = useState<Record<string, string>>({})
   const [aiBulkCostBusy, setAiBulkCostBusy] = useState<Record<string, boolean>>({})
+  const [aiCostRows, setAiCostRows] = useState<Record<string, Array<Record<string, string>>>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -541,6 +542,97 @@ export default function SalesKanbanPage() {
     })
   }
 
+
+  function getAiCostRows(candidate: AiImportCandidate) {
+    const existing = aiCostRows[candidate.id]
+    if (existing?.length) return existing
+    return [{
+      id: uid(),
+      cost_type: String(candidate.payload?.cost_type || "base_purchase"),
+      label: candidate.title || "原価",
+      amount: String(candidate.payload?.amount || candidate.payload?.price || candidate.payload?.cost || ""),
+      currency: String(candidate.payload?.currency || "JPY"),
+      unit: String(candidate.payload?.unit || "kg"),
+      supplier_or_vendor: String(candidate.payload?.supplier_or_vendor || candidate.payload?.supplier || ""),
+      effective_from: String(candidate.payload?.effective_from || ""),
+    }]
+  }
+
+  function updateAiCostRow(candidate: AiImportCandidate, rowId: string, patch: Record<string, string>) {
+    const rows = getAiCostRows(candidate)
+    setAiCostRows((current) => ({
+      ...current,
+      [candidate.id]: rows.map((row) => row.id === rowId ? { ...row, ...patch } : row),
+    }))
+  }
+
+  function addAiCostRow(candidate: AiImportCandidate) {
+    const rows = getAiCostRows(candidate)
+    setAiCostRows((current) => ({
+      ...current,
+      [candidate.id]: [
+        ...rows,
+        {
+          id: uid(),
+          cost_type: "processing",
+          label: "",
+          amount: "",
+          currency: "JPY",
+          unit: "kg",
+          supplier_or_vendor: String(candidate.payload?.supplier_or_vendor || candidate.payload?.supplier || ""),
+          effective_from: "",
+        },
+      ],
+    }))
+  }
+
+  function removeAiCostRow(candidate: AiImportCandidate, rowId: string) {
+    const rows = getAiCostRows(candidate)
+    setAiCostRows((current) => ({
+      ...current,
+      [candidate.id]: rows.filter((row) => row.id !== rowId),
+    }))
+  }
+
+  async function applyAiCostRows(candidate: AiImportCandidate) {
+    const productId = (aiMatchProducts[candidate.id] || [])[0] || ""
+    if (!productId) throw new Error("商品を選択してください。")
+    const rows = getAiCostRows(candidate)
+    if (!rows.length) throw new Error("原価内訳を1件以上入力してください。")
+
+    for (const row of rows) {
+      const amount = Number(String(row.amount || "").replace(/[,\s¥￥]/g, ""))
+      if (!row.label?.trim() || !Number.isFinite(amount) || amount < 0) {
+        throw new Error("各行の内訳名と金額を確認してください。")
+      }
+    }
+
+    setAiBulkCostBusy((current) => ({ ...current, [candidate.id]: true }))
+    try {
+      for (const row of rows) {
+        await saveShared("product_cost", {
+          id: row.id,
+          productId,
+          costType: row.cost_type as ProductCost["costType"],
+          label: row.label.trim(),
+          amount: row.amount,
+          currency: row.currency || "JPY",
+          unit: row.unit || "kg",
+          effectiveFrom: row.effective_from || new Date().toISOString().slice(0, 10),
+          supplierOrVendor: row.supplier_or_vendor || "",
+        } as ProductCost)
+      }
+      await updateAiCandidate(candidate.id, "approved")
+
+      const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
+      const refreshedData = await refreshed.json().catch(() => ({}))
+      if (refreshed.ok) {
+        setProductCosts(Array.isArray(refreshedData.productCosts) ? refreshedData.productCosts : [])
+      }
+    } finally {
+      setAiBulkCostBusy((current) => ({ ...current, [candidate.id]: false }))
+    }
+  }
 
   async function savePriceClassification(candidate: AiImportCandidate) {
     const classification = aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")
@@ -1625,62 +1717,90 @@ export default function SalesKanbanPage() {
                                         <option key={product.id} value={product.id}>{product.id} {product.name}</option>
                                       ))}
                                     </select>
-                                    <select
-                                      value={aiPriceDraft[candidate.id]?.cost_type ?? String(candidate.payload?.cost_type || "base_purchase")}
-                                      onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), cost_type: e.target.value } }))}
-                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                    >
-                                      <option value="base_purchase">基準仕入原価</option>
-                                      <option value="processing">加工費</option>
-                                      <option value="packaging">包装費</option>
-                                      <option value="labeling">ラベル費</option>
-                                      <option value="inspection">検査費</option>
-                                      <option value="domestic_freight">国内運賃</option>
-                                      <option value="other">その他</option>
-                                    </select>
-                                    <div className="grid grid-cols-[1fr_80px] gap-2">
-                                      <input
-                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                        placeholder="原価"
-                                        value={aiPriceDraft[candidate.id]?.amount ?? String(candidate.payload?.amount || candidate.payload?.price || candidate.payload?.cost || "")}
-                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), amount: e.target.value } }))}
-                                      />
-                                      <input
-                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                        placeholder="JPY"
-                                        value={aiPriceDraft[candidate.id]?.currency ?? String(candidate.payload?.currency || "JPY")}
-                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), currency: e.target.value } }))}
-                                      />
+                                    <div className="space-y-2">
+                                      {getAiCostRows(candidate).map((row, rowIndex) => (
+                                        <div key={row.id} className="rounded-lg border border-white/10 bg-white/[0.025] p-2">
+                                          <div className="mb-2 flex items-center justify-between">
+                                            <span className="text-[10px] font-semibold text-white/40">内訳 {rowIndex + 1}</span>
+                                            {getAiCostRows(candidate).length > 1 && (
+                                              <button type="button" onClick={() => removeAiCostRow(candidate, row.id)} className="text-[10px] text-red-300/70">
+                                                削除
+                                              </button>
+                                            )}
+                                          </div>
+                                          <select
+                                            value={row.cost_type}
+                                            onChange={(e) => updateAiCostRow(candidate, row.id, { cost_type: e.target.value })}
+                                            className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                          >
+                                            <option value="base_purchase">基準仕入原価</option>
+                                            <option value="processing">加工費</option>
+                                            <option value="packaging">包装費</option>
+                                            <option value="labeling">ラベル費</option>
+                                            <option value="inspection">検査費</option>
+                                            <option value="domestic_freight">国内運賃</option>
+                                            <option value="other">その他</option>
+                                          </select>
+                                          <input
+                                            className="mt-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                            placeholder="内訳名 例: 根本さん加工費"
+                                            value={row.label}
+                                            onChange={(e) => updateAiCostRow(candidate, row.id, { label: e.target.value })}
+                                          />
+                                          <div className="mt-2 grid grid-cols-[1fr_80px] gap-2">
+                                            <input
+                                              className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                              placeholder="金額"
+                                              value={row.amount}
+                                              onChange={(e) => updateAiCostRow(candidate, row.id, { amount: e.target.value })}
+                                            />
+                                            <input
+                                              className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                              placeholder="JPY"
+                                              value={row.currency}
+                                              onChange={(e) => updateAiCostRow(candidate, row.id, { currency: e.target.value })}
+                                            />
+                                          </div>
+                                          <div className="mt-2 grid grid-cols-2 gap-2">
+                                            <input
+                                              className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                              placeholder="単位 例: kg"
+                                              value={row.unit}
+                                              onChange={(e) => updateAiCostRow(candidate, row.id, { unit: e.target.value })}
+                                            />
+                                            <input
+                                              type="date"
+                                              className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                              value={row.effective_from}
+                                              onChange={(e) => updateAiCostRow(candidate, row.id, { effective_from: e.target.value })}
+                                            />
+                                          </div>
+                                          <input
+                                            className="mt-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                            placeholder="仕入先・外注先"
+                                            value={row.supplier_or_vendor}
+                                            onChange={(e) => updateAiCostRow(candidate, row.id, { supplier_or_vendor: e.target.value })}
+                                          />
+                                        </div>
+                                      ))}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <input
-                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                        placeholder="単位 例: kg"
-                                        value={aiPriceDraft[candidate.id]?.unit ?? String(candidate.payload?.unit || "kg")}
-                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), unit: e.target.value } }))}
-                                      />
-                                      <input
-                                        type="date"
-                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                        value={aiPriceDraft[candidate.id]?.effective_from ?? String(candidate.payload?.effective_from || "")}
-                                        onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), effective_from: e.target.value } }))}
-                                      />
-                                    </div>
-                                    <input
-                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                      placeholder="仕入先・外注先（任意）"
-                                      value={aiPriceDraft[candidate.id]?.supplier_or_vendor ?? String(candidate.payload?.supplier_or_vendor || candidate.payload?.supplier || "")}
-                                      onChange={(e) => setAiPriceDraft((current) => ({ ...current, [candidate.id]: { ...(current[candidate.id] || {}), supplier_or_vendor: e.target.value } }))}
-                                    />
                                     <button
                                       type="button"
-                                      onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "原価履歴への反映に失敗しました。"))}
-                                      className="w-full rounded-lg bg-[#eef3ea] px-3 py-2 text-xs font-semibold text-[#11150f]"
+                                      onClick={() => addAiCostRow(candidate)}
+                                      className="w-full rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/70"
                                     >
-                                      原価履歴へ正式反映
+                                      ＋ 原価内訳を追加
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={Boolean(aiBulkCostBusy[candidate.id])}
+                                      onClick={() => applyAiCostRows(candidate).catch((error) => alert(error instanceof Error ? error.message : "原価履歴への反映に失敗しました。"))}
+                                      className="w-full rounded-lg bg-[#eef3ea] px-3 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-50"
+                                    >
+                                      {aiBulkCostBusy[candidate.id] ? "反映中..." : getAiCostRows(candidate).length + "件を原価履歴へ一括反映"}
                                     </button>
                                     <p className="text-[10px] leading-4 text-amber-100/45">
-                                      商品マスタの原価を直接上書きせず、履歴として追加します。
+                                      1つの候補から複数の原価内訳をまとめて登録できます。既存履歴は上書きしません。
                                     </p>
                                   </div>
                                 )}
