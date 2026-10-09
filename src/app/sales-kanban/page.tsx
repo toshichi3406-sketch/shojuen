@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
   BarChart3,
+  Bot,
   Building2,
   CalendarClock,
   ChevronDown,
@@ -27,13 +28,38 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "work" | "customers" | "products"
+type Tab = "work" | "customers" | "products" | "ai"
 
 type AuthState = {
   loading: boolean
   configured: boolean
   authenticated: boolean
   user?: { email?: string; role?: string; displayName?: string }
+}
+
+
+type AiImportBatch = {
+  id: string
+  source: string
+  source_session_id?: string | null
+  session_title?: string | null
+  source_timestamp?: string | null
+  summary?: string | null
+  status: string
+  created_at: string
+}
+
+type AiImportCandidate = {
+  id: string
+  batch_id: string
+  candidate_type: string
+  target_id?: string | null
+  title?: string | null
+  payload?: Record<string, unknown>
+  confidence?: number | null
+  status: "pending" | "approved" | "rejected" | "needs_edit"
+  decision_note?: string | null
+  created_at: string
 }
 
 type WorkItem = {
@@ -186,6 +212,9 @@ export default function SalesKanbanPage() {
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
+  const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
+  const [aiCandidates, setAiCandidates] = useState<AiImportCandidate[]>([])
+  const [aiLoading, setAiLoading] = useState(false)
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -213,6 +242,21 @@ export default function SalesKanbanPage() {
       })
       .catch(() => setAuth({ loading: false, configured: false, authenticated: false }))
   }, [])
+
+
+  useEffect(() => {
+    if (!(auth.configured && auth.authenticated)) return
+    setAiLoading(true)
+    fetch("/api/workboard/ai-import", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.error || "AI取込候補を読み込めませんでした。")
+        setAiBatches(Array.isArray(data.batches) ? data.batches : [])
+        setAiCandidates(Array.isArray(data.candidates) ? data.candidates : [])
+      })
+      .catch((error) => console.error(error))
+      .finally(() => setAiLoading(false))
+  }, [auth.configured, auth.authenticated])
 
   useEffect(() => {
     if (auth.loading) return
@@ -276,6 +320,35 @@ export default function SalesKanbanPage() {
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBからの削除に失敗しました。")
   }
+
+
+  async function updateAiCandidate(id: string, status: AiImportCandidate["status"]) {
+    const response = await fetch("/api/workboard/ai-import", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || "AI取込候補を更新できませんでした。")
+    setAiCandidates((current) =>
+      current.map((item) => (item.id === id ? { ...item, status } : item))
+    )
+  }
+
+  function aiCandidateLabel(type: string) {
+    const labels: Record<string, string> = {
+      new_work: "新規業務",
+      work_update: "業務更新",
+      work_event: "業務履歴",
+      customer_update: "取引先更新",
+      product_update: "商品更新",
+      price_candidate: "価格候補",
+      decision: "要判断",
+    }
+    return labels[type] || type
+  }
+
+  const pendingAiCount = aiCandidates.filter((item) => item.status === "pending").length
 
   const filteredWork = useMemo(() => {
     const q = workQuery.trim().toLowerCase()
@@ -573,7 +646,7 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "work" ? "業務管理" : tab === "customers" ? "取引先マスタ" : "商品マスタ"}
+                {tab === "work" ? "業務管理" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "work" &&
@@ -582,6 +655,8 @@ export default function SalesKanbanPage() {
                   "取引先情報と確定済み取引条件を管理。AIはここにない価格を推測しない。"}
                 {tab === "products" &&
                   "商品ID・特徴・原価・卸価格・証明書を一元管理。"}
+                {tab === "ai" &&
+                  "ChatGPT・Claudeの会話から抽出した候補を確認し、正式データにする前に承認・却下。"}
               </p>
             </div>
 
@@ -591,17 +666,19 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            <button
-              onClick={() => {
-                if (tab === "work") setEditingWork(blankWork())
-                if (tab === "customers") setEditingCustomer(blankCustomer())
-                if (tab === "products") setEditingProduct(blankProduct())
-              }}
-              className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
-            >
-              <Plus className="size-4" />
-              {tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
-            </button>
+            {tab !== "ai" && (
+              <button
+                onClick={() => {
+                  if (tab === "work") setEditingWork(blankWork())
+                  if (tab === "customers") setEditingCustomer(blankCustomer())
+                  if (tab === "products") setEditingProduct(blankProduct())
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
+              >
+                <Plus className="size-4" />
+                {tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
+              </button>
+            )}
             </div>
           </div>
 
@@ -609,6 +686,7 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
+            <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
           </nav>
 
           {tab === "work" && (
@@ -797,6 +875,97 @@ export default function SalesKanbanPage() {
           </section>
         )}
       </div>
+
+        {tab === "ai" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-6xl">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="未確認" value={pendingAiCount} />
+                <Kpi label="承認" value={aiCandidates.filter((item) => item.status === "approved").length} />
+                <Kpi label="要修正" value={aiCandidates.filter((item) => item.status === "needs_edit").length} />
+                <Kpi label="取込バッチ" value={aiBatches.length} />
+              </div>
+
+              {aiLoading ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-white/45">
+                  AI取込候補を読み込み中...
+                </div>
+              ) : aiCandidates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-8 text-center">
+                  <Bot className="mx-auto size-7 text-white/30" />
+                  <h2 className="mt-3 text-base font-semibold">まだAI取込候補はありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">
+                    次にClaudeの過去会話を棚卸しして、この受け皿へ入れます。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {aiCandidates.map((candidate) => {
+                    const batch = aiBatches.find((item) => item.id === candidate.batch_id)
+                    return (
+                      <article key={candidate.id} className="rounded-2xl border border-white/10 bg-[#111311] p-4 md:p-5">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.1em] text-white/35">
+                              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
+                                {aiCandidateLabel(candidate.candidate_type)}
+                              </span>
+                              <span>{(batch?.source || "AI").toUpperCase()}</span>
+                              {candidate.confidence != null && (
+                                <span>信頼度 {Math.round(candidate.confidence * 100)}%</span>
+                              )}
+                            </div>
+                            <h2 className="mt-3 text-lg font-semibold">
+                              {candidate.title || batch?.session_title || "名称未設定"}
+                            </h2>
+                            {batch?.summary && (
+                              <p className="mt-2 text-sm leading-6 text-white/50">{batch.summary}</p>
+                            )}
+                            {candidate.target_id && (
+                              <p className="mt-2 text-xs text-white/35">対象ID: {candidate.target_id}</p>
+                            )}
+                            {candidate.payload && Object.keys(candidate.payload).length > 0 && (
+                              <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
+                                {JSON.stringify(candidate.payload, null, 2)}
+                              </pre>
+                            )}
+                          </div>
+
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            <button
+                              onClick={() => updateAiCandidate(candidate.id, "approved").catch(console.error)}
+                              className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
+                            >
+                              承認
+                            </button>
+                            <button
+                              onClick={() => updateAiCandidate(candidate.id, "needs_edit").catch(console.error)}
+                              className="rounded-full border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-xs text-amber-100"
+                            >
+                              要修正
+                            </button>
+                            <button
+                              onClick={() => updateAiCandidate(candidate.id, "rejected").catch(console.error)}
+                              className="rounded-full border border-red-300/15 px-4 py-2 text-xs text-red-300"
+                            >
+                              却下
+                            </button>
+                          </div>
+                        </div>
+
+                        {candidate.status !== "pending" && (
+                          <div className="mt-4 text-xs text-white/35">
+                            現在の判定: {candidate.status === "approved" ? "承認" : candidate.status === "rejected" ? "却下" : "要修正"}
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
       {editingWork && (
         <Modal onClose={() => setEditingWork(null)} wide>
