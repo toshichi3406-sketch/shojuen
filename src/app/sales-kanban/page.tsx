@@ -31,6 +31,7 @@ type Status =
   | "done"
 
 type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai"
+// Orders are kept as confirmed business history, separate from sales opportunities.
 
 type AuthState = {
   loading: boolean
