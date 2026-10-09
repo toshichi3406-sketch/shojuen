@@ -1107,16 +1107,21 @@ export default function SalesKanbanPage() {
                                 )}
 
                                 {candidate.candidate_type === "work_event" && (
-                                  <select
-                                    value={aiMatchWork[candidate.id] || ""}
-                                    onChange={(e) => setAiMatchWork((current) => ({ ...current, [candidate.id]: e.target.value }))}
-                                    className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                  >
-                                    <option value="">既存業務を選択</option>
-                                    {work.map((item) => (
-                                      <option key={item.id} value={item.id}>{item.id} {item.title}</option>
-                                    ))}
-                                  </select>
+                                  <>
+                                    <select
+                                      value={aiMatchWork[candidate.id] || ""}
+                                      onChange={(e) => setAiMatchWork((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                      className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">単独履歴として保存</option>
+                                      {work.map((item) => (
+                                        <option key={item.id} value={item.id}>{item.id} {item.title}</option>
+                                      ))}
+                                    </select>
+                                    <p className="text-[10px] leading-4 text-white/35">
+                                      既存業務がなければ未選択のまま正式反映できます。あとからW番号へ紐付け可能です。
+                                    </p>
+                                  </>
                                 )}
 
                                 {candidate.candidate_type === "new_work" && products.length > 0 && (
@@ -1143,10 +1148,9 @@ export default function SalesKanbanPage() {
                               {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event") && (
                                 <button
                                   onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
-                                  disabled={candidate.candidate_type === "work_event" && !aiMatchWork[candidate.id]}
-                                  className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-35"
+                                  className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
                                 >
-                                  正式反映
+                                  {candidate.candidate_type === "work_event" && !aiMatchWork[candidate.id] ? "単独履歴として反映" : "正式反映"}
                                 </button>
                               )}
                               <button
