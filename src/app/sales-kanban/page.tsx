@@ -240,6 +240,7 @@ export default function SalesKanbanPage() {
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
   const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
   const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
+  const [aiShippingStage, setAiShippingStage] = useState<Record<string, string>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -436,8 +437,12 @@ export default function SalesKanbanPage() {
 
 
   async function savePriceClassification(candidate: AiImportCandidate) {
-    const classification = aiPriceClass[candidate.id]
+    const classification = aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")
     if (!classification) throw new Error("価格の種類を選んでください。")
+    const shippingStage = aiShippingStage[candidate.id] || String(candidate.payload?.shipping_stage || "")
+    if (classification === "shipping_rate" && !shippingStage) {
+      throw new Error("送料の状態を選んでください。")
+    }
 
     const response = await fetch("/api/workboard/ai-import", {
       method: "PATCH",
@@ -446,7 +451,10 @@ export default function SalesKanbanPage() {
         id: candidate.id,
         status: "pending",
         decisionNote: null,
-        payloadPatch: { price_classification: classification },
+        payloadPatch: {
+          price_classification: classification,
+          ...(classification === "shipping_rate" ? { shipping_stage: shippingStage } : {}),
+        },
       }),
     })
     const result = await response.json().catch(() => ({}))
@@ -455,7 +463,14 @@ export default function SalesKanbanPage() {
     setAiCandidates((current) =>
       current.map((item) =>
         item.id === candidate.id
-          ? { ...item, payload: { ...(item.payload || {}), price_classification: classification } }
+          ? {
+              ...item,
+              payload: {
+                ...(item.payload || {}),
+                price_classification: classification,
+                ...(classification === "shipping_rate" ? { shipping_stage: shippingStage } : {}),
+              },
+            }
           : item
       )
     )
@@ -1227,6 +1242,24 @@ export default function SalesKanbanPage() {
                                   <option value="shipping_rate">送料・運賃</option>
                                   <option value="other">その他 / 要確認</option>
                                 </select>
+                                {(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) === "shipping_rate" && (
+                                  <div className="mt-3">
+                                    <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">送料の状態</div>
+                                    <select
+                                      value={aiShippingStage[candidate.id] || String(candidate.payload?.shipping_stage || "")}
+                                      onChange={(e) => setAiShippingStage((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">選択してください</option>
+                                      <option value="estimate">概算</option>
+                                      <option value="quoted">顧客へ提示済み</option>
+                                      <option value="actual">実績</option>
+                                    </select>
+                                    <p className="mt-2 text-[10px] leading-4 text-amber-100/45">
+                                      概算＝料金表等の目安、提示済み＝顧客へ案内した金額、実績＝発送後に確定した実費。
+                                    </p>
+                                  </div>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() => savePriceClassification(candidate).catch((error) => alert(error instanceof Error ? error.message : "価格分類を保存できませんでした。"))}
@@ -1237,6 +1270,7 @@ export default function SalesKanbanPage() {
                                 {Boolean(candidate.payload?.price_classification) && (
                                   <p className="mt-2 text-[10px] leading-4 text-amber-100/50">
                                     保存済み: {String(candidate.payload?.price_classification || "")}
+                                    {candidate.payload?.shipping_stage ? ` / ${String(candidate.payload.shipping_stage)}` : ""}
                                   </p>
                                 )}
                               </div>
