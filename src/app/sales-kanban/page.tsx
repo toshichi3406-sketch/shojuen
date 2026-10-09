@@ -241,6 +241,7 @@ export default function SalesKanbanPage() {
   const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
   const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
   const [aiShippingStage, setAiShippingStage] = useState<Record<string, string>>({})
+  const [aiShippingDraft, setAiShippingDraft] = useState<Record<string, Record<string, string>>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -394,6 +395,21 @@ export default function SalesKanbanPage() {
     }
     if (aiMatchProducts[candidate.id]?.length) {
       payload.product_ids = aiMatchProducts[candidate.id]
+    }
+
+    if (
+      candidate.candidate_type === "price_candidate" &&
+      String(payload.price_classification || "") === "shipping_rate"
+    ) {
+      const draft = aiShippingDraft[candidate.id] || {}
+      if (draft.destination) payload.destination = draft.destination
+      if (draft.amount) payload.amount = draft.amount
+      if (draft.currency) payload.currency = draft.currency
+      if (draft.carrier) payload.carrier = draft.carrier
+      if (draft.service) payload.service = draft.service
+      if (draft.weight_kg) payload.weight_kg = draft.weight_kg
+      if (draft.shipment_date) payload.shipment_date = draft.shipment_date
+      if (draft.actual_weight_kg) payload.actual_weight_kg = draft.actual_weight_kg
     }
 
     const response = await fetch("/api/workboard/ai-import", {
@@ -1258,6 +1274,89 @@ export default function SalesKanbanPage() {
                                     <p className="mt-2 text-[10px] leading-4 text-amber-100/45">
                                       概算＝料金表等の目安、提示済み＝顧客へ案内した金額、実績＝発送後に確定した実費。
                                     </p>
+
+                                    <div className="mt-3 grid gap-2">
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="配送先 例: Singapore"
+                                        value={aiShippingDraft[candidate.id]?.destination ?? String(candidate.payload?.destination || candidate.payload?.country || "")}
+                                        onChange={(e) => setAiShippingDraft((current) => ({
+                                          ...current,
+                                          [candidate.id]: { ...(current[candidate.id] || {}), destination: e.target.value },
+                                        }))}
+                                      />
+                                      <div className="grid grid-cols-[1fr_80px] gap-2">
+                                        <input
+                                          className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                          placeholder="送料金額"
+                                          value={aiShippingDraft[candidate.id]?.amount ?? String(candidate.payload?.amount || candidate.payload?.price || candidate.payload?.shipping_cost || "")}
+                                          onChange={(e) => setAiShippingDraft((current) => ({
+                                            ...current,
+                                            [candidate.id]: { ...(current[candidate.id] || {}), amount: e.target.value },
+                                          }))}
+                                        />
+                                        <input
+                                          className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                          placeholder="JPY"
+                                          value={aiShippingDraft[candidate.id]?.currency ?? String(candidate.payload?.currency || "JPY")}
+                                          onChange={(e) => setAiShippingDraft((current) => ({
+                                            ...current,
+                                            [candidate.id]: { ...(current[candidate.id] || {}), currency: e.target.value },
+                                          }))}
+                                        />
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                          className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                          placeholder="配送会社 例: Japan Post"
+                                          value={aiShippingDraft[candidate.id]?.carrier ?? String(candidate.payload?.carrier || "")}
+                                          onChange={(e) => setAiShippingDraft((current) => ({
+                                            ...current,
+                                            [candidate.id]: { ...(current[candidate.id] || {}), carrier: e.target.value },
+                                          }))}
+                                        />
+                                        <input
+                                          className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                          placeholder="サービス 例: EMS"
+                                          value={aiShippingDraft[candidate.id]?.service ?? String(candidate.payload?.service || candidate.payload?.shipping_method || "")}
+                                          onChange={(e) => setAiShippingDraft((current) => ({
+                                            ...current,
+                                            [candidate.id]: { ...(current[candidate.id] || {}), service: e.target.value },
+                                          }))}
+                                        />
+                                      </div>
+                                      <input
+                                        className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                        placeholder="想定重量kg 例: 2.0"
+                                        value={aiShippingDraft[candidate.id]?.weight_kg ?? String(candidate.payload?.weight_kg || "")}
+                                        onChange={(e) => setAiShippingDraft((current) => ({
+                                          ...current,
+                                          [candidate.id]: { ...(current[candidate.id] || {}), weight_kg: e.target.value },
+                                        }))}
+                                      />
+                                      {(aiShippingStage[candidate.id] || String(candidate.payload?.shipping_stage || "")) === "actual" && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <input
+                                            type="date"
+                                            className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                            value={aiShippingDraft[candidate.id]?.shipment_date ?? String(candidate.payload?.shipment_date || "")}
+                                            onChange={(e) => setAiShippingDraft((current) => ({
+                                              ...current,
+                                              [candidate.id]: { ...(current[candidate.id] || {}), shipment_date: e.target.value },
+                                            }))}
+                                          />
+                                          <input
+                                            className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                            placeholder="実重量kg"
+                                            value={aiShippingDraft[candidate.id]?.actual_weight_kg ?? String(candidate.payload?.actual_weight_kg || "")}
+                                            onChange={(e) => setAiShippingDraft((current) => ({
+                                              ...current,
+                                              [candidate.id]: { ...(current[candidate.id] || {}), actual_weight_kg: e.target.value },
+                                            }))}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                                 <button
