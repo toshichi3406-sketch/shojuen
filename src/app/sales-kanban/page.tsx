@@ -2559,6 +2559,41 @@ export default function SalesKanbanPage() {
               </section>
             )}
 
+            {editingSalesCase.id && (
+              <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">最近の活動履歴</h3>
+                    <p className="mt-1 text-xs text-white/40">この営業案件に直接紐づく活動。</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
+                    {events.filter((event) => event.salesCaseId === editingSalesCase.id).length}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {events.filter((event) => event.salesCaseId === editingSalesCase.id).length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-white/35">
+                      まだ案件に直接紐づく活動履歴はありません。
+                    </div>
+                  ) : (
+                    events
+                      .filter((event) => event.salesCaseId === editingSalesCase.id)
+                      .slice(0, 8)
+                      .map((event) => (
+                        <div key={event.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/35">
+                            <span>{event.eventDate ? new Date(event.eventDate).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "日時不明"}</span>
+                            <Tag>{event.eventType}</Tag>
+                          </div>
+                          {event.note && <div className="mt-2 text-xs leading-5 text-white/60">{event.note}</div>}
+                        </div>
+                      ))
+                  )}
+                </div>
+              </section>
+            )}
+
             <ModalActions
               existing={Boolean(editingSalesCase.id) && ["owner", "admin"].includes(auth.user?.role || "")}
               onDelete={async () => {
