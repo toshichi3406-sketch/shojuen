@@ -450,17 +450,28 @@ export default function SalesKanbanPage() {
     note: string,
     channel?: string
   ) {
+    const eventDate = new Date().toISOString()
     const event: WorkEvent = {
       id: uid(),
       salesCaseId,
       eventType,
-      eventDate: new Date().toISOString(),
+      eventDate,
       channel,
       note: note.trim(),
       source: "manual",
     }
     await saveShared("work_event", event)
     setEvents((current) => [event, ...current])
+
+    if (["email_sent", "reply_received", "quote_sent", "sample_sent"].includes(eventType)) {
+      const currentCase = salesCases.find((item) => item.id === salesCaseId)
+      if (currentCase) {
+        const updatedCase = { ...currentCase, lastContactAt: eventDate }
+        await saveShared("sales_case", updatedCase)
+        setSalesCases((current) => current.map((item) => item.id === salesCaseId ? updatedCase : item))
+        setEditingSalesCase((current) => current?.id === salesCaseId ? { ...current, lastContactAt: eventDate } : current)
+      }
+    }
   }
 
   async function deleteShared(type: "work" | "customer" | "product" | "sales_case", id: string) {
