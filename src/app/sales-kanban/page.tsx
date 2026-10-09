@@ -2531,9 +2531,25 @@ export default function SalesKanbanPage() {
                     <h3 className="text-sm font-semibold">関連業務</h3>
                     <p className="mt-1 text-xs text-white/40">この営業案件に紐づく業務カード。</p>
                   </div>
-                  <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
-                    {work.filter((item) => item.salesCaseId === editingSalesCase.id).length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
+                      {work.filter((item) => item.salesCaseId === editingSalesCase.id).length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingWork({
+                          ...blankWork(),
+                          customerId: editingSalesCase.customerId,
+                          salesCaseId: editingSalesCase.id,
+                          assignee: editingSalesCase.assignee,
+                        })
+                      }}
+                      className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
+                    >
+                      ＋ 業務を追加
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-3 space-y-2">
@@ -2545,14 +2561,19 @@ export default function SalesKanbanPage() {
                     work
                       .filter((item) => item.salesCaseId === editingSalesCase.id)
                       .map((item) => (
-                        <div key={item.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setEditingWork(item)}
+                          className="w-full rounded-xl border border-white/10 bg-[#0d0f0d] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
+                        >
                           <div className="text-sm font-medium">{item.title}</div>
                           <div className="mt-1 text-xs text-white/35">
                             {STATUSES.find((row) => row.id === item.status)?.label || item.status}
                             {" · "}
                             {item.assignee || "未担当"}
                           </div>
-                        </div>
+                        </button>
                       ))
                   )}
                 </div>
