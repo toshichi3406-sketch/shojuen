@@ -547,7 +547,7 @@ export default function SalesKanbanPage() {
     const existing = aiCostRows[candidate.id]
     if (existing?.length) return existing
     return [{
-      id: uid(),
+      id: candidate.id + "-cost-1",
       cost_type: String(candidate.payload?.cost_type || "base_purchase"),
       label: candidate.title || "原価",
       amount: String(candidate.payload?.amount || candidate.payload?.price || candidate.payload?.cost || ""),
