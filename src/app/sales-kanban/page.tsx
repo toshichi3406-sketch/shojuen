@@ -151,6 +151,22 @@ type ProductDoc = {
   url: string
 }
 
+type ProductCost = {
+  id: string
+  productId: string
+  costType: "base_purchase" | "processing" | "packaging" | "labeling" | "inspection" | "domestic_freight" | "other"
+  label: string
+  amount: string
+  currency: string
+  unit: string
+  quantityBasis?: string
+  effectiveFrom?: string
+  effectiveTo?: string
+  supplierOrVendor?: string
+  note?: string
+  createdAt?: string
+}
+
 type Product = {
   id: string
   name: string
@@ -252,6 +268,8 @@ export default function SalesKanbanPage() {
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
+  const [productCosts, setProductCosts] = useState<ProductCost[]>([])
+  const [newProductCost, setNewProductCost] = useState<Partial<ProductCost>>({})
   const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
   const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
   const [aiCandidates, setAiCandidates] = useState<AiImportCandidate[]>([])
@@ -325,6 +343,7 @@ export default function SalesKanbanPage() {
           setWork(Array.isArray(data.work) ? data.work : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
+          setProductCosts(Array.isArray(data.productCosts) ? data.productCosts : [])
           setEvents(Array.isArray(data.events) ? data.events : [])
           setShippingRates(Array.isArray(data.shippingRates) ? data.shippingRates : [])
           setHydrated(true)
@@ -358,7 +377,7 @@ export default function SalesKanbanPage() {
     window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
   }, [work, customers, products, hydrated, auth.configured, auth.authenticated])
 
-  async function saveShared(type: "work" | "customer" | "product", data: WorkItem | Customer | Product) {
+  async function saveShared(type: "work" | "customer" | "product" | "product_cost", data: WorkItem | Customer | Product | ProductCost) {
     if (!(auth.configured && auth.authenticated)) return
     const response = await fetch("/api/workboard/data", {
       method: "POST",
@@ -504,6 +523,7 @@ export default function SalesKanbanPage() {
       setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
       setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
       setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
+      setProductCosts(Array.isArray(refreshedData.productCosts) ? refreshedData.productCosts : [])
       setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
       setShippingRates(Array.isArray(refreshedData.shippingRates) ? refreshedData.shippingRates : [])
     }
@@ -873,6 +893,29 @@ export default function SalesKanbanPage() {
         row.id === id ? { ...row, ...patch } : row
       ),
     })
+  }
+
+  async function addProductCostCorrection() {
+    if (!editingProduct) return
+    const item: ProductCost = {
+      id: uid(),
+      productId: editingProduct.id,
+      costType: (newProductCost.costType as ProductCost["costType"]) || "base_purchase",
+      label: String(newProductCost.label || "").trim(),
+      amount: String(newProductCost.amount || "").trim(),
+      currency: String(newProductCost.currency || "JPY"),
+      unit: String(newProductCost.unit || "kg"),
+      effectiveFrom: String(newProductCost.effectiveFrom || new Date().toISOString().slice(0, 10)),
+      supplierOrVendor: String(newProductCost.supplierOrVendor || ""),
+      note: String(newProductCost.note || ""),
+    }
+    if (!item.label || !item.amount) {
+      alert("原価名と金額を入力してください。")
+      return
+    }
+    await saveShared("product_cost", item)
+    setProductCosts((current) => [item, ...current])
+    setNewProductCost({})
   }
 
   function addDoc() {
@@ -2077,6 +2120,67 @@ export default function SalesKanbanPage() {
               ))}
               <div className="md:col-span-2"><Field label="備考"><textarea rows={3} className={`${inputClass} min-h-24 resize-y py-3`} value={editingProduct.memo || ""} onChange={(e) => setEditingProduct({ ...editingProduct, memo: e.target.value })} /></Field></div>
             </div>
+
+            <section className="mt-6 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.03] p-4">
+              <div>
+                <h3 className="text-sm font-semibold">原価履歴・内訳</h3>
+                <p className="mt-1 text-xs text-white/40">反映済みの原価を確認できます。訂正は既存行を上書きせず、新しい履歴として追加します。</p>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {productCosts.filter((row) => row.productId === editingProduct.id).length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-white/35">この商品の原価履歴はまだありません。</div>
+                ) : (
+                  productCosts
+                    .filter((row) => row.productId === editingProduct.id)
+                    .map((row) => {
+                      const labels: Record<string, string> = {
+                        base_purchase: "基準仕入原価",
+                        processing: "加工費",
+                        packaging: "包装費",
+                        labeling: "ラベル費",
+                        inspection: "検査費",
+                        domestic_freight: "国内運賃",
+                        other: "その他",
+                      }
+                      return (
+                        <div key={row.id} className="grid gap-2 rounded-xl border border-white/10 bg-black/10 p-3 md:grid-cols-[130px_1fr_140px_110px]">
+                          <div className="text-xs font-medium">{labels[row.costType] || row.costType}</div>
+                          <div className="text-xs">
+                            <div>{row.label}</div>
+                            <div className="mt-1 text-[10px] text-white/35">{row.supplierOrVendor || "仕入先未設定"} {row.effectiveFrom ? " / " + row.effectiveFrom : ""}</div>
+                          </div>
+                          <div className="text-sm font-semibold">{Number(row.amount || 0).toLocaleString("ja-JP")} {row.currency}</div>
+                          <div className="text-xs text-white/45">/ {row.unit || "kg"}</div>
+                        </div>
+                      )
+                    })
+                )}
+              </div>
+
+              <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-white/40">内訳を訂正・追加</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <select className={inputClass} value={newProductCost.costType || "base_purchase"} onChange={(e) => setNewProductCost({ ...newProductCost, costType: e.target.value as ProductCost["costType"] })}>
+                    <option value="base_purchase">基準仕入原価</option>
+                    <option value="processing">加工費</option>
+                    <option value="packaging">包装費</option>
+                    <option value="labeling">ラベル費</option>
+                    <option value="inspection">検査費</option>
+                    <option value="domestic_freight">国内運賃</option>
+                    <option value="other">その他</option>
+                  </select>
+                  <input className={inputClass} placeholder="内訳名 例: 根本さん加工費" value={newProductCost.label || ""} onChange={(e) => setNewProductCost({ ...newProductCost, label: e.target.value })} />
+                  <input className={inputClass} placeholder="金額" value={newProductCost.amount || ""} onChange={(e) => setNewProductCost({ ...newProductCost, amount: e.target.value })} />
+                  <input className={inputClass} placeholder="単位 例: kg" value={newProductCost.unit || "kg"} onChange={(e) => setNewProductCost({ ...newProductCost, unit: e.target.value })} />
+                  <input className={inputClass} placeholder="仕入先・外注先" value={newProductCost.supplierOrVendor || ""} onChange={(e) => setNewProductCost({ ...newProductCost, supplierOrVendor: e.target.value })} />
+                  <input type="date" className={inputClass} value={newProductCost.effectiveFrom || ""} onChange={(e) => setNewProductCost({ ...newProductCost, effectiveFrom: e.target.value })} />
+                </div>
+                <button type="button" onClick={() => addProductCostCorrection().catch((error) => alert(error instanceof Error ? error.message : "原価履歴の追加に失敗しました。"))} className="mt-3 rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]">
+                  訂正履歴を追加
+                </button>
+              </div>
+            </section>
 
             <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
               <div className="flex items-center justify-between gap-3">
