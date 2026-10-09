@@ -1011,6 +1011,29 @@ export default function SalesKanbanPage() {
   const waitingCount = work.filter((item) => ["external_wait", "internal_wait"].includes(item.status)).length
   const decisionCount = work.filter((item) => item.status === "decision").length
   const dueCount = work.filter((item) => item.dueDate && item.status !== "done").length
+  const emailedCaseIds = new Set(
+    events
+      .filter((event) => event.salesCaseId && event.eventType === "email_sent")
+      .map((event) => event.salesCaseId as string)
+  )
+  const repliedCaseIds = new Set(
+    events
+      .filter((event) => event.salesCaseId && event.eventType === "reply_received")
+      .map((event) => event.salesCaseId as string)
+  )
+  const repliedEmailedCaseCount = Array.from(emailedCaseIds).filter((id) => repliedCaseIds.has(id)).length
+  const salesReplyRate = emailedCaseIds.size
+    ? `${Math.round((repliedEmailedCaseCount / emailedCaseIds.size) * 100)}%`
+    : "—"
+
+  const closedNewBusinessCases = salesCases.filter(
+    (item) => item.caseType === "new_business" && ["won", "lost"].includes(item.stage)
+  )
+  const wonNewBusinessCases = closedNewBusinessCases.filter((item) => item.stage === "won")
+  const salesWinRate = closedNewBusinessCases.length
+    ? `${Math.round((wonNewBusinessCases.length / closedNewBusinessCases.length) * 100)}%`
+    : "—"
+
 
   const isSystemEvent = (event: WorkEvent) =>
     event.source === "workboard_auto" ||
@@ -1697,12 +1720,11 @@ export default function SalesKanbanPage() {
 {tab === "sales" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-5">
-                <Kpi label="進行中" value={salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage)).length} />
-                <Kpi label="Aランク" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="返信率" value={salesReplyRate} />
+                <Kpi label="成約率" value={salesWinRate} />
                 <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
-                <Kpi label="見積提示中" value={salesCases.filter((item) => item.stage === "quoted").length} />
-                <Kpi label="サンプル案件" value={salesCases.filter((item) => ["sample_requested", "sample_sent"].includes(item.stage)).length} />
+                <Kpi label="Aランク案件" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
               </div>
 
               {salesCases.length === 0 ? (
