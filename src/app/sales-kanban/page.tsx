@@ -972,7 +972,6 @@ export default function SalesKanbanPage() {
             </div>
           </section>
         )}
-      </div>
 
         {tab === "ai" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
@@ -1185,6 +1184,7 @@ export default function SalesKanbanPage() {
             </div>
           </section>
         )}
+      </div>
 
       {editingWork && (
         <Modal onClose={() => setEditingWork(null)} wide>
