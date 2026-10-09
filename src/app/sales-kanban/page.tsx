@@ -1285,15 +1285,19 @@ export default function SalesKanbanPage() {
     return latestEvent > stored ? latestEvent : stored
   }
 
-  function followUpState(date?: string) {
-    if (!date) return { label: "未設定", className: "bg-white/[0.045] text-white/75" }
-
-    const today = new Intl.DateTimeFormat("en-CA", {
+  function todayInTokyo() {
+    return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Tokyo",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     }).format(new Date())
+  }
+
+  function followUpState(date?: string) {
+    if (!date) return { label: "未設定", className: "bg-white/[0.045] text-white/75" }
+
+    const today = todayInTokyo()
 
     if (date === today) {
       return { label: `${date} · 今日`, className: "bg-amber-400/10 text-amber-100" }
@@ -1468,7 +1472,7 @@ export default function SalesKanbanPage() {
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="進行中" value={salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="Aランク" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
-                <Kpi label="フォロー日あり" value={salesCases.filter((item) => item.nextFollowUpDate && !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="クローズ済み" value={salesCases.filter((item) => ["won", "lost", "hold"].includes(item.stage)).length} />
               </div>
 
