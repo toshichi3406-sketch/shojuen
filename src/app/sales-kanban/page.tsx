@@ -364,6 +364,9 @@ export default function SalesKanbanPage() {
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [wonFollowupSource, setWonFollowupSource] = useState<SalesCase | null>(null)
+  const [wonCreateOrder, setWonCreateOrder] = useState(true)
+  const [wonCreateFollowup, setWonCreateFollowup] = useState(true)
+  const [postOrderFollowupSource, setPostOrderFollowupSource] = useState<SalesCase | null>(null)
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -1112,6 +1115,39 @@ export default function SalesKanbanPage() {
     }
   }
 
+  function followupFromWon(source: SalesCase): SalesCase {
+    const lastContact = salesCaseLastContact(source.id, source.lastContactAt)
+    return {
+      ...blankSalesCase(source.customerId),
+      caseType: "existing_followup",
+      theme: "次回注文フォロー",
+      assignee: source.assignee,
+      productIds: source.productIds || [],
+      lastContactAt: lastContact || source.lastContactAt,
+      wonAt: source.wonAt,
+      nextAction: "次回注文時期を確認",
+    }
+  }
+
+  function firstOrderFromWon(source: SalesCase): Order {
+    const base = blankOrder(source.customerId, source.id)
+    const productIds = source.productIds || []
+    return {
+      ...base,
+      orderType: "first",
+      items: productIds.length
+        ? productIds.map((productId) => ({
+            id: uid(),
+            productId,
+            quantity: "",
+            unit: "kg",
+            unitPrice: "",
+            lineAmount: "",
+          }))
+        : base.items,
+    }
+  }
+
   function blankOrder(customerId = "", salesCaseId = ""): Order {
     return {
       id: "",
@@ -1169,6 +1205,11 @@ export default function SalesKanbanPage() {
         return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
       })
       setEditingOrder(null)
+      if (postOrderFollowupSource) {
+        const source = postOrderFollowupSource
+        setPostOrderFollowupSource(null)
+        setEditingSalesCase(followupFromWon(source))
+      }
     } catch (error) {
       console.error(error)
       alert(error instanceof Error ? error.message : "受注履歴の保存に失敗しました。")
@@ -1226,7 +1267,11 @@ export default function SalesKanbanPage() {
         return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
       })
       setEditingSalesCase(null)
-      if (becameWon) setWonFollowupSource(saved)
+      if (becameWon) {
+        setWonCreateOrder(true)
+        setWonCreateFollowup(true)
+        setWonFollowupSource(saved)
+      }
     } catch (error) {
       console.error(error)
       alert(error instanceof Error ? error.message : "営業案件の保存に失敗しました。")
@@ -2901,7 +2946,18 @@ export default function SalesKanbanPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setEditingOrder(null)} className="rounded-full border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingOrder(null)
+                  if (postOrderFollowupSource) {
+                    const source = postOrderFollowupSource
+                    setPostOrderFollowupSource(null)
+                    setEditingSalesCase(followupFromWon(source))
+                  }
+                }}
+                className="rounded-full border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5"
+              >
                 キャンセル
               </button>
               <button type="submit" className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white">
@@ -2917,45 +2973,78 @@ export default function SalesKanbanPage() {
           <div className="p-1">
             <ModalTitle
               eyebrow="成約"
-              title="既存顧客フォロー案件を作成しますか？"
+              title="成約後の処理"
               onClose={() => setWonFollowupSource(null)}
             />
             <p className="text-sm leading-6 text-white/55">
-              本発注が確定した新規営業案件を閉じました。次回注文を追うための既存顧客フォロー案件を作れます。
+              本発注が確定しました。実績として初回受注を残し、次回注文を追う既存顧客フォロー案件も作れます。
             </p>
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/65">
-              <div>取引先・提案商品・担当・最終接触・成約日を引き継ぎます。</div>
-              <div className="mt-1 text-xs text-white/40">次回フォロー日は作成画面で確認してください。</div>
+
+            <div className="mt-5 space-y-3">
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <input
+                  type="checkbox"
+                  checked={wonCreateOrder}
+                  onChange={(e) => setWonCreateOrder(e.target.checked)}
+                  className="mt-1 size-4"
+                />
+                <div>
+                  <div className="text-sm font-semibold">初回受注を登録する</div>
+                  <div className="mt-1 text-xs leading-5 text-white/45">
+                    商品・数量・単価・送料・受注金額を実績として残します。
+                  </div>
+                </div>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <input
+                  type="checkbox"
+                  checked={wonCreateFollowup}
+                  onChange={(e) => setWonCreateFollowup(e.target.checked)}
+                  className="mt-1 size-4"
+                />
+                <div>
+                  <div className="text-sm font-semibold">既存顧客フォロー案件を作る</div>
+                  <div className="mt-1 text-xs leading-5 text-white/45">
+                    次回注文時期の確認や追加提案など、成約後の営業活動を追います。
+                  </div>
+                </div>
+              </label>
             </div>
+
+            <div className="mt-4 text-xs text-white/35">
+              初期値は両方ONです。必要な方だけ残して進められます。
+            </div>
+
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setWonFollowupSource(null)}
                 className="rounded-full border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5"
               >
-                今回は作らない
+                今回は何もしない
               </button>
               <button
                 type="button"
                 autoFocus
+                disabled={!wonCreateOrder && !wonCreateFollowup}
                 onClick={() => {
                   const source = wonFollowupSource
-                  const lastContact = salesCaseLastContact(source.id, source.lastContactAt)
                   setWonFollowupSource(null)
-                  setEditingSalesCase({
-                    ...blankSalesCase(source.customerId),
-                    caseType: "existing_followup",
-                    theme: "次回注文フォロー",
-                    assignee: source.assignee,
-                    productIds: source.productIds || [],
-                    lastContactAt: lastContact || source.lastContactAt,
-                    wonAt: source.wonAt,
-                    nextAction: "次回注文時期を確認",
-                  })
+
+                  if (wonCreateOrder) {
+                    setEditingOrder(firstOrderFromWon(source))
+                    setPostOrderFollowupSource(wonCreateFollowup ? source : null)
+                    return
+                  }
+
+                  if (wonCreateFollowup) {
+                    setEditingSalesCase(followupFromWon(source))
+                  }
                 }}
-                className="rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white"
+                className="rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white disabled:cursor-not-allowed disabled:opacity-30"
               >
-                作成する
+                続ける
               </button>
             </div>
           </div>
