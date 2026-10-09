@@ -330,7 +330,12 @@ export default function SalesKanbanPage() {
     setAiImportBusy(true)
     setAiImportMessage("")
     try {
-      const payload = JSON.parse(aiImportJson)
+      // Claude sometimes escapes characters such as @ and _ even though JSON does not allow those escapes.
+      // Normalize only these known harmless cases before strict JSON parsing.
+      const normalizedJson = aiImportJson
+        .replace(/\\@/g, "@")
+        .replace(/\\_/g, "_")
+      const payload = JSON.parse(normalizedJson)
       const response = await fetch("/api/workboard/ai-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
