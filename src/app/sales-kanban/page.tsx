@@ -844,30 +844,41 @@ export default function SalesKanbanPage() {
   const currentProductCostSummary = useMemo(() => {
     if (!editingProduct) return { rows: [] as ProductCost[], total: 0, excluded: 0 }
 
+    const normalizeUnit = (value?: string) => {
+      const unit = (value || "kg").trim().toLowerCase().replace(/\s+/g, "")
+      if (["kg", "/kg", "per_kg", "perkg", "1kg"].includes(unit)) return "kg"
+      return unit
+    }
+    const normalizeCurrency = (value?: string) => (value || "JPY").trim().toUpperCase()
+
     const productRows = productCosts.filter((row) => row.productId === editingProduct.id)
     const sorted = [...productRows].sort((a, b) => {
-      const aKey = a.effectiveFrom || a.createdAt || ""
-      const bKey = b.effectiveFrom || b.createdAt || ""
+      const aKey = [a.effectiveFrom || "", a.createdAt || "", a.id].join("|")
+      const bKey = [b.effectiveFrom || "", b.createdAt || "", b.id].join("|")
       return bKey.localeCompare(aKey)
     })
 
-    const latestByItem = new Map<string, ProductCost>()
+    const latestByComponent = new Map<string, ProductCost>()
     for (const row of sorted) {
-      const key = [
-        row.costType,
-        row.label.trim(),
-        (row.supplierOrVendor || "").trim(),
-        (row.unit || "kg").trim().toLowerCase(),
-        (row.currency || "JPY").trim().toUpperCase(),
-      ].join("|")
-      if (!latestByItem.has(key)) latestByItem.set(key, row)
+      const unit = normalizeUnit(row.unit)
+      const currency = normalizeCurrency(row.currency)
+      // 基準仕入原価は商品の土台なので、ラベル名が違っても最新1件だけを現在値として扱う。
+      // その他の費用は、同じ区分・内訳名・仕入先を1つの構成要素として最新版だけ採用する。
+      const key = row.costType === "base_purchase"
+        ? [row.costType, unit, currency].join("|")
+        : [
+            row.costType,
+            row.label.trim(),
+            (row.supplierOrVendor || "").trim(),
+            unit,
+            currency,
+          ].join("|")
+      if (!latestByComponent.has(key)) latestByComponent.set(key, row)
     }
 
-    const rows = Array.from(latestByItem.values())
+    const rows = Array.from(latestByComponent.values())
     const compatible = rows.filter(
-      (row) =>
-        (row.currency || "JPY").trim().toUpperCase() === "JPY" &&
-        (row.unit || "kg").trim().toLowerCase() === "kg"
+      (row) => normalizeCurrency(row.currency) === "JPY" && normalizeUnit(row.unit) === "kg"
     )
     const total = compatible.reduce((sum, row) => {
       const amount = Number(row.amount)
@@ -2287,7 +2298,7 @@ export default function SalesKanbanPage() {
                       <span className="ml-2 text-sm font-medium text-white/45">JPY / kg</span>
                     </div>
                     <p className="mt-2 text-xs leading-5 text-white/45">
-                      同じ「原価区分・内訳名・仕入先・単位・通貨」は最新履歴だけを採用して集計しています。
+                      基準仕入原価は最新1件、その他の内訳は同じ構成要素の最新履歴だけを採用して集計しています。
                     </p>
                     {currentProductCostSummary.excluded > 0 && (
                       <p className="mt-1 text-[10px] text-amber-200/60">
