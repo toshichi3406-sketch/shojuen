@@ -30,7 +30,7 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "work" | "activity" | "customers" | "products" | "shipping" | "ai"
+type Tab = "sales" | "work" | "activity" | "customers" | "products" | "shipping" | "ai"
 
 type AuthState = {
   loading: boolean
@@ -76,6 +76,27 @@ type WorkEvent = {
   direction?: string
   source?: string
   sourceCandidateId?: string
+}
+
+type SalesCase = {
+  id: string
+  customerId: string
+  title: string
+  theme: string
+  caseType: "new_business" | "existing_followup"
+  stage: "uncontacted" | "initial_sent" | "replied" | "qualifying" | "quoted" | "sample_requested" | "sample_sent" | "considering" | "won" | "lost" | "hold"
+  heat: "A" | "B" | "C"
+  nextFollowUpDate?: string
+  nextAction?: string
+  assignee: string
+  lastContactAt?: string
+  closeReason?: string
+  closeNote?: string
+  wonAt?: string
+  closedAt?: string
+  productIds?: string[]
+  createdAt?: string
+  updatedAt?: string
 }
 
 type ShippingRate = {
@@ -185,6 +206,20 @@ type Product = {
   docs?: ProductDoc[]
 }
 
+const SALES_STAGE_LABELS: Record<SalesCase["stage"], string> = {
+  uncontacted: "未接触",
+  initial_sent: "初回送信",
+  replied: "返信あり",
+  qualifying: "条件確認中",
+  quoted: "見積提示",
+  sample_requested: "サンプル要求あり",
+  sample_sent: "サンプル送付",
+  considering: "検討中",
+  won: "成約",
+  lost: "失注",
+  hold: "保留",
+}
+
 const STATUSES: { id: Status; label: string }[] = [
   { id: "todo", label: "未着手" },
   { id: "prep", label: "確認・準備中" },
@@ -263,8 +298,9 @@ const starterWork: WorkItem[] = [
 ]
 
 export default function SalesKanbanPage() {
-  const [tab, setTab] = useState<Tab>("work")
+  const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
+  const [salesCases, setSalesCases] = useState<SalesCase[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
@@ -343,6 +379,7 @@ export default function SalesKanbanPage() {
           const data = await response.json().catch(() => ({}))
           if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
           setWork(Array.isArray(data.work) ? data.work : [])
+          setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
           setProductCosts(Array.isArray(data.productCosts) ? data.productCosts : [])
@@ -1211,9 +1248,11 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
+                {tab === "sales" ? "営業案件" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
+                {tab === "sales" &&
+                  "取引先ごとの商談を、ステージ・温度感・フォロー日で管理。"}
                 {tab === "work" &&
                   "営業・仕入・物流・証明書・HPなど、全社の仕事を状態で見える化。"}
                 {tab === "activity" &&
@@ -1235,7 +1274,7 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
+            {tab !== "sales" && tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
               <button
                 onClick={() => {
                   if (tab === "work") setEditingWork(blankWork())
@@ -1252,6 +1291,7 @@ export default function SalesKanbanPage() {
           </div>
 
           <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
+            <TabButton active={tab === "sales"} onClick={() => setTab("sales")} icon={<Building2 className="size-4" />} label={"営業案件" + (salesCases.length ? " (" + salesCases.length + ")" : "")} />
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
@@ -1260,7 +1300,75 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
           </nav>
 
-          {tab === "work" && (
+          {tab === "sales" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-6xl">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="進行中" value={salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="Aランク" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="フォロー日あり" value={salesCases.filter((item) => item.nextFollowUpDate && !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="クローズ済み" value={salesCases.filter((item) => ["won", "lost", "hold"].includes(item.stage)).length} />
+              </div>
+
+              {salesCases.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
+                  <Building2 className="mx-auto size-7 text-white/30" />
+                  <h2 className="mt-3 text-base font-semibold">営業案件はまだありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">次の段階で、ここから案件を作成・編集できるようにします。</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {salesCases
+                    .filter((item) => !["won", "lost", "hold"].includes(item.stage))
+                    .sort((a, b) => {
+                      const heatOrder = { A: 0, B: 1, C: 2 }
+                      const heatDiff = heatOrder[a.heat] - heatOrder[b.heat]
+                      if (heatDiff !== 0) return heatDiff
+                      const aDate = a.nextFollowUpDate || "9999-12-31"
+                      const bDate = b.nextFollowUpDate || "9999-12-31"
+                      if (aDate !== bDate) return aDate.localeCompare(bDate)
+                      return (a.lastContactAt || "").localeCompare(b.lastContactAt || "")
+                    })
+                    .map((item) => {
+                      const customer = customers.find((row) => row.id === item.customerId)
+                      return (
+                        <article key={item.id} className="rounded-[20px] border border-white/10 bg-[#111311] p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-xs text-white/40">{customer?.name || item.customerId}</div>
+                              <h2 className="mt-1 text-base font-semibold leading-6">{item.theme || item.title}</h2>
+                            </div>
+                            <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
+                              item.heat === "A" ? "bg-red-400/15 text-red-200" :
+                              item.heat === "B" ? "bg-amber-400/15 text-amber-100" :
+                              "bg-white/10 text-white/55"
+                            }`}>
+                              {item.heat}
+                            </span>
+                          </div>
+                          <div className="mt-4 flex flex-wrap gap-1.5">
+                            <Tag>{SALES_STAGE_LABELS[item.stage]}</Tag>
+                            <Tag>{item.caseType === "new_business" ? "新規営業" : "既存顧客"}</Tag>
+                            <Tag>{(item.productIds || []).length}商品</Tag>
+                          </div>
+                          <div className="mt-4 rounded-xl bg-white/[0.045] p-3">
+                            <div className="text-[10px] font-semibold tracking-[0.1em] text-white/35">次回フォロー</div>
+                            <div className="mt-1 text-sm text-white/75">{item.nextFollowUpDate || "未設定"}</div>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between text-xs text-white/35">
+                            <span>{item.assignee || "未担当"}</span>
+                            <span>{item.lastContactAt ? "最終接触あり" : "接触記録なし"}</span>
+                          </div>
+                        </article>
+                      )
+                    })}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {tab === "work" && (
             <>
               <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="進行中" value={activeCount} />
