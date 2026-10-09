@@ -450,6 +450,90 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+
+    if (candidateType === "price_candidate") {
+      const classification = String(payload.price_classification || "")
+      if (classification !== "shipping_rate") {
+        return NextResponse.json(
+          { error: "価格候補は分類済みでも、送料・運賃以外はまだ正式反映対象外です。" },
+          { status: 409 }
+        )
+      }
+
+      const rateStage = String(payload.shipping_stage || "")
+      if (!["estimate", "quoted", "actual"].includes(rateStage)) {
+        return NextResponse.json({ error: "送料の状態（概算 / 提示 / 実績）を選んでください。" }, { status: 400 })
+      }
+
+      const amountRaw =
+        payload.amount ??
+        payload.price ??
+        payload.shipping_cost ??
+        payload.freight ??
+        payload.cost
+      const amount = Number(String(amountRaw ?? "").replace(/[,\s¥￥]/g, ""))
+      if (!Number.isFinite(amount) || amount < 0) {
+        return NextResponse.json({ error: "送料金額を数値として確認できません。JSON詳細の金額を確認してください。" }, { status: 400 })
+      }
+
+      const destination = String(
+        payload.destination ||
+        payload.country ||
+        payload.destination_country ||
+        ""
+      ).trim()
+      if (!destination) {
+        return NextResponse.json({ error: "配送先が確認できません。送料マスタ反映前に配送先が必要です。" }, { status: 400 })
+      }
+
+      const weightSingle = payload.weight_kg != null ? Number(payload.weight_kg) : null
+      const weightFrom = payload.weight_from_kg != null
+        ? Number(payload.weight_from_kg)
+        : (Number.isFinite(weightSingle as number) ? weightSingle : null)
+      const weightTo = payload.weight_to_kg != null
+        ? Number(payload.weight_to_kg)
+        : (Number.isFinite(weightSingle as number) ? weightSingle : null)
+
+      await sb("shipping_rates", token, {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          origin: payload.origin || payload.origin_country || "Japan",
+          destination,
+          carrier: payload.carrier || null,
+          service: payload.service || payload.shipping_method || null,
+          weight_from_kg: Number.isFinite(weightFrom as number) ? weightFrom : null,
+          weight_to_kg: Number.isFinite(weightTo as number) ? weightTo : null,
+          size_class: payload.size_class || payload.size || null,
+          price: amount,
+          currency: payload.currency || "JPY",
+          transit_time: payload.transit_time || payload.delivery_time || null,
+          terms: payload.terms || payload.shipping_terms || null,
+          source: payload.source || "ai_import",
+          verified_at: rateStage === "actual" ? (payload.verified_at || payload.shipped_at || now) : (payload.verified_at || null),
+          note: payload.note || payload.memo || body.title || null,
+          rate_stage: rateStage,
+          shipment_date: payload.shipment_date || payload.shipped_date || null,
+          actual_weight_kg: payload.actual_weight_kg != null ? Number(payload.actual_weight_kg) : null,
+          customer_id: payload.customer_id || null,
+          created_by: null,
+          updated_at: now,
+        }),
+      })
+
+      await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "approved",
+          reviewed_at: now,
+          decision_note: `送料マスタへ反映（${rateStage}）`,
+        }),
+      })
+
+      return NextResponse.json({ ok: true, applied: "shipping_rate", rateStage })
+    }
+
     if (candidateType === "work_event") {
       await sb("work_events", token, {
         method: "POST",
