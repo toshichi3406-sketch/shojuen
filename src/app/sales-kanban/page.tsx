@@ -67,6 +67,7 @@ type AiImportCandidate = {
 type WorkEvent = {
   id: string
   workItemId?: string
+  salesCaseId?: string
   eventType: string
   eventDate: string
   channel?: string
@@ -330,6 +331,7 @@ export default function SalesKanbanPage() {
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
+  const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -416,7 +418,7 @@ export default function SalesKanbanPage() {
     window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
   }, [work, customers, products, hydrated, auth.configured, auth.authenticated])
 
-  async function saveShared(type: "work" | "customer" | "product" | "product_cost" | "work_event", data: WorkItem | Customer | Product | ProductCost | WorkEvent) {
+  async function saveShared(type: "work" | "customer" | "product" | "product_cost" | "work_event" | "sales_case", data: WorkItem | Customer | Product | ProductCost | WorkEvent | SalesCase) {
     if (!(auth.configured && auth.authenticated)) return
     const response = await fetch("/api/workboard/data", {
       method: "POST",
@@ -440,7 +442,7 @@ export default function SalesKanbanPage() {
     setEvents((current) => [event, ...current])
   }
 
-  async function deleteShared(type: "work" | "customer" | "product", id: string) {
+  async function deleteShared(type: "work" | "customer" | "product" | "sales_case", id: string) {
     if (!(auth.configured && auth.authenticated)) return
     const response = await fetch(
       `/api/workboard/data?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`,
@@ -1047,6 +1049,54 @@ export default function SalesKanbanPage() {
     }
   }
 
+  function blankSalesCase(customerId = ""): SalesCase {
+    const assignee = auth.user?.displayName || auth.user?.email || ""
+    return {
+      id: "",
+      customerId,
+      title: "",
+      theme: "",
+      caseType: "new_business",
+      stage: "uncontacted",
+      heat: "B",
+      nextFollowUpDate: "",
+      nextAction: "",
+      assignee,
+      productIds: [],
+    }
+  }
+
+  async function saveSalesCase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingSalesCase?.customerId || !editingSalesCase.theme.trim() || !editingSalesCase.assignee.trim()) return
+
+    const customer = customers.find((row) => row.id === editingSalesCase.customerId)
+    const autoTitle = [customer?.name || editingSalesCase.customerId, editingSalesCase.theme.trim()].filter(Boolean).join("｜")
+    const item = {
+      ...editingSalesCase,
+      title: editingSalesCase.title.trim() || autoTitle,
+    }
+
+    try {
+      const response = await fetch("/api/workboard/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "sales_case", data: item }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "営業案件の保存に失敗しました。")
+      const saved = { ...item, id: result.id || item.id }
+      setSalesCases((current) => {
+        const exists = current.some((row) => row.id === saved.id)
+        return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
+      })
+      setEditingSalesCase(null)
+    } catch (error) {
+      console.error(error)
+      alert(error instanceof Error ? error.message : "営業案件の保存に失敗しました。")
+    }
+  }
+
   function blankWork(status: Status = "todo"): WorkItem {
     return {
       id: nextId(work, "W"),
@@ -1274,9 +1324,10 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "sales" && tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
+            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
               <button
                 onClick={() => {
+                  if (tab === "sales") setEditingSalesCase(blankSalesCase())
                   if (tab === "work") setEditingWork(blankWork())
                   if (tab === "customers") setEditingCustomer(blankCustomer())
                   if (tab === "products") setEditingProduct(blankProduct())
@@ -1284,7 +1335,7 @@ export default function SalesKanbanPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
               >
                 <Plus className="size-4" />
-                {tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
+                {tab === "sales" ? "案件を追加" : tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
               </button>
             )}
             </div>
@@ -1300,7 +1351,33 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
           </nav>
 
-          {tab === "sales" && (
+
+        {tab === "work" && (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="進行中" value={activeCount} />
+                <Kpi label="待ち" value={waitingCount} />
+                <Kpi label="要判断" value={decisionCount} />
+                <Kpi label="期限あり" value={dueCount} />
+              </div>
+              <div className="mt-4">
+                <SearchBox value={workQuery} onChange={setWorkQuery} placeholder="件名・取引先・担当・媒体・商品IDで検索..." />
+              </div>
+            </>
+          )}
+          {tab === "customers" && (
+            <div className="mt-4">
+              <SearchBox value={customerQuery} onChange={setCustomerQuery} placeholder="取引先ID・会社名・国・メールで検索..." />
+            </div>
+          )}
+          {tab === "products" && (
+            <div className="mt-4">
+              <SearchBox value={productQuery} onChange={setProductQuery} placeholder="商品ID・商品名・生産者・産地で検索..." />
+            </div>
+          )}
+        </header>
+
+{tab === "sales" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -1314,7 +1391,10 @@ export default function SalesKanbanPage() {
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
                   <Building2 className="mx-auto size-7 text-white/30" />
                   <h2 className="mt-3 text-base font-semibold">営業案件はまだありません</h2>
-                  <p className="mt-2 text-sm leading-6 text-white/45">次の段階で、ここから案件を作成・編集できるようにします。</p>
+                  <p className="mt-2 text-sm leading-6 text-white/45">取引先ごとの商談をここで管理します。</p>
+                  <button type="button" onClick={() => setEditingSalesCase(blankSalesCase())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
+                    <Plus className="size-4" /> 最初の案件を作る
+                  </button>
                 </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -1332,7 +1412,11 @@ export default function SalesKanbanPage() {
                     .map((item) => {
                       const customer = customers.find((row) => row.id === item.customerId)
                       return (
-                        <article key={item.id} className="rounded-[20px] border border-white/10 bg-[#111311] p-5">
+                        <article
+                          key={item.id}
+                          onClick={() => setEditingSalesCase(item)}
+                          className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="text-xs text-white/40">{customer?.name || item.customerId}</div>
@@ -1368,30 +1452,7 @@ export default function SalesKanbanPage() {
           </section>
         )}
 
-        {tab === "work" && (
-            <>
-              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <Kpi label="進行中" value={activeCount} />
-                <Kpi label="待ち" value={waitingCount} />
-                <Kpi label="要判断" value={decisionCount} />
-                <Kpi label="期限あり" value={dueCount} />
-              </div>
-              <div className="mt-4">
-                <SearchBox value={workQuery} onChange={setWorkQuery} placeholder="件名・取引先・担当・媒体・商品IDで検索..." />
-              </div>
-            </>
-          )}
-          {tab === "customers" && (
-            <div className="mt-4">
-              <SearchBox value={customerQuery} onChange={setCustomerQuery} placeholder="取引先ID・会社名・国・メールで検索..." />
-            </div>
-          )}
-          {tab === "products" && (
-            <div className="mt-4">
-              <SearchBox value={productQuery} onChange={setProductQuery} placeholder="商品ID・商品名・生産者・産地で検索..." />
-            </div>
-          )}
-        </header>
+
 
         {tab === "work" && (
           <section className="flex-1 overflow-x-auto overflow-y-hidden p-4 md:p-6">
@@ -2383,6 +2444,104 @@ export default function SalesKanbanPage() {
           </section>
         )}
       </div>
+
+      {editingSalesCase && (
+        <Modal onClose={() => setEditingSalesCase(null)} wide>
+          <form onSubmit={saveSalesCase}>
+            <ModalTitle eyebrow="営業案件" title={editingSalesCase.title || "新しい営業案件"} onClose={() => setEditingSalesCase(null)} />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="取引先">
+                <select
+                  required
+                  autoFocus
+                  className={inputClass}
+                  value={editingSalesCase.customerId}
+                  onChange={(e) => setEditingSalesCase({ ...editingSalesCase, customerId: e.target.value })}
+                >
+                  <option value="">選択してください</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>)}
+                </select>
+              </Field>
+
+              <Field label="案件種別">
+                <select className={inputClass} value={editingSalesCase.caseType} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, caseType: e.target.value as SalesCase["caseType"] })}>
+                  <option value="new_business">新規営業</option>
+                  <option value="existing_followup">既存顧客フォロー</option>
+                </select>
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="提案テーマ">
+                  <input required className={inputClass} placeholder="例：業務用ラテ向け抹茶提案" value={editingSalesCase.theme} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, theme: e.target.value })} />
+                </Field>
+              </div>
+
+              <div className="md:col-span-2">
+                <Field label="案件名（空欄なら取引先＋提案テーマで自動生成）">
+                  <input className={inputClass} value={editingSalesCase.title} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, title: e.target.value })} />
+                </Field>
+              </div>
+
+              <Field label="営業ステージ">
+                <select className={inputClass} value={editingSalesCase.stage} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, stage: e.target.value as SalesCase["stage"] })}>
+                  {Object.entries(SALES_STAGE_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </Field>
+
+              <Field label="温度感">
+                <select className={inputClass} value={editingSalesCase.heat} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, heat: e.target.value as SalesCase["heat"] })}>
+                  <option value="A">A - かなり熱い</option>
+                  <option value="B">B - 可能性あり</option>
+                  <option value="C">C - 薄い</option>
+                </select>
+              </Field>
+
+              <Field label="担当">
+                <input required className={inputClass} value={editingSalesCase.assignee} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, assignee: e.target.value })} />
+              </Field>
+
+              <Field label="次回フォロー日">
+                <input type="date" className={inputClass} value={editingSalesCase.nextFollowUpDate || ""} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, nextFollowUpDate: e.target.value })} />
+              </Field>
+
+              <div className="md:col-span-2">
+                <Field label="次アクション">
+                  <input className={inputClass} value={editingSalesCase.nextAction || ""} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, nextAction: e.target.value })} />
+                </Field>
+              </div>
+            </div>
+
+            <ProductPicker
+              products={products}
+              selected={editingSalesCase.productIds || []}
+              onToggle={(id) => setEditingSalesCase({
+                ...editingSalesCase,
+                productIds: (editingSalesCase.productIds || []).includes(id)
+                  ? (editingSalesCase.productIds || []).filter((value) => value !== id)
+                  : [...(editingSalesCase.productIds || []), id],
+              })}
+            />
+
+            <ModalActions
+              existing={Boolean(editingSalesCase.id) && ["owner", "admin"].includes(auth.user?.role || "")}
+              onDelete={async () => {
+                if (!editingSalesCase.id) return
+                const id = editingSalesCase.id
+                setEditingSalesCase(null)
+                try {
+                  await deleteShared("sales_case", id)
+                  setSalesCases((current) => current.filter((item) => item.id !== id))
+                } catch (error) {
+                  console.error(error)
+                  alert(error instanceof Error ? error.message : "営業案件の削除に失敗しました。")
+                }
+              }}
+              onCancel={() => setEditingSalesCase(null)}
+            />
+          </form>
+        </Modal>
+      )}
 
       {editingWork && (
         <Modal onClose={() => setEditingWork(null)} wide>
