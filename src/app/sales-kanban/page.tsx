@@ -30,7 +30,7 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "sales" | "work" | "activity" | "customers" | "products" | "shipping" | "ai"
+type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai"
 
 type AuthState = {
   loading: boolean
@@ -98,6 +98,32 @@ type SalesCase = {
   productIds?: string[]
   createdAt?: string
   updatedAt?: string
+}
+
+type OrderItem = {
+  id: string
+  productId: string
+  quantity: string
+  unit: string
+  unitPrice: string
+  lineAmount: string
+}
+
+type Order = {
+  id: string
+  customerId: string
+  salesCaseId?: string
+  orderType: "first" | "repeat"
+  orderStatus: "confirmed" | "shipped" | "completed" | "cancelled"
+  orderDate: string
+  currency: string
+  shippingAmount?: string
+  totalAmount?: string
+  externalOrderRef?: string
+  note?: string
+  createdAt?: string
+  updatedAt?: string
+  items: OrderItem[]
 }
 
 type ShippingRate = {
@@ -303,6 +329,7 @@ export default function SalesKanbanPage() {
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
@@ -385,6 +412,7 @@ export default function SalesKanbanPage() {
           if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
           setWork(Array.isArray(data.work) ? data.work : [])
           setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
+          setOrders(Array.isArray(data.orders) ? data.orders : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
           setProductCosts(Array.isArray(data.productCosts) ? data.productCosts : [])
@@ -1398,11 +1426,13 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "sales" ? "営業案件" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
+                {tab === "sales" ? "営業案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "sales" &&
                   "取引先ごとの商談を、ステージ・温度感・フォロー日で管理。"}
+                {tab === "orders" &&
+                  "初回発注・リピート発注を、商品・数量・金額・関連案件とともに履歴化。"}
                 {tab === "work" &&
                   "営業・仕入・物流・証明書・HPなど、全社の仕事を状態で見える化。"}
                 {tab === "activity" &&
@@ -1424,7 +1454,7 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
+            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "orders" && (
               <button
                 onClick={() => {
                   if (tab === "sales") setEditingSalesCase(blankSalesCase())
@@ -1443,6 +1473,7 @@ export default function SalesKanbanPage() {
 
           <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
             <TabButton active={tab === "sales"} onClick={() => setTab("sales")} icon={<Building2 className="size-4" />} label={"営業案件" + (salesCases.length ? " (" + salesCases.length + ")" : "")} />
+            <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<FileText className="size-4" />} label={"受注履歴" + (orders.length ? " (" + orders.length + ")" : "")} />
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
@@ -1476,6 +1507,79 @@ export default function SalesKanbanPage() {
             </div>
           )}
         </header>
+
+{tab === "orders" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-6xl">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="受注件数" value={orders.filter((order) => order.orderStatus !== "cancelled").length} />
+                <Kpi label="初回発注" value={orders.filter((order) => order.orderType === "first" && order.orderStatus !== "cancelled").length} />
+                <Kpi label="リピート" value={orders.filter((order) => order.orderType === "repeat" && order.orderStatus !== "cancelled").length} />
+                <Kpi label="取引先数" value={new Set(orders.filter((order) => order.orderStatus !== "cancelled").map((order) => order.customerId)).size} />
+              </div>
+
+              {orders.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
+                  <FileText className="mx-auto size-7 text-white/30" />
+                  <h2 className="mt-3 text-base font-semibold">受注履歴はまだありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">
+                    本発注・リピート発注をここに蓄積して、継続率や累計売上のKPIにつなげます。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {orders.map((order) => {
+                    const customer = customers.find((row) => row.id === order.customerId)
+                    return (
+                      <article key={order.id} className="rounded-[20px] border border-white/10 bg-[#111311] p-5">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="text-xs text-white/40">{customer?.name || order.customerId}</div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <h2 className="text-base font-semibold">{order.orderDate}</h2>
+                              <Tag>{order.orderType === "first" ? "初回発注" : "リピート"}</Tag>
+                              <Tag>{order.orderStatus === "confirmed" ? "受注確定" : order.orderStatus === "shipped" ? "発送済み" : order.orderStatus === "completed" ? "完了" : "キャンセル"}</Tag>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] font-semibold tracking-[0.1em] text-white/35">受注総額</div>
+                            <div className="mt-1 text-lg font-semibold">
+                              {order.totalAmount
+                                ? `${order.currency} ${Number(order.totalAmount).toLocaleString("ja-JP")}`
+                                : "未計算"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 md:grid-cols-2">
+                          {(order.items || []).map((item) => {
+                            const product = products.find((row) => row.id === item.productId)
+                            return (
+                              <div key={item.id} className="rounded-xl bg-white/[0.045] p-3">
+                                <div className="text-sm font-medium">{product?.name || item.productId}</div>
+                                <div className="mt-1 text-xs text-white/45">
+                                  {item.quantity}{item.unit} × {order.currency} {Number(item.unitPrice || 0).toLocaleString("ja-JP")}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {(order.shippingAmount || order.externalOrderRef || order.note) && (
+                          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/40">
+                            {order.shippingAmount && <span>送料 {order.currency} {Number(order.shippingAmount).toLocaleString("ja-JP")}</span>}
+                            {order.externalOrderRef && <span>注文番号 {order.externalOrderRef}</span>}
+                            {order.note && <span>{order.note}</span>}
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
 {tab === "sales" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
