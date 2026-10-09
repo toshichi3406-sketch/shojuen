@@ -454,6 +454,58 @@ export async function PUT(request: NextRequest) {
     if (candidateType === "price_candidate") {
       const classification = String(payload.price_classification || "")
 
+      if (classification === "supplier_cost") {
+        const productId = String(payload.product_id || "").trim()
+        if (!productId) {
+          return NextResponse.json({ error: "商品を選択してください。" }, { status: 400 })
+        }
+
+        const amountRaw = payload.amount ?? payload.price ?? payload.cost
+        const amount = Number(String(amountRaw ?? "").replace(/[,\s¥￥]/g, ""))
+        if (!Number.isFinite(amount) || amount < 0) {
+          return NextResponse.json({ error: "原価を数値として確認できません。" }, { status: 400 })
+        }
+
+        const costType = String(payload.cost_type || "base_purchase")
+        const allowedCostTypes = new Set([
+          "base_purchase","processing","packaging","labeling","inspection","domestic_freight","other"
+        ])
+        if (!allowedCostTypes.has(costType)) {
+          return NextResponse.json({ error: "原価区分が不正です。" }, { status: 400 })
+        }
+
+        await sb("product_costs", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            product_id: productId,
+            cost_type: costType,
+            label: payload.label || body.title || "AI取込原価",
+            amount,
+            currency: payload.currency || "JPY",
+            unit: payload.unit || "kg",
+            quantity_basis: payload.quantity_basis ? Number(payload.quantity_basis) : null,
+            effective_from: payload.effective_from || new Date().toISOString().slice(0, 10),
+            supplier_or_vendor: payload.supplier_or_vendor || payload.supplier || null,
+            note: payload.note || payload.memo || null,
+            ai_locked: true,
+            approved_at: now,
+          }),
+        })
+
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "approved",
+            reviewed_at: now,
+            decision_note: `原価履歴へ反映（${productId} / ${costType}）`,
+          }),
+        })
+
+        return NextResponse.json({ ok: true, applied: "product_cost", productId, costType })
+      }
+
       if (classification === "customer_quoted") {
         const customerId = String(payload.customer_id || "").trim()
         const productId = String(payload.product_id || "").trim()
