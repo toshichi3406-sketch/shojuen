@@ -11,37 +11,66 @@ import {
   Package,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
+  Users,
   X,
 } from "lucide-react"
 
-type Stage =
-  | "lead"
-  | "sent"
-  | "followup"
-  | "replied"
-  | "negotiation"
-  | "sample"
-  | "won"
-  | "lost"
+type Status =
+  | "todo"
+  | "prep"
+  | "doing"
+  | "external_wait"
+  | "internal_wait"
+  | "decision"
+  | "hold"
+  | "done"
 
-type Tab = "pipeline" | "products"
+type Tab = "work" | "customers" | "products"
 
-type Lead = {
+type WorkItem = {
   id: string
-  company: string
-  country: string
-  category: string
-  email: string
-  stage: Stage
-  sentAt?: string
+  title: string
+  status: Status
+  customerId?: string
+  workType?: string
+  assignee?: string
+  priority?: "低" | "中" | "高" | "緊急"
+  dueDate?: string
   nextAction?: string
-  owner?: string
-  linkedin?: string
+  country?: string
+  originType?: "Outbound" | "Inbound" | "Referral" | "Existing"
+  channel?: string
+  productIds?: string[]
   memo?: string
-  positive?: boolean
-  proposedProductIds?: string[]
-  sampleProductIds?: string[]
+}
+
+type CustomerPrice = {
+  id: string
+  productId: string
+  price: string
+  currency: string
+  unit: string
+  moq?: string
+  shipping?: string
+  payment?: string
+  effectiveFrom?: string
+  locked: boolean
+}
+
+type Customer = {
+  id: string
+  name: string
+  country?: string
+  category?: string
+  contact?: string
+  email?: string
+  phone?: string
+  instagram?: string
+  linkedin?: string
+  note?: string
+  prices?: CustomerPrice[]
 }
 
 type ProductDoc = {
@@ -68,137 +97,108 @@ type Product = {
   docs?: ProductDoc[]
 }
 
-const STAGES: { id: Stage; label: string }[] = [
-  { id: "lead", label: "候補" },
-  { id: "sent", label: "送信済み" },
-  { id: "followup", label: "フォロー" },
-  { id: "replied", label: "返信あり" },
-  { id: "negotiation", label: "商談中" },
-  { id: "sample", label: "サンプル" },
-  { id: "won", label: "成約" },
-  { id: "lost", label: "見送り" },
+const STATUSES: { id: Status; label: string }[] = [
+  { id: "todo", label: "未着手" },
+  { id: "prep", label: "確認・準備中" },
+  { id: "doing", label: "対応中" },
+  { id: "external_wait", label: "相手待ち" },
+  { id: "internal_wait", label: "社内待ち" },
+  { id: "decision", label: "要判断" },
+  { id: "hold", label: "保留" },
+  { id: "done", label: "完了" },
 ]
 
-const LEADS_KEY = "shojuen-sales-kanban-v2"
-const PRODUCTS_KEY = "shojuen-product-master-v1"
+const WORK_TYPES = ["営業", "仕入", "商品開発", "物流", "証明書", "HP", "経理", "国内卸", "海外", "その他"]
+const CHANNELS = ["Email", "Instagram DM", "Threads", "LinkedIn", "Web", "電話", "展示会", "紹介", "その他"]
+const ORIGINS: WorkItem["originType"][] = ["Outbound", "Inbound", "Referral", "Existing"]
 
-const starterProducts: Product[] = [
-  {
-    id: "M001",
-    name: "サンプル商品 A",
-    origin: "未設定",
-    use: "ラテ・業務用",
-    supply: "確認中",
-    memo: "実商品に置き換えてください。",
-  },
-  {
-    id: "M002",
-    name: "サンプル商品 B",
-    origin: "未設定",
-    use: "ストレート・高級帯",
-    supply: "確認中",
-    memo: "実商品に置き換えてください。",
-  },
-]
-
-const starterLeads: Lead[] = [
-  {
-    id: "demo-1",
-    company: "サンプルカフェ",
-    country: "Singapore",
-    category: "カフェ",
-    email: "hello@example.com",
-    stage: "lead",
-    owner: "あかね",
-    nextAction: "初回営業メールを送る",
-    proposedProductIds: ["M001"],
-    sampleProductIds: [],
-  },
-  {
-    id: "demo-2",
-    company: "サンプル卸会社",
-    country: "Singapore",
-    category: "卸・代理店",
-    email: "buyer@example.com",
-    stage: "sent",
-    sentAt: "2026-10-09",
-    owner: "あかね",
-    nextAction: "4営業日後に返信確認",
-    proposedProductIds: ["M001", "M002"],
-    sampleProductIds: ["M002"],
-  },
-]
+const WORK_KEY = "shojuen-workboard-v1"
+const CUSTOMER_KEY = "shojuen-customer-master-v1"
+const PRODUCT_KEY = "shojuen-product-master-v1"
 
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-function blankLead(stage: Stage = "lead"): Lead {
-  return {
-    id: uid(),
-    company: "",
-    country: "Singapore",
-    category: "カフェ",
-    email: "",
-    stage,
-    owner: "あかね",
-    nextAction: "",
-    memo: "",
-    proposedProductIds: [],
-    sampleProductIds: [],
-  }
-}
-
-function nextProductId(products: Product[]) {
-  const max = products.reduce((current, product) => {
-    const match = product.id.match(/^M(\d+)$/i)
+function nextId<T extends { id: string }>(items: T[], prefix: string) {
+  const max = items.reduce((current, item) => {
+    const match = item.id.match(new RegExp("^" + prefix + "(\\d+)$", "i"))
     return match ? Math.max(current, Number(match[1])) : current
   }, 0)
-  return `M${String(max + 1).padStart(3, "0")}`
+  return `${prefix}${String(max + 1).padStart(3, "0")}`
 }
 
-function blankProduct(products: Product[]): Product {
-  return {
-    id: nextProductId(products),
-    name: "",
-    producer: "",
-    origin: "",
-    use: "",
-    color: "",
-    umami: "",
-    bitterness: "",
-    aroma: "",
-    cost: "",
-    price: "",
-    moq: "",
-    supply: "",
-    memo: "",
-    docs: [],
-  }
-}
+const starterProducts: Product[] = [
+  { id: "M001", name: "サンプル商品 A", use: "ラテ・業務用", supply: "確認中" },
+  { id: "M002", name: "サンプル商品 B", use: "ストレート・高級帯", supply: "確認中" },
+]
+
+const starterCustomers: Customer[] = [
+  {
+    id: "C001",
+    name: "サンプル取引先",
+    country: "Singapore",
+    category: "カフェ",
+    email: "hello@example.com",
+    prices: [
+      {
+        id: "P001",
+        productId: "M001",
+        price: "8500",
+        currency: "JPY",
+        unit: "kg",
+        moq: "5kg",
+        shipping: "別途",
+        payment: "要確認",
+        effectiveFrom: "2026-10-01",
+        locked: true,
+      },
+    ],
+  },
+]
+
+const starterWork: WorkItem[] = [
+  {
+    id: "W001",
+    title: "サンプル取引先への商品提案",
+    status: "doing",
+    customerId: "C001",
+    workType: "海外",
+    assignee: "あかね",
+    priority: "中",
+    country: "Singapore",
+    originType: "Outbound",
+    channel: "Email",
+    productIds: ["M001"],
+    nextAction: "提案内容を確認して送付",
+  },
+]
 
 export default function SalesKanbanPage() {
-  const [tab, setTab] = useState<Tab>("pipeline")
-  const [leads, setLeads] = useState<Lead[]>(starterLeads)
+  const [tab, setTab] = useState<Tab>("work")
+  const [work, setWork] = useState<WorkItem[]>(starterWork)
+  const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
-  const [query, setQuery] = useState("")
-  const [country, setCountry] = useState("すべて")
+  const [workQuery, setWorkQuery] = useState("")
+  const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
-  const [editing, setEditing] = useState<Lead | null>(null)
+  const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     try {
-      const savedLeads = window.localStorage.getItem(LEADS_KEY)
-      const legacyLeads = window.localStorage.getItem("shojuen-sales-kanban-v1")
-      const savedProducts = window.localStorage.getItem(PRODUCTS_KEY)
-      if (savedLeads) setLeads(JSON.parse(savedLeads))
-      else if (legacyLeads) setLeads(JSON.parse(legacyLeads))
+      const savedWork = window.localStorage.getItem(WORK_KEY)
+      const savedCustomers = window.localStorage.getItem(CUSTOMER_KEY)
+      const savedProducts = window.localStorage.getItem(PRODUCT_KEY)
+      if (savedWork) setWork(JSON.parse(savedWork))
+      if (savedCustomers) setCustomers(JSON.parse(savedCustomers))
       if (savedProducts) setProducts(JSON.parse(savedProducts))
     } catch {
-      setLeads(starterLeads)
+      setWork(starterWork)
+      setCustomers(starterCustomers)
       setProducts(starterProducts)
     }
     setHydrated(true)
@@ -206,45 +206,51 @@ export default function SalesKanbanPage() {
 
   useEffect(() => {
     if (!hydrated) return
-    window.localStorage.setItem(LEADS_KEY, JSON.stringify(leads))
-    window.localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products))
-  }, [leads, products, hydrated])
+    window.localStorage.setItem(WORK_KEY, JSON.stringify(work))
+    window.localStorage.setItem(CUSTOMER_KEY, JSON.stringify(customers))
+    window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
+  }, [work, customers, products, hydrated])
 
-  const countries = useMemo(
-    () => ["すべて", ...Array.from(new Set(leads.map((lead) => lead.country))).sort()],
-    [leads]
-  )
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return leads.filter((lead) => {
-      const matchesCountry = country === "すべて" || lead.country === country
-      const productText = (lead.proposedProductIds || [])
-        .map((id) => products.find((product) => product.id === id)?.name || id)
+  const filteredWork = useMemo(() => {
+    const q = workQuery.trim().toLowerCase()
+    if (!q) return work
+    return work.filter((item) => {
+      const customer = customers.find((c) => c.id === item.customerId)
+      return [
+        item.title,
+        customer?.name,
+        item.workType,
+        item.assignee,
+        item.channel,
+        item.originType,
+        item.country,
+        item.memo,
+        ...(item.productIds || []),
+      ]
+        .filter(Boolean)
         .join(" ")
-      const matchesQuery =
-        !q ||
-        [lead.company, lead.email, lead.category, lead.country, lead.owner, lead.memo, productText]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q)
-      return matchesCountry && matchesQuery
+        .toLowerCase()
+        .includes(q)
     })
-  }, [leads, query, country, products])
+  }, [work, customers, workQuery])
+
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase()
+    if (!q) return customers
+    return customers.filter((customer) =>
+      [customer.id, customer.name, customer.country, customer.category, customer.email]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [customers, customerQuery])
 
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase()
     if (!q) return products
     return products.filter((product) =>
-      [
-        product.id,
-        product.name,
-        product.producer,
-        product.origin,
-        product.use,
-        product.memo,
-      ]
+      [product.id, product.name, product.producer, product.origin, product.use, product.memo]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -252,90 +258,123 @@ export default function SalesKanbanPage() {
     )
   }, [products, productQuery])
 
-  const stats = useMemo(() => {
-    const total = leads.length
-    const sent = leads.filter((lead) => lead.stage !== "lead").length
-    const replies = leads.filter((lead) =>
-      ["replied", "negotiation", "sample", "won"].includes(lead.stage)
-    ).length
-    const won = leads.filter((lead) => lead.stage === "won").length
-    return {
-      total,
-      sent,
-      replies,
-      won,
-      replyRate: sent ? Math.round((replies / sent) * 1000) / 10 : 0,
-    }
-  }, [leads])
+  const activeCount = work.filter((item) => !["hold", "done"].includes(item.status)).length
+  const waitingCount = work.filter((item) => ["external_wait", "internal_wait"].includes(item.status)).length
+  const decisionCount = work.filter((item) => item.status === "decision").length
+  const dueCount = work.filter((item) => item.dueDate && item.status !== "done").length
 
-  function moveLead(id: string, stage: Stage) {
-    setLeads((current) =>
-      current.map((lead) =>
-        lead.id === id
-          ? {
-              ...lead,
-              stage,
-              sentAt:
-                stage !== "lead" && !lead.sentAt
-                  ? new Date().toISOString().slice(0, 10)
-                  : lead.sentAt,
-            }
-          : lead
-      )
-    )
+  function moveWork(id: string, status: Status) {
+    setWork((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
   }
 
-  function saveLead(event: FormEvent<HTMLFormElement>) {
+  function saveWork(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editing || !editing.company.trim()) return
-    setLeads((current) => {
-      const exists = current.some((lead) => lead.id === editing.id)
+    if (!editingWork || !editingWork.title.trim()) return
+    setWork((current) => {
+      const exists = current.some((item) => item.id === editingWork.id)
       return exists
-        ? current.map((lead) => (lead.id === editing.id ? editing : lead))
-        : [...current, editing]
+        ? current.map((item) => (item.id === editingWork.id ? editingWork : item))
+        : [...current, editingWork]
     })
-    setEditing(null)
+    setEditingWork(null)
+  }
+
+  function saveCustomer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingCustomer || !editingCustomer.name.trim()) return
+    setCustomers((current) => {
+      const exists = current.some((item) => item.id === editingCustomer.id)
+      return exists
+        ? current.map((item) => (item.id === editingCustomer.id ? editingCustomer : item))
+        : [...current, editingCustomer]
+    })
+    setEditingCustomer(null)
   }
 
   function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingProduct || !editingProduct.name.trim()) return
     setProducts((current) => {
-      const exists = current.some((product) => product.id === editingProduct.id)
+      const exists = current.some((item) => item.id === editingProduct.id)
       return exists
-        ? current.map((product) =>
-            product.id === editingProduct.id ? editingProduct : product
-          )
+        ? current.map((item) => (item.id === editingProduct.id ? editingProduct : item))
         : [...current, editingProduct]
     })
     setEditingProduct(null)
   }
 
-  function removeLead(id: string) {
-    setLeads((current) => current.filter((lead) => lead.id !== id))
-    setEditing(null)
+  function blankWork(status: Status = "todo"): WorkItem {
+    return {
+      id: nextId(work, "W"),
+      title: "",
+      status,
+      workType: "その他",
+      assignee: "あかね",
+      priority: "中",
+      originType: "Outbound",
+      channel: "Email",
+      productIds: [],
+    }
   }
 
-  function removeProduct(id: string) {
-    setProducts((current) => current.filter((product) => product.id !== id))
-    setLeads((current) =>
-      current.map((lead) => ({
-        ...lead,
-        proposedProductIds: (lead.proposedProductIds || []).filter((item) => item !== id),
-        sampleProductIds: (lead.sampleProductIds || []).filter((item) => item !== id),
-      }))
-    )
-    setEditingProduct(null)
+  function blankCustomer(): Customer {
+    return {
+      id: nextId(customers, "C"),
+      name: "",
+      country: "",
+      category: "",
+      contact: "",
+      email: "",
+      note: "",
+      prices: [],
+    }
   }
 
-  function toggleProductOnLead(productId: string, field: "proposedProductIds" | "sampleProductIds") {
-    if (!editing) return
-    const current = editing[field] || []
-    setEditing({
-      ...editing,
-      [field]: current.includes(productId)
-        ? current.filter((id) => id !== productId)
-        : [...current, productId],
+  function blankProduct(): Product {
+    return {
+      id: nextId(products, "M"),
+      name: "",
+      producer: "",
+      origin: "",
+      use: "",
+      color: "",
+      umami: "",
+      bitterness: "",
+      aroma: "",
+      cost: "",
+      price: "",
+      moq: "",
+      supply: "",
+      memo: "",
+      docs: [],
+    }
+  }
+
+  function addPrice() {
+    if (!editingCustomer) return
+    setEditingCustomer({
+      ...editingCustomer,
+      prices: [
+        ...(editingCustomer.prices || []),
+        {
+          id: uid(),
+          productId: products[0]?.id || "",
+          price: "",
+          currency: "JPY",
+          unit: "kg",
+          locked: true,
+        },
+      ],
+    })
+  }
+
+  function updatePrice(id: string, patch: Partial<CustomerPrice>) {
+    if (!editingCustomer) return
+    setEditingCustomer({
+      ...editingCustomer,
+      prices: (editingCustomer.prices || []).map((row) =>
+        row.id === id ? { ...row, ...patch } : row
+      ),
     })
   }
 
@@ -347,24 +386,6 @@ export default function SalesKanbanPage() {
     })
   }
 
-  function updateDoc(id: string, key: "title" | "url", value: string) {
-    if (!editingProduct) return
-    setEditingProduct({
-      ...editingProduct,
-      docs: (editingProduct.docs || []).map((doc) =>
-        doc.id === id ? { ...doc, [key]: value } : doc
-      ),
-    })
-  }
-
-  function removeDoc(id: string) {
-    if (!editingProduct) return
-    setEditingProduct({
-      ...editingProduct,
-      docs: (editingProduct.docs || []).filter((doc) => doc.id !== id),
-    })
-  }
-
   return (
     <main className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
       <div className="flex h-full flex-col">
@@ -373,186 +394,144 @@ export default function SalesKanbanPage() {
             <div>
               <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
                 <span className="inline-block size-2 rounded-full bg-[#66845c]" />
-                SHOJUEN SALES OS
+                SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "pipeline" ? "営業パイプライン" : "商品マスタ"}
+                {tab === "work" ? "業務管理" : tab === "customers" ? "取引先マスタ" : "商品マスタ"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
-                {tab === "pipeline"
-                  ? "営業先と提案商品を紐づけて、送信から成約までを追跡。"
-                  : "商品番号・特徴・価格・証明書リンクを一元管理。"}
+                {tab === "work" &&
+                  "営業・仕入・物流・証明書・HPなど、全社の仕事を状態で見える化。"}
+                {tab === "customers" &&
+                  "取引先情報と確定済み取引条件を管理。AIはここにない価格を推測しない。"}
+                {tab === "products" &&
+                  "商品ID・特徴・原価・卸価格・証明書を一元管理。"}
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() =>
-                  tab === "pipeline"
-                    ? setEditing(blankLead())
-                    : setEditingProduct(blankProduct(products))
-                }
-                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
-              >
-                <Plus className="size-4" />
-                {tab === "pipeline" ? "営業先を追加" : "商品を追加"}
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                if (tab === "work") setEditingWork(blankWork())
+                if (tab === "customers") setEditingCustomer(blankCustomer())
+                if (tab === "products") setEditingProduct(blankProduct())
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
+            >
+              <Plus className="size-4" />
+              {tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
+            </button>
           </div>
 
-          <nav className="mt-5 flex gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
-            <TabButton
-              active={tab === "pipeline"}
-              onClick={() => setTab("pipeline")}
-              icon={<BarChart3 className="size-4" />}
-              label="営業パイプライン"
-            />
-            <TabButton
-              active={tab === "products"}
-              onClick={() => setTab("products")}
-              icon={<Package className="size-4" />}
-              label="商品マスタ"
-            />
+          <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
+            <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
+            <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
+            <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
           </nav>
 
-          {tab === "pipeline" ? (
+          {tab === "work" && (
             <>
-              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-5">
-                <Kpi label="候補" value={stats.total} />
-                <Kpi label="送信済み" value={stats.sent} />
-                <Kpi label="返信" value={stats.replies} />
-                <Kpi label="返信率" value={`${stats.replyRate}%`} />
-                <Kpi label="成約" value={stats.won} />
+              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="進行中" value={activeCount} />
+                <Kpi label="待ち" value={waitingCount} />
+                <Kpi label="要判断" value={decisionCount} />
+                <Kpi label="期限あり" value={dueCount} />
               </div>
-
-              <div className="mt-4 flex flex-col gap-2 md:flex-row">
-                <SearchBox
-                  value={query}
-                  onChange={setQuery}
-                  placeholder="会社名・メール・業態・商品番号で検索..."
-                />
-                <label className="relative min-w-[180px]">
-                  <select
-                    value={country}
-                    onChange={(event) => setCountry(event.target.value)}
-                    className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-[#111311] px-3 pr-9 text-sm text-white outline-none"
-                  >
-                    {countries.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-white/40" />
-                </label>
+              <div className="mt-4">
+                <SearchBox value={workQuery} onChange={setWorkQuery} placeholder="件名・取引先・担当・媒体・商品IDで検索..." />
               </div>
             </>
-          ) : (
+          )}
+          {tab === "customers" && (
             <div className="mt-4">
-              <SearchBox
-                value={productQuery}
-                onChange={setProductQuery}
-                placeholder="商品番号・商品名・生産者・産地で検索..."
-              />
+              <SearchBox value={customerQuery} onChange={setCustomerQuery} placeholder="取引先ID・会社名・国・メールで検索..." />
+            </div>
+          )}
+          {tab === "products" && (
+            <div className="mt-4">
+              <SearchBox value={productQuery} onChange={setProductQuery} placeholder="商品ID・商品名・生産者・産地で検索..." />
             </div>
           )}
         </header>
 
-        {tab === "pipeline" ? (
+        {tab === "work" && (
           <section className="flex-1 overflow-x-auto overflow-y-hidden p-4 md:p-6">
             <div className="flex h-full min-w-max gap-3">
-              {STAGES.map((stage) => {
-                const stageLeads = filtered.filter((lead) => lead.stage === stage.id)
+              {STATUSES.map((status) => {
+                const items = filteredWork.filter((item) => item.status === status.id)
                 return (
                   <section
-                    key={stage.id}
+                    key={status.id}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => {
-                      if (draggingId) moveLead(draggingId, stage.id)
+                      if (draggingId) moveWork(draggingId, status.id)
                       setDraggingId(null)
                     }}
-                    className="flex h-full w-[300px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3"
+                    className="flex h-full w-[310px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3"
                   >
                     <div className="mb-3 flex items-center justify-between px-1">
                       <div className="flex items-center gap-2">
-                        <span className={`size-2 rounded-full ${stageDot(stage.id)}`} />
-                        <h2 className="text-sm font-semibold">{stage.label}</h2>
+                        <span className={`size-2 rounded-full ${statusDot(status.id)}`} />
+                        <h2 className="text-sm font-semibold">{status.label}</h2>
                       </div>
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs tabular-nums text-white/50">
-                        {stageLeads.length}
-                      </span>
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">{items.length}</span>
                     </div>
 
                     <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-                      {stageLeads.map((lead) => (
-                        <article
-                          key={lead.id}
-                          draggable
-                          onDragStart={() => setDraggingId(lead.id)}
-                          onDragEnd={() => setDraggingId(null)}
-                          onClick={() => setEditing(lead)}
-                          className={`cursor-grab rounded-2xl border border-white/10 bg-[#111311] p-4 transition hover:-translate-y-0.5 hover:border-white/20 ${draggingId === lead.id ? "opacity-40" : ""}`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <h3 className="truncate font-semibold">{lead.company}</h3>
-                              <div className="mt-1 flex items-center gap-1.5 text-xs text-white/45">
-                                <Building2 className="size-3" />
-                                <span>{lead.category}</span>
-                                <span>·</span>
-                                <span>{lead.country}</span>
+                      {items.map((item) => {
+                        const customer = customers.find((c) => c.id === item.customerId)
+                        return (
+                          <article
+                            key={item.id}
+                            draggable
+                            onDragStart={() => setDraggingId(item.id)}
+                            onDragEnd={() => setDraggingId(null)}
+                            onClick={() => setEditingWork(item)}
+                            className="cursor-grab rounded-2xl border border-white/10 bg-[#111311] p-4 transition hover:-translate-y-0.5 hover:border-white/20"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="font-semibold leading-5">{item.title}</h3>
+                                {customer && (
+                                  <div className="mt-1 flex items-center gap-1.5 text-xs text-white/45">
+                                    <Building2 className="size-3" />
+                                    <span className="truncate">{customer.name}</span>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            {lead.positive && (
-                              <span className="rounded-full bg-[#dcebd6] px-2 py-1 text-[10px] font-semibold text-[#36522e]">
-                                前向き
+                              <span className={`rounded-md px-2 py-1 text-[10px] font-semibold ${priorityClass(item.priority)}`}>
+                                {item.priority || "中"}
                               </span>
-                            )}
-                          </div>
+                            </div>
 
-                          {(lead.proposedProductIds || []).length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-1.5">
-                              {(lead.proposedProductIds || []).map((id) => (
-                                <span
-                                  key={id}
-                                  className="rounded-md border border-[#66845c]/40 bg-[#66845c]/10 px-2 py-1 text-[10px] font-semibold text-[#bcd2b4]"
-                                >
-                                  {id}
-                                </span>
-                              ))}
+                              {item.workType && <Tag>{item.workType}</Tag>}
+                              {item.originType && <Tag>{item.originType}</Tag>}
+                              {item.channel && <Tag>{item.channel}</Tag>}
+                              {(item.productIds || []).map((id) => <Tag key={id}>{id}</Tag>)}
                             </div>
-                          )}
 
-                          {lead.email && (
-                            <div className="mt-3 flex items-center gap-2 text-xs text-white/55">
-                              <Mail className="size-3.5" />
-                              <span className="truncate">{lead.email}</span>
-                            </div>
-                          )}
-
-                          {lead.nextAction && (
-                            <div className="mt-3 rounded-xl bg-white/[0.045] p-2.5">
-                              <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.12em] text-white/35">
-                                <CalendarClock className="size-3" />
-                                次のアクション
+                            {item.nextAction && (
+                              <div className="mt-3 rounded-xl bg-white/[0.045] p-2.5">
+                                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.12em] text-white/35">
+                                  <CalendarClock className="size-3" /> 次のアクション
+                                </div>
+                                <p className="text-xs leading-5 text-white/65">{item.nextAction}</p>
                               </div>
-                              <p className="text-xs leading-5 text-white/65">
-                                {lead.nextAction}
-                              </p>
-                            </div>
-                          )}
+                            )}
 
-                          <div className="mt-3 flex items-center justify-between text-[11px] text-white/35">
-                            <span>{lead.owner || "未担当"}</span>
-                            <span>{lead.sentAt || "—"}</span>
-                          </div>
-                        </article>
-                      ))}
+                            <div className="mt-3 flex items-center justify-between text-[11px] text-white/35">
+                              <span>{item.assignee || "未担当"}</span>
+                              <span>{item.dueDate || "期限なし"}</span>
+                            </div>
+                          </article>
+                        )
+                      })}
 
                       <button
-                        onClick={() => setEditing(blankLead(stage.id))}
+                        onClick={() => setEditingWork(blankWork(status.id))}
                         className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 py-3 text-xs font-medium text-white/35 transition hover:border-white/25 hover:bg-white/5 hover:text-white/70"
                       >
-                        <Plus className="size-3.5" />
-                        追加
+                        <Plus className="size-3.5" /> 追加
                       </button>
                     </div>
                   </section>
@@ -560,204 +539,157 @@ export default function SalesKanbanPage() {
               })}
             </div>
           </section>
-        ) : (
+        )}
+
+        {tab === "customers" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80">
+              <div className="flex items-center gap-2 font-semibold text-amber-100">
+                <ShieldCheck className="size-4" /> AI価格ルール
+              </div>
+              <p className="mt-1 text-xs leading-5 text-amber-100/60">
+                価格・数量・送料・支払条件はこのマスタの確定値だけを使用。未登録値の推測・改変は禁止。
+              </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {filteredCustomers.map((customer) => (
+                <article
+                  key={customer.id}
+                  onClick={() => setEditingCustomer(customer)}
+                  className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="rounded-md bg-white/8 px-2 py-1 text-xs font-bold tracking-[0.08em] text-white/60">{customer.id}</span>
+                      <h2 className="mt-3 text-lg font-semibold">{customer.name}</h2>
+                      <p className="mt-1 text-xs text-white/45">
+                        {[customer.category, customer.country].filter(Boolean).join(" · ") || "詳細未設定"}
+                      </p>
+                    </div>
+                    <Users className="size-5 text-white/25" />
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <MiniStat label="価格条件" value={(customer.prices || []).length} />
+                    <MiniStat label="関連業務" value={work.filter((item) => item.customerId === customer.id).length} />
+                  </div>
+                  {customer.email && (
+                    <div className="mt-4 flex items-center gap-2 text-xs text-white/45">
+                      <Mail className="size-3.5" /> {customer.email}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {tab === "products" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {filteredProducts.map((product) => {
-                const proposedCompanies = leads.filter((lead) =>
-                  (lead.proposedProductIds || []).includes(product.id)
-                )
-                const sampledCompanies = leads.filter((lead) =>
-                  (lead.sampleProductIds || []).includes(product.id)
-                )
-                return (
-                  <article
-                    key={product.id}
-                    onClick={() => setEditingProduct(product)}
-                    className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="rounded-md bg-[#66845c]/15 px-2 py-1 text-xs font-bold tracking-[0.08em] text-[#bed2b7]">
-                          {product.id}
-                        </span>
-                        <h2 className="mt-3 text-lg font-semibold">{product.name}</h2>
-                        <p className="mt-1 text-xs text-white/45">
-                          {[product.producer, product.origin, product.use]
-                            .filter(Boolean)
-                            .join(" · ") || "詳細未設定"}
-                        </p>
-                      </div>
-                      <Package className="size-5 text-white/25" />
+              {filteredProducts.map((product) => (
+                <article
+                  key={product.id}
+                  onClick={() => setEditingProduct(product)}
+                  className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="rounded-md bg-[#66845c]/15 px-2 py-1 text-xs font-bold tracking-[0.08em] text-[#bed2b7]">{product.id}</span>
+                      <h2 className="mt-3 text-lg font-semibold">{product.name}</h2>
+                      <p className="mt-1 text-xs text-white/45">
+                        {[product.producer, product.origin, product.use].filter(Boolean).join(" · ") || "詳細未設定"}
+                      </p>
                     </div>
-
-                    <div className="mt-5 grid grid-cols-3 gap-2">
-                      <MiniStat label="提案" value={proposedCompanies.length} />
-                      <MiniStat label="サンプル" value={sampledCompanies.length} />
-                      <MiniStat label="資料" value={(product.docs || []).length} />
-                    </div>
-
-                    {proposedCompanies.length > 0 && (
-                      <div className="mt-4 border-t border-white/8 pt-3">
-                        <div className="text-[10px] font-semibold tracking-[0.12em] text-white/30">
-                          提案先
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/55">
-                          {proposedCompanies.map((lead) => lead.company).join(" / ")}
-                        </p>
-                      </div>
-                    )}
-                  </article>
-                )
-              })}
-
-              <button
-                onClick={() => setEditingProduct(blankProduct(products))}
-                className="min-h-[210px] rounded-[20px] border border-dashed border-white/15 p-5 text-sm text-white/35 transition hover:border-white/25 hover:bg-white/[0.035] hover:text-white/70"
-              >
-                <Plus className="mx-auto mb-2 size-5" />
-                新しい商品を追加
-              </button>
+                    <Package className="size-5 text-white/25" />
+                  </div>
+                  <div className="mt-5 grid grid-cols-3 gap-2">
+                    <MiniStat label="業務" value={work.filter((item) => (item.productIds || []).includes(product.id)).length} />
+                    <MiniStat label="取引先価格" value={customers.reduce((sum, customer) => sum + (customer.prices || []).filter((row) => row.productId === product.id).length, 0)} />
+                    <MiniStat label="資料" value={(product.docs || []).length} />
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
         )}
       </div>
 
-      {editing && (
-        <Modal onClose={() => setEditing(null)}>
-          <form onSubmit={saveLead}>
-            <ModalTitle
-              eyebrow="営業先詳細"
-              title={leads.some((lead) => lead.id === editing.id) ? "営業先を編集" : "新しい営業先"}
-              onClose={() => setEditing(null)}
-            />
-
+      {editingWork && (
+        <Modal onClose={() => setEditingWork(null)} wide>
+          <form onSubmit={saveWork}>
+            <ModalTitle eyebrow="業務詳細" title={editingWork.title || "新しい業務"} onClose={() => setEditingWork(null)} />
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="会社名">
-                <input
-                  autoFocus
-                  value={editing.company}
-                  onChange={(event) => setEditing({ ...editing, company: event.target.value })}
-                  className={inputClass}
-                  placeholder="会社名"
-                />
-              </Field>
-              <Field label="ステータス">
-                <select
-                  value={editing.stage}
-                  onChange={(event) =>
-                    setEditing({ ...editing, stage: event.target.value as Stage })
-                  }
-                  className={inputClass}
-                >
-                  {STAGES.map((stage) => (
-                    <option key={stage.id} value={stage.id}>
-                      {stage.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="国">
-                <input
-                  value={editing.country}
-                  onChange={(event) => setEditing({ ...editing, country: event.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="業態">
-                <input
-                  value={editing.category}
-                  onChange={(event) => setEditing({ ...editing, category: event.target.value })}
-                  className={inputClass}
-                  placeholder="カフェ / 卸 / 小売"
-                />
-              </Field>
-              <Field label="メール">
-                <input
-                  type="email"
-                  value={editing.email}
-                  onChange={(event) => setEditing({ ...editing, email: event.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="担当">
-                <input
-                  value={editing.owner || ""}
-                  onChange={(event) => setEditing({ ...editing, owner: event.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="初回送信日">
-                <input
-                  type="date"
-                  value={editing.sentAt || ""}
-                  onChange={(event) => setEditing({ ...editing, sentAt: event.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="LinkedIn">
-                <input
-                  value={editing.linkedin || ""}
-                  onChange={(event) => setEditing({ ...editing, linkedin: event.target.value })}
-                  className={inputClass}
-                />
-              </Field>
-              <div className="md:col-span-2">
-                <Field label="次のアクション">
-                  <input
-                    value={editing.nextAction || ""}
-                    onChange={(event) =>
-                      setEditing({ ...editing, nextAction: event.target.value })
-                    }
-                    className={inputClass}
-                    placeholder="4営業日後にフォロー"
-                  />
-                </Field>
+              <Field label="件名"><input autoFocus className={inputClass} value={editingWork.title} onChange={(e) => setEditingWork({ ...editingWork, title: e.target.value })} /></Field>
+              <Field label="状態"><select className={inputClass} value={editingWork.status} onChange={(e) => setEditingWork({ ...editingWork, status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></Field>
+              <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => setEditingWork({ ...editingWork, customerId: e.target.value || undefined })}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
+              <Field label="業務種別"><select className={inputClass} value={editingWork.workType || ""} onChange={(e) => setEditingWork({ ...editingWork, workType: e.target.value })}>{WORK_TYPES.map((v) => <option key={v}>{v}</option>)}</select></Field>
+              <Field label="担当"><input className={inputClass} value={editingWork.assignee || ""} onChange={(e) => setEditingWork({ ...editingWork, assignee: e.target.value })} /></Field>
+              <Field label="優先度"><select className={inputClass} value={editingWork.priority || "中"} onChange={(e) => setEditingWork({ ...editingWork, priority: e.target.value as WorkItem["priority"] })}>{["低","中","高","緊急"].map((v) => <option key={v}>{v}</option>)}</select></Field>
+              <Field label="期限"><input type="date" className={inputClass} value={editingWork.dueDate || ""} onChange={(e) => setEditingWork({ ...editingWork, dueDate: e.target.value })} /></Field>
+              <Field label="国"><input className={inputClass} value={editingWork.country || ""} onChange={(e) => setEditingWork({ ...editingWork, country: e.target.value })} /></Field>
+              <Field label="接点区分"><select className={inputClass} value={editingWork.originType || "Outbound"} onChange={(e) => setEditingWork({ ...editingWork, originType: e.target.value as WorkItem["originType"] })}>{ORIGINS.map((v) => <option key={v}>{v}</option>)}</select></Field>
+              <Field label="媒体"><select className={inputClass} value={editingWork.channel || "Email"} onChange={(e) => setEditingWork({ ...editingWork, channel: e.target.value })}>{CHANNELS.map((v) => <option key={v}>{v}</option>)}</select></Field>
+              <div className="md:col-span-2"><Field label="次のアクション"><input className={inputClass} value={editingWork.nextAction || ""} onChange={(e) => setEditingWork({ ...editingWork, nextAction: e.target.value })} /></Field></div>
+            </div>
+
+            <ProductPicker products={products} selected={editingWork.productIds || []} onToggle={(id) => setEditingWork({ ...editingWork, productIds: (editingWork.productIds || []).includes(id) ? (editingWork.productIds || []).filter((v) => v !== id) : [...(editingWork.productIds || []), id] })} />
+
+            <div className="mt-4"><Field label="メモ"><textarea rows={4} className={`${inputClass} min-h-28 resize-y py-3`} value={editingWork.memo || ""} onChange={(e) => setEditingWork({ ...editingWork, memo: e.target.value })} /></Field></div>
+
+            <ModalActions existing={work.some((item) => item.id === editingWork.id)} onDelete={() => { setWork((current) => current.filter((item) => item.id !== editingWork.id)); setEditingWork(null) }} onCancel={() => setEditingWork(null)} />
+          </form>
+        </Modal>
+      )}
+
+      {editingCustomer && (
+        <Modal onClose={() => setEditingCustomer(null)} wide>
+          <form onSubmit={saveCustomer}>
+            <ModalTitle eyebrow="取引先マスタ" title={editingCustomer.name || "新しい取引先"} onClose={() => setEditingCustomer(null)} />
+            <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.035] p-4">
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">取引先ID</div>
+              <div className="mt-1 text-2xl font-bold tracking-[0.08em]">{editingCustomer.id}</div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="会社・店舗名"><input autoFocus className={inputClass} value={editingCustomer.name} onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })} /></Field>
+              <Field label="国"><input className={inputClass} value={editingCustomer.country || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, country: e.target.value })} /></Field>
+              <Field label="業態"><input className={inputClass} value={editingCustomer.category || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, category: e.target.value })} /></Field>
+              <Field label="担当者名"><input className={inputClass} value={editingCustomer.contact || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, contact: e.target.value })} /></Field>
+              <Field label="メール"><input className={inputClass} value={editingCustomer.email || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })} /></Field>
+              <Field label="電話"><input className={inputClass} value={editingCustomer.phone || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })} /></Field>
+              <Field label="Instagram"><input className={inputClass} value={editingCustomer.instagram || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, instagram: e.target.value })} /></Field>
+              <Field label="LinkedIn"><input className={inputClass} value={editingCustomer.linkedin || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, linkedin: e.target.value })} /></Field>
+              <div className="md:col-span-2"><Field label="備考"><textarea rows={3} className={`${inputClass} min-h-24 resize-y py-3`} value={editingCustomer.note || ""} onChange={(e) => setEditingCustomer({ ...editingCustomer, note: e.target.value })} /></Field></div>
+            </div>
+
+            <section className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-100"><ShieldCheck className="size-4" /> 確定取引条件</h3>
+                  <p className="mt-1 text-xs text-amber-100/60">AIはここに登録された値だけをメールに使用。未登録値は「要確認」。</p>
+                </div>
+                <button type="button" onClick={addPrice} className="rounded-full border border-amber-300/20 px-3 py-2 text-xs text-amber-100">条件追加</button>
               </div>
-            </div>
+              <div className="mt-4 space-y-3">
+                {(editingCustomer.prices || []).map((row) => (
+                  <div key={row.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
+                    <div className="grid gap-2 md:grid-cols-4">
+                      <select className={inputClass} value={row.productId} onChange={(e) => updatePrice(row.id, { productId: e.target.value })}>{products.map((p) => <option key={p.id} value={p.id}>{p.id} {p.name}</option>)}</select>
+                      <input className={inputClass} placeholder="価格" value={row.price} onChange={(e) => updatePrice(row.id, { price: e.target.value })} />
+                      <input className={inputClass} placeholder="通貨" value={row.currency} onChange={(e) => updatePrice(row.id, { currency: e.target.value })} />
+                      <input className={inputClass} placeholder="単位" value={row.unit} onChange={(e) => updatePrice(row.id, { unit: e.target.value })} />
+                      <input className={inputClass} placeholder="MOQ" value={row.moq || ""} onChange={(e) => updatePrice(row.id, { moq: e.target.value })} />
+                      <input className={inputClass} placeholder="送料条件" value={row.shipping || ""} onChange={(e) => updatePrice(row.id, { shipping: e.target.value })} />
+                      <input className={inputClass} placeholder="支払条件" value={row.payment || ""} onChange={(e) => updatePrice(row.id, { payment: e.target.value })} />
+                      <input type="date" className={inputClass} value={row.effectiveFrom || ""} onChange={(e) => updatePrice(row.id, { effectiveFrom: e.target.value })} />
+                    </div>
+                    <label className="mt-3 flex items-center gap-2 text-xs text-white/55"><input type="checkbox" checked={row.locked} onChange={(e) => updatePrice(row.id, { locked: e.target.checked })} /> AI変更禁止ロック</label>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-            <ProductPicker
-              title="提案した商品"
-              products={products}
-              selected={editing.proposedProductIds || []}
-              onToggle={(id) => toggleProductOnLead(id, "proposedProductIds")}
-            />
-            <ProductPicker
-              title="サンプル送付した商品"
-              products={products}
-              selected={editing.sampleProductIds || []}
-              onToggle={(id) => toggleProductOnLead(id, "sampleProductIds")}
-            />
-
-            <div className="mt-4">
-              <Field label="メモ">
-                <textarea
-                  rows={4}
-                  value={editing.memo || ""}
-                  onChange={(event) => setEditing({ ...editing, memo: event.target.value })}
-                  className={`${inputClass} min-h-28 resize-y py-3`}
-                  placeholder="商品適性・価格・サンプル希望・会話メモなど"
-                />
-              </Field>
-            </div>
-
-            <label className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm">
-              <input
-                type="checkbox"
-                checked={Boolean(editing.positive)}
-                onChange={(event) =>
-                  setEditing({ ...editing, positive: event.target.checked })
-                }
-                className="size-4 accent-[#66845c]"
-              />
-              前向きな返信として記録
-            </label>
-
-            <ModalActions
-              existing={leads.some((lead) => lead.id === editing.id)}
-              onDelete={() => removeLead(editing.id)}
-              onCancel={() => setEditing(null)}
-            />
+            <ModalActions existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => { setCustomers((current) => current.filter((item) => item.id !== editingCustomer.id)); setEditingCustomer(null) }} onCancel={() => setEditingCustomer(null)} />
           </form>
         </Modal>
       )}
@@ -765,236 +697,44 @@ export default function SalesKanbanPage() {
       {editingProduct && (
         <Modal onClose={() => setEditingProduct(null)} wide>
           <form onSubmit={saveProduct}>
-            <ModalTitle
-              eyebrow="商品マスタ"
-              title={editingProduct.name || "新しい商品"}
-              onClose={() => setEditingProduct(null)}
-            />
-
+            <ModalTitle eyebrow="商品マスタ" title={editingProduct.name || "新しい商品"} onClose={() => setEditingProduct(null)} />
             <div className="mb-5 rounded-xl border border-[#66845c]/30 bg-[#66845c]/10 p-4">
-              <div className="text-[10px] font-semibold tracking-[0.14em] text-[#a9c19f]">
-                商品ID
-              </div>
-              <div className="mt-1 text-2xl font-bold tracking-[0.08em] text-[#d7e5d2]">
-                {editingProduct.id}
-              </div>
-              <p className="mt-1 text-xs text-white/40">
-                この番号を営業先に紐づけます。既存IDは変更しない運用がおすすめです。
-              </p>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-[#a9c19f]">商品ID</div>
+              <div className="mt-1 text-2xl font-bold tracking-[0.08em] text-[#d7e5d2]">{editingProduct.id}</div>
             </div>
-
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="商品名">
-                <input
-                  autoFocus
-                  value={editingProduct.name}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, name: event.target.value })
-                  }
-                  className={inputClass}
-                  placeholder="商品名"
-                />
-              </Field>
-              <Field label="生産者 / 仕入先">
-                <input
-                  value={editingProduct.producer || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, producer: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="産地">
-                <input
-                  value={editingProduct.origin || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, origin: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="用途">
-                <input
-                  value={editingProduct.use || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, use: event.target.value })
-                  }
-                  className={inputClass}
-                  placeholder="ラテ / ストレート / 製菓..."
-                />
-              </Field>
-              <Field label="色">
-                <input
-                  value={editingProduct.color || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, color: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="旨味">
-                <input
-                  value={editingProduct.umami || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, umami: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="苦味">
-                <input
-                  value={editingProduct.bitterness || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, bitterness: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="香り">
-                <input
-                  value={editingProduct.aroma || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, aroma: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="原価">
-                <input
-                  value={editingProduct.cost || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, cost: event.target.value })
-                  }
-                  className={inputClass}
-                  placeholder="例: ¥7,200/kg"
-                />
-              </Field>
-              <Field label="卸価格">
-                <input
-                  value={editingProduct.price || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, price: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="最低ロット">
-                <input
-                  value={editingProduct.moq || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, moq: event.target.value })
-                  }
-                  className={inputClass}
-                />
-              </Field>
-              <Field label="供給状況">
-                <input
-                  value={editingProduct.supply || ""}
-                  onChange={(event) =>
-                    setEditingProduct({ ...editingProduct, supply: event.target.value })
-                  }
-                  className={inputClass}
-                  placeholder="安定 / 要確認 / 季節限定..."
-                />
-              </Field>
-              <div className="md:col-span-2">
-                <Field label="備考">
-                  <textarea
-                    rows={3}
-                    value={editingProduct.memo || ""}
-                    onChange={(event) =>
-                      setEditingProduct({ ...editingProduct, memo: event.target.value })
-                    }
-                    className={`${inputClass} min-h-24 resize-y py-3`}
-                  />
-                </Field>
-              </div>
+              {[
+                ["商品名","name"],["生産者 / 仕入先","producer"],["産地","origin"],["用途","use"],["色","color"],["旨味","umami"],["苦味","bitterness"],["香り","aroma"],["原価","cost"],["標準卸価格","price"],["最低ロット","moq"],["供給状況","supply"]
+              ].map(([label,key]) => (
+                <Field key={key} label={label}><input className={inputClass} value={(editingProduct as any)[key] || ""} onChange={(e) => setEditingProduct({ ...editingProduct, [key]: e.target.value })} /></Field>
+              ))}
+              <div className="md:col-span-2"><Field label="備考"><textarea rows={3} className={`${inputClass} min-h-24 resize-y py-3`} value={editingProduct.memo || ""} onChange={(e) => setEditingProduct({ ...editingProduct, memo: e.target.value })} /></Field></div>
             </div>
 
             <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold">証明書・資料</h3>
-                  <p className="mt-1 text-xs text-white/40">
-                    現段階は非公開ストレージ等のURLを登録。ファイル本体の安全なアップロードはDB化時に追加します。
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={addDoc}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
-                >
-                  <Plus className="size-3.5" />
-                  資料追加
-                </button>
+                <div><h3 className="text-sm font-semibold">証明書・資料</h3><p className="mt-1 text-xs text-white/40">現段階はURL登録。公開GitHubにファイル本体は置きません。</p></div>
+                <button type="button" onClick={addDoc} className="rounded-full border border-white/10 px-3 py-2 text-xs">資料追加</button>
               </div>
-
               <div className="mt-4 space-y-2">
                 {(editingProduct.docs || []).map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="grid gap-2 rounded-xl border border-white/8 bg-[#0d0f0d] p-3 md:grid-cols-[1fr_1.5fr_auto]"
-                  >
-                    <input
-                      value={doc.title}
-                      onChange={(event) => updateDoc(doc.id, "title", event.target.value)}
-                      className={inputClass}
-                      placeholder="COA / 残留農薬検査 / 規格書..."
-                    />
-                    <input
-                      value={doc.url}
-                      onChange={(event) => updateDoc(doc.id, "url", event.target.value)}
-                      className={inputClass}
-                      placeholder="https://..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeDoc(doc.id)}
-                      className="rounded-xl px-3 text-red-400 hover:bg-red-400/10"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                  <div key={doc.id} className="grid gap-2 md:grid-cols-[1fr_1.5fr_auto]">
+                    <input className={inputClass} placeholder="資料名" value={doc.title} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, title: e.target.value } : d) })} />
+                    <input className={inputClass} placeholder="URL" value={doc.url} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, url: e.target.value } : d) })} />
+                    <button type="button" onClick={() => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).filter((d) => d.id !== doc.id) })} className="rounded-xl px-3 text-red-400"><Trash2 className="size-4" /></button>
                   </div>
                 ))}
-                {(editingProduct.docs || []).length === 0 && (
-                  <div className="rounded-xl border border-dashed border-white/10 py-6 text-center text-xs text-white/30">
-                    まだ資料は登録されていません
-                  </div>
-                )}
               </div>
             </section>
 
-            <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-              <h3 className="text-sm font-semibold">この商品を提案した営業先</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {leads
-                  .filter((lead) => (lead.proposedProductIds || []).includes(editingProduct.id))
-                  .map((lead) => (
-                    <span
-                      key={lead.id}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60"
-                    >
-                      {lead.company}
-                    </span>
-                  ))}
-                {!leads.some((lead) =>
-                  (lead.proposedProductIds || []).includes(editingProduct.id)
-                ) && <span className="text-xs text-white/30">まだ提案実績なし</span>}
-              </div>
-            </section>
-
-            <ModalActions
-              existing={products.some((product) => product.id === editingProduct.id)}
-              onDelete={() => removeProduct(editingProduct.id)}
-              onCancel={() => setEditingProduct(null)}
-            />
+            <ModalActions existing={products.some((item) => item.id === editingProduct.id)} onDelete={() => { setProducts((current) => current.filter((item) => item.id !== editingProduct.id)); setEditingProduct(null) }} onCancel={() => setEditingProduct(null)} />
           </form>
         </Modal>
       )}
 
       <div className="pointer-events-none absolute bottom-3 right-4 hidden items-center gap-2 rounded-full border border-white/10 bg-[#111311]/90 px-3 py-1.5 text-[10px] text-white/40 backdrop-blur md:flex">
         <FileText className="size-3" />
-        現在はブラウザ内保存の試作版
+        現在はこのブラウザ内保存。共有DB化が次の段階。
       </div>
     </main>
   )
@@ -1004,220 +744,61 @@ const inputClass =
   "h-11 w-full rounded-xl border border-white/10 bg-[#0d0f0d] px-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/25 focus:ring-2 focus:ring-white/5"
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-white/55">{label}</span>
-      {children}
-    </label>
-  )
+  return <label className="block"><span className="mb-1.5 block text-xs font-medium text-white/55">{label}</span>{children}</label>
 }
 
-function SearchBox({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-}) {
-  return (
-    <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3">
-      <Search className="size-4 text-white/35" />
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-white/25"
-      />
-    </label>
-  )
+function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  return <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3"><Search className="size-4 text-white/35" /><input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-white/25" /></label>
 }
 
-function TabButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  label: string
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-white text-[#11150f]" : "text-white/50 hover:bg-white/5 hover:text-white"}`}
-    >
-      {icon}
-      {label}
-    </button>
-  )
+function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+  return <button onClick={onClick} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-white text-[#11150f]" : "text-white/50 hover:bg-white/5 hover:text-white"}`}>{icon}{label}</button>
 }
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
-      <div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">{label}</div>
-      <div className="mt-1 text-xl font-semibold tracking-[-0.03em]">{value}</div>
-    </div>
-  )
+  return <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3"><div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">{label}</div><div className="mt-1 text-xl font-semibold">{value}</div></div>
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-white/[0.045] p-2.5 text-center">
-      <div className="text-lg font-semibold">{value}</div>
-      <div className="text-[10px] text-white/35">{label}</div>
-    </div>
-  )
+  return <div className="rounded-xl bg-white/[0.045] p-2.5 text-center"><div className="text-lg font-semibold">{value}</div><div className="text-[10px] text-white/35">{label}</div></div>
 }
 
-function ProductPicker({
-  title,
-  products,
-  selected,
-  onToggle,
-}: {
-  title: string
-  products: Product[]
-  selected: string[]
-  onToggle: (id: string) => void
-}) {
-  return (
-    <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {products.map((product) => {
-          const active = selected.includes(product.id)
-          return (
-            <button
-              key={product.id}
-              type="button"
-              onClick={() => onToggle(product.id)}
-              className={`rounded-xl border px-3 py-2 text-left text-xs transition ${active ? "border-[#66845c] bg-[#66845c]/20 text-[#d6e5d1]" : "border-white/10 bg-white/[0.025] text-white/50 hover:border-white/20"}`}
-            >
-              <span className="font-bold">{product.id}</span>
-              <span className="ml-2">{product.name}</span>
-            </button>
-          )
-        })}
-      </div>
-    </section>
-  )
+function Tag({ children }: { children: React.ReactNode }) {
+  return <span className="rounded-md border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] text-white/55">{children}</span>
 }
 
-function Modal({
-  children,
-  onClose,
-  wide = false,
-}: {
-  children: React.ReactNode
-  onClose: () => void
-  wide?: boolean
-}) {
-  return (
-    <div
-      className="absolute inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm md:items-center md:p-6"
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target) onClose()
-      }}
-    >
-      <div
-        className={`max-h-[92vh] w-full overflow-y-auto rounded-t-[26px] border border-white/10 bg-[#111311] p-5 shadow-2xl md:rounded-[26px] md:p-6 ${wide ? "max-w-4xl" : "max-w-2xl"}`}
-      >
-        {children}
-      </div>
-    </div>
-  )
+function ProductPicker({ products, selected, onToggle }: { products: Product[]; selected: string[]; onToggle: (id: string) => void }) {
+  return <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4"><h3 className="text-sm font-semibold">関連商品</h3><div className="mt-3 flex flex-wrap gap-2">{products.map((product) => { const active = selected.includes(product.id); return <button key={product.id} type="button" onClick={() => onToggle(product.id)} className={`rounded-xl border px-3 py-2 text-left text-xs transition ${active ? "border-[#66845c] bg-[#66845c]/20 text-[#d6e5d1]" : "border-white/10 bg-white/[0.025] text-white/50"}`}><b>{product.id}</b><span className="ml-2">{product.name}</span></button> })}</div></section>
 }
 
-function ModalTitle({
-  eyebrow,
-  title,
-  onClose,
-}: {
-  eyebrow: string
-  title: string
-  onClose: () => void
-}) {
-  return (
-    <div className="mb-5 flex items-center justify-between gap-4">
-      <div>
-        <div className="text-xs font-semibold tracking-[0.16em] text-white/35">{eyebrow}</div>
-        <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">{title}</h2>
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-full p-2 text-white/50 hover:bg-white/10"
-      >
-        <X className="size-5" />
-      </button>
-    </div>
-  )
+function Modal({ children, onClose, wide = false }: { children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+  return <div className="absolute inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm md:items-center md:p-6" onMouseDown={(e) => { if (e.currentTarget === e.target) onClose() }}><div className={`max-h-[92vh] w-full overflow-y-auto rounded-t-[26px] border border-white/10 bg-[#111311] p-5 shadow-2xl md:rounded-[26px] md:p-6 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>{children}</div></div>
 }
 
-function ModalActions({
-  existing,
-  onDelete,
-  onCancel,
-}: {
-  existing: boolean
-  onDelete: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="mt-6 flex items-center justify-between gap-3">
-      {existing ? (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 transition hover:bg-red-400/10"
-        >
-          <Trash2 className="size-4" />
-          削除
-        </button>
-      ) : (
-        <span />
-      )}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium"
-        >
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]"
-        >
-          保存
-        </button>
-      </div>
-    </div>
-  )
+function ModalTitle({ eyebrow, title, onClose }: { eyebrow: string; title: string; onClose: () => void }) {
+  return <div className="mb-5 flex items-center justify-between gap-4"><div><div className="text-xs font-semibold tracking-[0.16em] text-white/35">{eyebrow}</div><h2 className="mt-1 text-xl font-semibold">{title}</h2></div><button type="button" onClick={onClose} className="rounded-full p-2 text-white/50 hover:bg-white/10"><X className="size-5" /></button></div>
 }
 
-function stageDot(stage: Stage) {
-  switch (stage) {
-    case "lead":
-      return "bg-slate-400"
-    case "sent":
-      return "bg-blue-400"
-    case "followup":
-      return "bg-amber-400"
-    case "replied":
-      return "bg-violet-400"
-    case "negotiation":
-      return "bg-orange-400"
-    case "sample":
-      return "bg-cyan-400"
-    case "won":
-      return "bg-emerald-500"
-    case "lost":
-      return "bg-rose-400"
+function ModalActions({ existing, onDelete, onCancel }: { existing: boolean; onDelete: () => void; onCancel: () => void }) {
+  return <div className="mt-6 flex items-center justify-between gap-3">{existing ? <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-400/10"><Trash2 className="size-4" />削除</button> : <span />}<div className="flex gap-2"><button type="button" onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm">キャンセル</button><button type="submit" className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]">保存</button></div></div>
+}
+
+function priorityClass(priority?: WorkItem["priority"]) {
+  if (priority === "緊急") return "bg-red-400/15 text-red-300"
+  if (priority === "高") return "bg-orange-400/15 text-orange-300"
+  if (priority === "低") return "bg-white/5 text-white/40"
+  return "bg-blue-400/10 text-blue-300"
+}
+
+function statusDot(status: Status) {
+  switch (status) {
+    case "todo": return "bg-slate-400"
+    case "prep": return "bg-blue-400"
+    case "doing": return "bg-cyan-400"
+    case "external_wait": return "bg-violet-400"
+    case "internal_wait": return "bg-amber-400"
+    case "decision": return "bg-orange-400"
+    case "hold": return "bg-stone-400"
+    case "done": return "bg-emerald-500"
   }
 }
