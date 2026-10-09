@@ -270,6 +270,21 @@ export async function POST(request: NextRequest) {
           ),
         })
       }
+    } else if (type === "work_event") {
+      await sb("work_events", token, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          id: data.id,
+          work_item_id: data.workItemId || null,
+          event_type: data.eventType,
+          event_date: data.eventDate,
+          channel: data.channel || null,
+          note: data.note || null,
+          direction: data.direction || null,
+          source: data.source || "manual",
+        }),
+      })
     } else if (type === "customer") {
       await sb("customers?on_conflict=id", token, {
         method: "POST",
