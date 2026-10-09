@@ -90,7 +90,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const [products, customers, prices, workItems, links, docs, events, shippingRates] = await Promise.all([
+    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
       sb("customer_prices_current?select=*", token),
@@ -99,6 +99,7 @@ export async function GET() {
       sb("product_documents?select=*", token),
       sb("work_events?select=*&order=event_date.desc", token),
       sb("shipping_rates?select=*&order=created_at.desc", token),
+      sb("product_costs?select=*&order=created_at.desc", token),
     ])
 
     const mappedProducts = (products || []).map((p: any) => ({
@@ -162,6 +163,22 @@ export async function GET() {
       sourceCandidateId: e.source_candidate_id || undefined,
     }))
 
+    const mappedProductCosts = (productCosts || []).map((r: any) => ({
+      id: r.id,
+      productId: r.product_id,
+      costType: r.cost_type,
+      label: r.label || "",
+      amount: r.amount == null ? "" : String(r.amount),
+      currency: r.currency || "JPY",
+      unit: r.unit || "kg",
+      quantityBasis: r.quantity_basis == null ? "" : String(r.quantity_basis),
+      effectiveFrom: r.effective_from || "",
+      effectiveTo: r.effective_to || "",
+      supplierOrVendor: r.supplier_or_vendor || "",
+      note: r.note || "",
+      createdAt: r.created_at,
+    }))
+
     const mappedShippingRates = (shippingRates || []).map((r: any) => ({
       id: r.id,
       rateStage: r.rate_stage || "",
@@ -210,6 +227,7 @@ export async function GET() {
       products: mappedProducts,
       events: mappedEvents,
       shippingRates: mappedShippingRates,
+      productCosts: mappedProductCosts,
     })
   } catch (error) {
     return NextResponse.json(
@@ -306,6 +324,29 @@ export async function POST(request: NextRequest) {
           })
         }
       }
+    } else if (type === "product_cost") {
+      const amount = Number(String(data.amount ?? "").replace(/[,\s¥￥]/g, ""))
+      if (!data.productId || !data.costType || !data.label || !Number.isFinite(amount) || amount < 0) {
+        return NextResponse.json({ error: "原価の必須項目を確認してください。" }, { status: 400 })
+      }
+      await sb("product_costs", token, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          product_id: data.productId,
+          cost_type: data.costType,
+          label: data.label,
+          amount,
+          currency: data.currency || "JPY",
+          unit: data.unit || "kg",
+          quantity_basis: data.quantityBasis ? Number(data.quantityBasis) : null,
+          effective_from: data.effectiveFrom || new Date().toISOString().slice(0, 10),
+          supplier_or_vendor: data.supplierOrVendor || null,
+          note: data.note || null,
+          ai_locked: true,
+          approved_at: new Date().toISOString(),
+        }),
+      })
     } else if (type === "product") {
       await sb("products?on_conflict=id", token, {
         method: "POST",
