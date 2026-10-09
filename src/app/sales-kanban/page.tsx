@@ -1162,9 +1162,14 @@ export default function SalesKanbanPage() {
                               </div>
                             )}
                             {candidate.payload && Object.keys(candidate.payload).length > 0 && (
-                              <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
-                                {JSON.stringify(candidate.payload, null, 2)}
-                              </pre>
+                              <details className="mt-3 rounded-xl border border-white/10 bg-black/20">
+                                <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-white/45 hover:text-white/70">
+                                  JSON詳細を表示
+                                </summary>
+                                <pre className="max-h-72 overflow-auto border-t border-white/10 p-3 text-xs leading-5 text-white/55">
+                                  {JSON.stringify(candidate.payload, null, 2)}
+                                </pre>
+                              </details>
                             )}
                           </div>
 
