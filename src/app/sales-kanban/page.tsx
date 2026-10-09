@@ -12,6 +12,7 @@ import {
   Mail,
   Package,
   Plus,
+  Truck,
   Search,
   ShieldCheck,
   Trash2,
@@ -29,7 +30,7 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "work" | "activity" | "customers" | "products" | "ai"
+type Tab = "work" | "activity" | "customers" | "products" | "shipping" | "ai"
 
 type AuthState = {
   loading: boolean
@@ -75,6 +76,29 @@ type WorkEvent = {
   direction?: string
   source?: string
   sourceCandidateId?: string
+}
+
+type ShippingRate = {
+  id: string
+  rateStage?: "estimate" | "quoted" | "actual" | ""
+  origin?: string
+  destination: string
+  carrier?: string
+  service?: string
+  weightFromKg?: string
+  weightToKg?: string
+  actualWeightKg?: string
+  sizeClass?: string
+  price: string
+  currency: string
+  transitTime?: string
+  terms?: string
+  source?: string
+  verifiedAt?: string
+  shipmentDate?: string
+  customerId?: string
+  note?: string
+  createdAt?: string
 }
 
 type WorkItem = {
@@ -228,6 +252,7 @@ export default function SalesKanbanPage() {
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
+  const [shippingRates, setShippingRates] = useState<ShippingRate[]>([])
   const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
   const [aiCandidates, setAiCandidates] = useState<AiImportCandidate[]>([])
   const [aiLoading, setAiLoading] = useState(false)
@@ -297,6 +322,7 @@ export default function SalesKanbanPage() {
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
           setEvents(Array.isArray(data.events) ? data.events : [])
+          setShippingRates(Array.isArray(data.shippingRates) ? data.shippingRates : [])
           setHydrated(true)
         })
         .catch((error) => {
@@ -443,6 +469,7 @@ export default function SalesKanbanPage() {
       setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
       setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
       setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
+      setShippingRates(Array.isArray(refreshedData.shippingRates) ? refreshedData.shippingRates : [])
     }
   }
 
@@ -828,7 +855,7 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : "AI取込候補"}
+                {tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "work" &&
@@ -839,6 +866,8 @@ export default function SalesKanbanPage() {
                   "取引先情報と確定済み取引条件を管理。AIはここにない価格を推測しない。"}
                 {tab === "products" &&
                   "商品ID・特徴・原価・卸価格・証明書を一元管理。"}
+                {tab === "shipping" &&
+                  "配送先・重量・配送方法ごとの概算、提示済み送料、実績を分けて管理。"}
                 {tab === "ai" &&
                   "ChatGPT・Claudeの会話から抽出した候補を確認し、正式データにする前に承認・却下。"}
               </p>
@@ -850,7 +879,7 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && (
+            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
               <button
                 onClick={() => {
                   if (tab === "work") setEditingWork(blankWork())
@@ -871,6 +900,7 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
+            <TabButton active={tab === "shipping"} onClick={() => setTab("shipping")} icon={<Truck className="size-4" />} label={"送料マスタ" + (shippingRates.length ? " (" + shippingRates.length + ")" : "")} />
             <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
           </nav>
 
@@ -1105,6 +1135,67 @@ export default function SalesKanbanPage() {
                   </div>
                 </article>
               ))}
+            </div>
+          </section>
+        )}
+
+        {tab === "shipping" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+              <Kpi label="登録件数" value={shippingRates.length} />
+              <Kpi label="概算" value={shippingRates.filter((r) => r.rateStage === "estimate").length} />
+              <Kpi label="提示済み" value={shippingRates.filter((r) => r.rateStage === "quoted").length} />
+              <Kpi label="実績" value={shippingRates.filter((r) => r.rateStage === "actual").length} />
+            </div>
+
+            <div className="space-y-3">
+              {shippingRates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-8 text-center text-sm text-white/45">
+                  送料マスタはまだ空です。AI取込候補から送料を正式反映するとここに表示されます。
+                </div>
+              ) : (
+                shippingRates.map((rate) => {
+                  const customer = customers.find((row) => row.id === rate.customerId)
+                  const stageLabel = rate.rateStage === "actual" ? "実績" : rate.rateStage === "quoted" ? "提示済み" : "概算"
+                  const weightText = rate.actualWeightKg
+                    ? `実重量 ${rate.actualWeightKg}kg`
+                    : rate.weightFromKg && rate.weightToKg && rate.weightFromKg !== rate.weightToKg
+                      ? `${rate.weightFromKg}〜${rate.weightToKg}kg`
+                      : rate.weightFromKg
+                        ? `${rate.weightFromKg}kg`
+                        : ""
+                  return (
+                    <article key={rate.id} className="rounded-2xl border border-white/10 bg-[#111311] p-4 md:p-5">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.12em] text-white/35">
+                            <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">{stageLabel}</span>
+                            {rate.carrier && <span>{rate.carrier}</span>}
+                            {rate.service && <span>{rate.service}</span>}
+                          </div>
+                          <h2 className="mt-3 text-lg font-semibold">
+                            {rate.origin || "Japan"} → {rate.destination}
+                          </h2>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-white/50">
+                            {weightText && <Tag>{weightText}</Tag>}
+                            {customer && <Tag>{customer.id} {customer.name}</Tag>}
+                            {rate.shipmentDate && <Tag>発送 {rate.shipmentDate}</Tag>}
+                          </div>
+                          {rate.note && <p className="mt-3 text-sm leading-6 text-white/50">{rate.note}</p>}
+                        </div>
+
+                        <div className="shrink-0 text-left md:text-right">
+                          <div className="text-2xl font-semibold">
+                            {rate.price ? Number(rate.price).toLocaleString("ja-JP") : "-"}
+                            <span className="ml-1 text-sm font-medium text-white/50">{rate.currency}</span>
+                          </div>
+                          {rate.transitTime && <div className="mt-1 text-xs text-white/40">{rate.transitTime}</div>}
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })
+              )}
             </div>
           </section>
         )}
