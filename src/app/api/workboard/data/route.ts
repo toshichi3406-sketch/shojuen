@@ -155,6 +155,7 @@ export async function GET() {
     const mappedEvents = (events || []).map((e: any) => ({
       id: e.id,
       workItemId: e.work_item_id || undefined,
+      salesCaseId: e.sales_case_id || undefined,
       eventType: e.event_type,
       eventDate: e.event_date,
       channel: e.channel || "",
