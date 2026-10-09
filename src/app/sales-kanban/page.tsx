@@ -378,7 +378,7 @@ export default function SalesKanbanPage() {
     window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
   }, [work, customers, products, hydrated, auth.configured, auth.authenticated])
 
-  async function saveShared(type: "work" | "customer" | "product" | "product_cost", data: WorkItem | Customer | Product | ProductCost) {
+  async function saveShared(type: "work" | "customer" | "product" | "product_cost" | "work_event", data: WorkItem | Customer | Product | ProductCost | WorkEvent) {
     if (!(auth.configured && auth.authenticated)) return
     const response = await fetch("/api/workboard/data", {
       method: "POST",
@@ -387,6 +387,19 @@ export default function SalesKanbanPage() {
     })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBへの保存に失敗しました。")
+  }
+
+  async function appendWorkEvent(workItemId: string, eventType: string, note: string) {
+    const event: WorkEvent = {
+      id: uid(),
+      workItemId,
+      eventType,
+      eventDate: new Date().toISOString(),
+      note,
+      source: "workboard_auto",
+    }
+    await saveShared("work_event", event)
+    setEvents((current) => [event, ...current])
   }
 
   async function deleteShared(type: "work" | "customer" | "product", id: string) {
@@ -895,11 +908,14 @@ export default function SalesKanbanPage() {
 
   async function moveWork(id: string, status: Status) {
     const currentItem = work.find((item) => item.id === id)
-    if (!currentItem) return
+    if (!currentItem || currentItem.status === status) return
     const updated = { ...currentItem, status }
     setWork((current) => current.map((item) => (item.id === id ? updated : item)))
     try {
       await saveShared("work", updated)
+      const beforeLabel = STATUSES.find((item) => item.id === currentItem.status)?.label || currentItem.status
+      const afterLabel = STATUSES.find((item) => item.id === status)?.label || status
+      await appendWorkEvent(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
     } catch (error) {
       console.error(error)
     }
@@ -909,6 +925,7 @@ export default function SalesKanbanPage() {
     event.preventDefault()
     if (!editingWork || !editingWork.title.trim()) return
     const item = editingWork
+    const previous = work.find((row) => row.id === item.id)
     setWork((current) => {
       const exists = current.some((row) => row.id === item.id)
       return exists
@@ -918,6 +935,26 @@ export default function SalesKanbanPage() {
     setEditingWork(null)
     try {
       await saveShared("work", item)
+
+      if (!previous) {
+        await appendWorkEvent(item.id, "work_created", "業務を作成")
+        return
+      }
+
+      const changes: string[] = []
+      if (previous.status !== item.status) {
+        const beforeLabel = STATUSES.find((row) => row.id === previous.status)?.label || previous.status
+        const afterLabel = STATUSES.find((row) => row.id === item.status)?.label || item.status
+        changes.push(`状態: ${beforeLabel} → ${afterLabel}`)
+      }
+      if ((previous.assignee || "") !== (item.assignee || "")) changes.push(`担当: ${previous.assignee || "未設定"} → ${item.assignee || "未設定"}`)
+      if ((previous.priority || "") !== (item.priority || "")) changes.push(`優先度: ${previous.priority || "未設定"} → ${item.priority || "未設定"}`)
+      if ((previous.dueDate || "") !== (item.dueDate || "")) changes.push(`期限: ${previous.dueDate || "未設定"} → ${item.dueDate || "未設定"}`)
+      if ((previous.nextAction || "") !== (item.nextAction || "")) changes.push(`次アクション: ${previous.nextAction || "未設定"} → ${item.nextAction || "未設定"}`)
+
+      if (changes.length) {
+        await appendWorkEvent(item.id, "work_updated", changes.join(" / "))
+      }
     } catch (error) {
       console.error(error)
     }
