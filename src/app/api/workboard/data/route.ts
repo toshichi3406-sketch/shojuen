@@ -275,10 +275,9 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
-          id: data.id,
           work_item_id: data.workItemId || null,
-          event_type: data.eventType,
-          event_date: data.eventDate,
+          event_type: data.eventType || "note",
+          event_date: data.eventDate || new Date().toISOString(),
           channel: data.channel || null,
           note: data.note || null,
           direction: data.direction || null,
