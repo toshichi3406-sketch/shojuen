@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import {
+  Activity,
   BarChart3,
   Bot,
   Building2,
@@ -28,7 +29,7 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "work" | "customers" | "products" | "ai"
+type Tab = "work" | "activity" | "customers" | "products" | "ai"
 
 type AuthState = {
   loading: boolean
@@ -60,6 +61,20 @@ type AiImportCandidate = {
   status: "pending" | "approved" | "rejected" | "needs_edit"
   decision_note?: string | null
   created_at: string
+}
+
+type WorkEvent = {
+  id: string
+  workItemId?: string
+  eventType: string
+  eventDate: string
+  channel?: string
+  note?: string
+  counterpartyName?: string
+  counterpartyEmail?: string
+  direction?: string
+  source?: string
+  sourceCandidateId?: string
 }
 
 type WorkItem = {
@@ -210,6 +225,7 @@ const starterWork: WorkItem[] = [
 export default function SalesKanbanPage() {
   const [tab, setTab] = useState<Tab>("work")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
+  const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
   const [products, setProducts] = useState<Product[]>(starterProducts)
   const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
@@ -277,6 +293,7 @@ export default function SalesKanbanPage() {
           setWork(Array.isArray(data.work) ? data.work : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
+          setEvents(Array.isArray(data.events) ? data.events : [])
           setHydrated(true)
         })
         .catch((error) => {
@@ -400,6 +417,7 @@ export default function SalesKanbanPage() {
       setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
       setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
       setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
+      setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
     }
   }
 
@@ -744,11 +762,13 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "work" ? "業務管理" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : "AI取込候補"}
+                {tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "work" &&
                   "営業・仕入・物流・証明書・HPなど、全社の仕事を状態で見える化。"}
+                {tab === "activity" &&
+                  "メール送信・返信・書類受領など、すでに起きた事実を時系列で確認。"}
                 {tab === "customers" &&
                   "取引先情報と確定済み取引条件を管理。AIはここにない価格を推測しない。"}
                 {tab === "products" &&
@@ -764,7 +784,7 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && (
+            {tab !== "ai" && tab !== "activity" && (
               <button
                 onClick={() => {
                   if (tab === "work") setEditingWork(blankWork())
@@ -782,6 +802,7 @@ export default function SalesKanbanPage() {
 
           <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
+            <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
             <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
@@ -900,6 +921,55 @@ export default function SalesKanbanPage() {
           </section>
         )}
 
+        {tab === "activity" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-5xl">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-3">
+                <Kpi label="履歴件数" value={events.length} />
+                <Kpi label="単独履歴" value={events.filter((event) => !event.workItemId).length} />
+                <Kpi label="業務紐付け済み" value={events.filter((event) => event.workItemId).length} />
+              </div>
+
+              {events.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-8 text-center">
+                  <Activity className="mx-auto size-7 text-white/30" />
+                  <h2 className="mt-3 text-base font-semibold">まだ活動履歴はありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">AI取込候補から「単独履歴として反映」すると、ここに時系列で表示されます。</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {events.map((event) => {
+                    const linkedWork = work.find((item) => item.id === event.workItemId)
+                    const date = event.eventDate ? new Date(event.eventDate) : null
+                    const dateLabel = date && !Number.isNaN(date.getTime())
+                      ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+                      : event.eventDate || "日時不明"
+                    return (
+                      <article key={event.id} className="rounded-2xl border border-white/10 bg-[#111311] p-4 md:p-5">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold tracking-[0.1em] text-white/35">
+                              <span>{dateLabel}</span>
+                              {event.channel && <Tag>{event.channel}</Tag>}
+                              {event.direction && <Tag>{event.direction}</Tag>}
+                              <Tag>{event.eventType}</Tag>
+                            </div>
+                            <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedWork?.title || "相手先未設定"}</h2>
+                            {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
+                            {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{event.note}</p>}
+                          </div>
+                          <div className="shrink-0 text-xs text-white/35">
+                            {linkedWork ? "紐付け: " + linkedWork.id : "単独履歴"}
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
         {tab === "customers" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mb-4 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100/80">
