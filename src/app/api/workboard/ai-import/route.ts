@@ -348,6 +348,94 @@ export async function PUT(request: NextRequest) {
       })
     }
 
+
+    if (candidateType === "product_update") {
+      const requestedProductId = payload.product_id || null
+      let productId = requestedProductId
+
+      if (!productId) {
+        const existingProducts = await sb("products?select=id&order=id.asc", token)
+        const next = (existingProducts || []).reduce((max: number, row: any) => {
+          const m = String(row.id || "").match(/^M(\d+)$/i)
+          return m ? Math.max(max, Number(m[1])) : max
+        }, 0) + 1
+        productId = `M${String(next).padStart(3, "0")}`
+      }
+
+      const existingRows = await sb(
+        `products?select=*&id=eq.${encodeURIComponent(productId)}&limit=1`,
+        token
+      )
+      const existingProduct = Array.isArray(existingRows) ? existingRows[0] : null
+
+      const pick = (incoming: any, existing: any) =>
+        incoming === undefined || incoming === null || incoming === "" ? (existing ?? null) : incoming
+
+      const productName = pick(payload.product_name || payload.name, existingProduct?.name)
+      if (!productName) {
+        return NextResponse.json({ error: "商品名がないため正式反映できません。" }, { status: 400 })
+      }
+
+      const docSummary = Array.isArray(payload.documents) && payload.documents.length
+        ? payload.documents.map((doc: any) => {
+            const bits = [
+              doc.type || doc.title || "資料",
+              doc.issuer ? `発行: ${doc.issuer}` : null,
+              doc.report_no ? `番号: ${doc.report_no}` : null,
+              doc.issued_at ? `発行日: ${doc.issued_at}` : null,
+              doc.status ? `状態: ${doc.status}` : null,
+              doc.note || null,
+            ].filter(Boolean)
+            return `・${bits.join(" / ")}`
+          }).join("\n")
+        : ""
+
+      const incomingMemo = [payload.memo, payload.note, docSummary ? `【証明書・資料メタ情報】\n${docSummary}` : null]
+        .filter(Boolean)
+        .join("\n\n")
+      const mergedMemo = [existingProduct?.memo, incomingMemo].filter(Boolean).join("\n\n")
+
+      await sb("products?on_conflict=id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({
+          id: productId,
+          name: productName,
+          producer: pick(payload.supplier || payload.producer || payload.processor, existingProduct?.producer),
+          origin: pick(payload.origin, existingProduct?.origin),
+          use_case: pick(payload.use || payload.use_case, existingProduct?.use_case),
+          color_note: pick(payload.color_note, existingProduct?.color_note),
+          umami_note: pick(payload.umami_note, existingProduct?.umami_note),
+          bitterness_note: pick(payload.bitterness_note, existingProduct?.bitterness_note),
+          aroma_note: pick(payload.aroma_note || payload.flavor_note, existingProduct?.aroma_note),
+          cost: existingProduct?.cost ?? null,
+          standard_wholesale_price: existingProduct?.standard_wholesale_price ?? null,
+          moq: pick(payload.moq, existingProduct?.moq),
+          supply_status: pick(payload.supply_status || payload.stock, existingProduct?.supply_status),
+          memo: mergedMemo || null,
+          updated_at: now,
+        }),
+      })
+
+      await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "approved",
+          reviewed_at: now,
+          decision_note: existingProduct
+            ? `既存商品 ${productId} を更新（価格・原価は未変更）`
+            : `新規商品 ${productId} として登録（価格・原価は未登録）`,
+        }),
+      })
+
+      return NextResponse.json({
+        ok: true,
+        productId,
+        mode: existingProduct ? "updated" : "created",
+      })
+    }
+
     if (candidateType === "work_event") {
       await sb("work_events", token, {
         method: "POST",
