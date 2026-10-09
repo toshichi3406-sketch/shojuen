@@ -332,6 +332,7 @@ export default function SalesKanbanPage() {
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
+  const [salesEventNote, setSalesEventNote] = useState("")
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
@@ -446,19 +447,16 @@ export default function SalesKanbanPage() {
   async function appendSalesCaseEvent(
     salesCaseId: string,
     eventType: string,
-    label: string,
+    note: string,
     channel?: string
   ) {
-    const note = window.prompt(`${label}のメモを入力してください（空欄でも登録できます）`, "") ?? null
-    if (note === null) return
-
     const event: WorkEvent = {
       id: uid(),
       salesCaseId,
       eventType,
       eventDate: new Date().toISOString(),
       channel,
-      note,
+      note: note.trim(),
       source: "manual",
     }
     await saveShared("work_event", event)
@@ -2614,26 +2612,39 @@ export default function SalesKanbanPage() {
                   </span>
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[
-                    ["email_sent", "メール送信", "Email"],
-                    ["reply_received", "返信あり", "Email"],
-                    ["quote_sent", "見積提示", "Email"],
-                    ["sample_sent", "サンプル送付", "その他"],
-                    ["note", "メモ", "その他"],
-                  ].map(([eventType, label, channel]) => (
-                    <button
-                      key={eventType}
-                      type="button"
-                      onClick={() => appendSalesCaseEvent(editingSalesCase.id, eventType, label, channel).catch((error) => {
-                        console.error(error)
-                        alert(error instanceof Error ? error.message : "活動履歴の保存に失敗しました。")
-                      })}
-                      className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
-                    >
-                      ＋ {label}
-                    </button>
-                  ))}
+                <div className="mt-3">
+                  <input
+                    value={salesEventNote}
+                    onChange={(e) => setSalesEventNote(e.target.value)}
+                    placeholder="活動メモ（空欄でも登録できます）"
+                    className={inputClass}
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[
+                      ["email_sent", "メール送信", "Email"],
+                      ["reply_received", "返信あり", "Email"],
+                      ["quote_sent", "見積提示", "Email"],
+                      ["sample_sent", "サンプル送付", "その他"],
+                      ["note", "メモ", "その他"],
+                    ].map(([eventType, label, channel]) => (
+                      <button
+                        key={eventType}
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await appendSalesCaseEvent(editingSalesCase.id, eventType, salesEventNote, channel)
+                            setSalesEventNote("")
+                          } catch (error) {
+                            console.error(error)
+                            alert(error instanceof Error ? error.message : "活動履歴の保存に失敗しました。")
+                          }
+                        }}
+                        className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
+                      >
+                        ＋ {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="mt-3 space-y-2">
