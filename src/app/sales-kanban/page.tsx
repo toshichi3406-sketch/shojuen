@@ -334,6 +334,7 @@ export default function SalesKanbanPage() {
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
   const [salesEventNote, setSalesEventNote] = useState("")
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
+  const [wonFollowupSource, setWonFollowupSource] = useState<SalesCase | null>(null)
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -1103,10 +1104,19 @@ export default function SalesKanbanPage() {
     if (!editingSalesCase?.customerId || !editingSalesCase.theme.trim() || !editingSalesCase.assignee.trim()) return
 
     const customer = customers.find((row) => row.id === editingSalesCase.customerId)
+    const original = salesCases.find((row) => row.id === editingSalesCase.id)
+    const becameWon =
+      Boolean(editingSalesCase.id) &&
+      editingSalesCase.caseType === "new_business" &&
+      editingSalesCase.stage === "won" &&
+      original?.stage !== "won"
+    const wonTimestamp = becameWon ? new Date().toISOString() : editingSalesCase.wonAt
     const autoTitle = [customer?.name || editingSalesCase.customerId, editingSalesCase.theme.trim()].filter(Boolean).join("｜")
     const item = {
       ...editingSalesCase,
       title: editingSalesCase.title.trim() || autoTitle,
+      wonAt: wonTimestamp,
+      closedAt: becameWon ? wonTimestamp : editingSalesCase.closedAt,
     }
 
     try {
@@ -1123,6 +1133,7 @@ export default function SalesKanbanPage() {
         return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
       })
       setEditingSalesCase(null)
+      if (becameWon) setWonFollowupSource(saved)
     } catch (error) {
       console.error(error)
       alert(error instanceof Error ? error.message : "営業案件の保存に失敗しました。")
@@ -2538,6 +2549,56 @@ export default function SalesKanbanPage() {
           </section>
         )}
       </div>
+
+      {wonFollowupSource && (
+        <Modal onClose={() => setWonFollowupSource(null)}>
+          <div className="p-1">
+            <ModalTitle
+              eyebrow="成約"
+              title="既存顧客フォロー案件を作成しますか？"
+              onClose={() => setWonFollowupSource(null)}
+            />
+            <p className="text-sm leading-6 text-white/55">
+              本発注が確定した新規営業案件を閉じました。次回注文を追うための既存顧客フォロー案件を作れます。
+            </p>
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-white/65">
+              <div>取引先・提案商品・担当・最終接触・成約日を引き継ぎます。</div>
+              <div className="mt-1 text-xs text-white/40">次回フォロー日は作成画面で確認してください。</div>
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setWonFollowupSource(null)}
+                className="rounded-full border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5"
+              >
+                今回は作らない
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  const source = wonFollowupSource
+                  const lastContact = salesCaseLastContact(source.id, source.lastContactAt)
+                  setWonFollowupSource(null)
+                  setEditingSalesCase({
+                    ...blankSalesCase(source.customerId),
+                    caseType: "existing_followup",
+                    theme: "次回注文フォロー",
+                    assignee: source.assignee,
+                    productIds: source.productIds || [],
+                    lastContactAt: lastContact || source.lastContactAt,
+                    wonAt: source.wonAt,
+                    nextAction: "次回注文時期を確認",
+                  })
+                }}
+                className="rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white"
+              >
+                作成する
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {editingSalesCase && (
         <Modal onClose={() => setEditingSalesCase(null)} wide>
