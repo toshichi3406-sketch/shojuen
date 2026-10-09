@@ -1273,6 +1273,16 @@ export default function SalesKanbanPage() {
                                     {candidate.payload?.shipping_stage ? ` / ${String(candidate.payload.shipping_stage)}` : ""}
                                   </p>
                                 )}
+                                {(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) === "shipping_rate" &&
+                                  Boolean(aiShippingStage[candidate.id] || candidate.payload?.shipping_stage) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "送料マスタへの反映に失敗しました。"))}
+                                    className="mt-2 w-full rounded-lg bg-[#eef3ea] px-3 py-2 text-xs font-semibold text-[#11150f]"
+                                  >
+                                    送料マスタへ正式反映
+                                  </button>
+                                )}
                               </div>
                             )}
 
