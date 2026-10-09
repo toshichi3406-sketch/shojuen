@@ -841,6 +841,42 @@ export default function SalesKanbanPage() {
     )
   }, [products, productQuery])
 
+  const currentProductCostSummary = useMemo(() => {
+    if (!editingProduct) return { rows: [] as ProductCost[], total: 0, excluded: 0 }
+
+    const productRows = productCosts.filter((row) => row.productId === editingProduct.id)
+    const sorted = [...productRows].sort((a, b) => {
+      const aKey = a.effectiveFrom || a.createdAt || ""
+      const bKey = b.effectiveFrom || b.createdAt || ""
+      return bKey.localeCompare(aKey)
+    })
+
+    const latestByItem = new Map<string, ProductCost>()
+    for (const row of sorted) {
+      const key = [
+        row.costType,
+        row.label.trim(),
+        (row.supplierOrVendor || "").trim(),
+        (row.unit || "kg").trim().toLowerCase(),
+        (row.currency || "JPY").trim().toUpperCase(),
+      ].join("|")
+      if (!latestByItem.has(key)) latestByItem.set(key, row)
+    }
+
+    const rows = Array.from(latestByItem.values())
+    const compatible = rows.filter(
+      (row) =>
+        (row.currency || "JPY").trim().toUpperCase() === "JPY" &&
+        (row.unit || "kg").trim().toLowerCase() === "kg"
+    )
+    const total = compatible.reduce((sum, row) => {
+      const amount = Number(row.amount)
+      return Number.isFinite(amount) ? sum + amount : sum
+    }, 0)
+
+    return { rows: compatible, total, excluded: rows.length - compatible.length }
+  }, [editingProduct, productCosts])
+
   const activeCount = work.filter((item) => !["hold", "done"].includes(item.status)).length
   const waitingCount = work.filter((item) => ["external_wait", "internal_wait"].includes(item.status)).length
   const decisionCount = work.filter((item) => item.status === "decision").length
@@ -2240,6 +2276,35 @@ export default function SalesKanbanPage() {
               ))}
               <div className="md:col-span-2"><Field label="備考"><textarea rows={3} className={`${inputClass} min-h-24 resize-y py-3`} value={editingProduct.memo || ""} onChange={(e) => setEditingProduct({ ...editingProduct, memo: e.target.value })} /></Field></div>
             </div>
+
+            {currentProductCostSummary.rows.length > 0 && (
+              <section className="mt-6 rounded-2xl border border-[#66845c]/30 bg-[#66845c]/10 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <div className="text-[10px] font-semibold tracking-[0.14em] text-[#a9c19f]">現在の総原価（参考）</div>
+                    <div className="mt-1 text-3xl font-bold">
+                      {currentProductCostSummary.total.toLocaleString("ja-JP")}
+                      <span className="ml-2 text-sm font-medium text-white/45">JPY / kg</span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-white/45">
+                      同じ「原価区分・内訳名・仕入先・単位・通貨」は最新履歴だけを採用して集計しています。
+                    </p>
+                    {currentProductCostSummary.excluded > 0 && (
+                      <p className="mt-1 text-[10px] text-amber-200/60">
+                        単位または通貨が異なる {currentProductCostSummary.excluded} 件は合計から除外しています。
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 md:max-w-md md:justify-end">
+                    {currentProductCostSummary.rows.map((row) => (
+                      <span key={row.id} className="rounded-lg border border-white/10 bg-black/10 px-2.5 py-1.5 text-[10px] text-white/60">
+                        {row.label}: {Number(row.amount || 0).toLocaleString("ja-JP")}円
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
 
             <section className="mt-6 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.03] p-4">
               <div>
