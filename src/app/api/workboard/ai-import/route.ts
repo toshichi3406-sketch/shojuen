@@ -284,19 +284,20 @@ export async function PUT(request: NextRequest) {
     }
 
     if (candidateType === "work_event") {
-      if (!payload.work_item_id) {
-        return NextResponse.json({ error: "work_event は work_item_id が必要です。" }, { status: 400 })
-      }
-
       await sb("work_events", token, {
         method: "POST",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({
-          work_item_id: payload.work_item_id,
+          work_item_id: payload.work_item_id || null,
           event_type: payload.event_type || "note",
           event_date: payload.event_date || payload.occurred_at || now,
           channel: payload.channel || null,
           note: payload.note || payload.memo || null,
+          counterparty_name: payload.counterparty_name || null,
+          counterparty_email: payload.counterparty_email || null,
+          direction: payload.direction || null,
+          source: "ai_import",
+          source_candidate_id: id,
         }),
       })
 
