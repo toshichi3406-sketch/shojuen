@@ -218,6 +218,8 @@ export default function SalesKanbanPage() {
   const [aiImportJson, setAiImportJson] = useState("")
   const [aiImportMessage, setAiImportMessage] = useState("")
   const [aiImportBusy, setAiImportBusy] = useState(false)
+  const [aiTypeFilter, setAiTypeFilter] = useState("all")
+  const [aiStatusFilter, setAiStatusFilter] = useState("pending")
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -385,6 +387,11 @@ export default function SalesKanbanPage() {
   }
 
   const pendingAiCount = aiCandidates.filter((item) => item.status === "pending").length
+  const visibleAiCandidates = aiCandidates.filter((item) => {
+    const typeOk = aiTypeFilter === "all" || item.candidate_type === aiTypeFilter
+    const statusOk = aiStatusFilter === "all" || item.status === aiStatusFilter
+    return typeOk && statusOk
+  })
 
   const filteredWork = useMemo(() => {
     const q = workQuery.trim().toLowerCase()
@@ -951,6 +958,37 @@ export default function SalesKanbanPage() {
                 <Kpi label="取込バッチ" value={aiBatches.length} />
               </div>
 
+              <div className="mb-4 flex flex-wrap gap-2">
+                <select
+                  value={aiStatusFilter}
+                  onChange={(e) => setAiStatusFilter(e.target.value)}
+                  className="h-10 rounded-xl border border-white/10 bg-[#111311] px-3 text-xs text-white outline-none"
+                >
+                  <option value="pending">未確認のみ</option>
+                  <option value="approved">承認済み</option>
+                  <option value="needs_edit">要修正</option>
+                  <option value="rejected">却下</option>
+                  <option value="all">全ステータス</option>
+                </select>
+                <select
+                  value={aiTypeFilter}
+                  onChange={(e) => setAiTypeFilter(e.target.value)}
+                  className="h-10 rounded-xl border border-white/10 bg-[#111311] px-3 text-xs text-white outline-none"
+                >
+                  <option value="all">全種類</option>
+                  <option value="work_event">業務履歴</option>
+                  <option value="new_work">新規業務</option>
+                  <option value="work_update">業務更新</option>
+                  <option value="customer_update">取引先更新</option>
+                  <option value="product_update">商品更新</option>
+                  <option value="price_candidate">価格候補</option>
+                  <option value="decision">要判断</option>
+                </select>
+                <div className="flex h-10 items-center rounded-xl border border-white/10 bg-white/[0.03] px-3 text-xs text-white/45">
+                  表示 {visibleAiCandidates.length}件 / 全{aiCandidates.length}件
+                </div>
+              </div>
+
               {aiLoading ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-white/45">
                   AI取込候補を読み込み中...
@@ -965,7 +1003,7 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {aiCandidates.map((candidate) => {
+                  {visibleAiCandidates.map((candidate) => {
                     const batch = aiBatches.find((item) => item.id === candidate.batch_id)
                     return (
                       <article key={candidate.id} className="rounded-2xl border border-white/10 bg-[#111311] p-4 md:p-5">
