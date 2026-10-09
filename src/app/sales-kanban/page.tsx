@@ -239,6 +239,7 @@ export default function SalesKanbanPage() {
   const [aiMatchCustomer, setAiMatchCustomer] = useState<Record<string, string>>({})
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
   const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
+  const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
   const [workQuery, setWorkQuery] = useState("")
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
@@ -431,6 +432,33 @@ export default function SalesKanbanPage() {
           : [...selected, productId],
       }
     })
+  }
+
+
+  async function savePriceClassification(candidate: AiImportCandidate) {
+    const classification = aiPriceClass[candidate.id]
+    if (!classification) throw new Error("価格の種類を選んでください。")
+
+    const response = await fetch("/api/workboard/ai-import", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: candidate.id,
+        status: "pending",
+        decisionNote: null,
+        payloadPatch: { price_classification: classification },
+      }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || "価格分類を保存できませんでした。")
+
+    setAiCandidates((current) =>
+      current.map((item) =>
+        item.id === candidate.id
+          ? { ...item, payload: { ...(item.payload || {}), price_classification: classification } }
+          : item
+      )
+    )
   }
 
   async function updateAiCandidate(id: string, status: AiImportCandidate["status"]) {
@@ -1151,6 +1179,15 @@ export default function SalesKanbanPage() {
                             {candidate.target_id && (
                               <p className="mt-2 text-xs text-white/35">対象ID: {candidate.target_id}</p>
                             )}
+                            {candidate.candidate_type === "price_candidate" && candidate.payload && (
+                              <div className="mt-3 rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3 text-xs">
+                                <div className="font-semibold text-amber-100">価格候補はまだ正式価格ではありません</div>
+                                <div className="mt-1 text-amber-100/55">
+                                  まず「何の価格か」を分類します。分類しただけでは価格マスタ・送料マスタには反映されません。
+                                </div>
+                              </div>
+                            )}
+
                             {candidate.candidate_type === "customer_update" && candidate.payload && (
                               <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs md:grid-cols-2">
                                 <div><span className="text-white/35">会社名</span><div className="mt-1 text-white/75">{String(candidate.payload.company_name || "未設定")}</div></div>
@@ -1174,6 +1211,37 @@ export default function SalesKanbanPage() {
                           </div>
 
                           <div className="w-full shrink-0 space-y-2 md:w-72">
+                            {candidate.candidate_type === "price_candidate" && (
+                              <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3">
+                                <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">価格の種類</div>
+                                <select
+                                  value={aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")}
+                                  onChange={(e) => setAiPriceClass((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                  className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                >
+                                  <option value="">選択してください</option>
+                                  <option value="supplier_cost">仕入価格</option>
+                                  <option value="standard_wholesale">標準卸価格</option>
+                                  <option value="customer_quoted">取引先へ提示済み価格</option>
+                                  <option value="customer_planned">提案予定価格</option>
+                                  <option value="shipping_rate">送料・運賃</option>
+                                  <option value="other">その他 / 要確認</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => savePriceClassification(candidate).catch((error) => alert(error instanceof Error ? error.message : "価格分類を保存できませんでした。"))}
+                                  className="mt-2 w-full rounded-lg border border-amber-200/20 px-3 py-2 text-xs font-medium text-amber-100"
+                                >
+                                  分類だけ保存
+                                </button>
+                                {candidate.payload?.price_classification && (
+                                  <p className="mt-2 text-[10px] leading-4 text-amber-100/50">
+                                    保存済み: {String(candidate.payload.price_classification)}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
                             {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                               <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
                                 <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-white/35">紐付け確認</div>
