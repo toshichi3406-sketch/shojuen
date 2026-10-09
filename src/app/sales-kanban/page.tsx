@@ -362,6 +362,7 @@ export default function SalesKanbanPage() {
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
   const [salesEventNote, setSalesEventNote] = useState("")
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [wonFollowupSource, setWonFollowupSource] = useState<SalesCase | null>(null)
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
@@ -1111,6 +1112,69 @@ export default function SalesKanbanPage() {
     }
   }
 
+  function blankOrder(customerId = "", salesCaseId = ""): Order {
+    return {
+      id: "",
+      customerId,
+      salesCaseId,
+      orderType: "repeat",
+      orderStatus: "confirmed",
+      orderDate: todayInTokyo(),
+      currency: "JPY",
+      shippingAmount: "",
+      totalAmount: "",
+      externalOrderRef: "",
+      note: "",
+      items: [
+        {
+          id: uid(),
+          productId: "",
+          quantity: "",
+          unit: "kg",
+          unitPrice: "",
+          lineAmount: "",
+        },
+      ],
+    }
+  }
+
+  async function saveOrder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingOrder?.customerId || !editingOrder.orderDate || !editingOrder.items.length) return
+
+    try {
+      const response = await fetch("/api/workboard/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "order", data: editingOrder }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "受注履歴の保存に失敗しました。")
+
+      const totalAmount = result.totalAmount == null ? editingOrder.totalAmount : String(result.totalAmount)
+      const saved: Order = {
+        ...editingOrder,
+        id: result.id || editingOrder.id,
+        totalAmount,
+        items: editingOrder.items.map((item) => ({
+          ...item,
+          lineAmount:
+            item.quantity && item.unitPrice
+              ? String(Number(item.quantity) * Number(item.unitPrice))
+              : item.lineAmount,
+        })),
+      }
+      setOrders((current) => {
+        const exists = current.some((row) => row.id === saved.id)
+        return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
+      })
+      setEditingOrder(null)
+    } catch (error) {
+      console.error(error)
+      alert(error instanceof Error ? error.message : "受注履歴の保存に失敗しました。")
+    }
+  }
+
   function blankSalesCase(customerId = ""): SalesCase {
     const assignee = auth.user?.displayName || auth.user?.email || ""
     return {
@@ -1455,10 +1519,11 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "orders" && (
+            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
               <button
                 onClick={() => {
                   if (tab === "sales") setEditingSalesCase(blankSalesCase())
+                  if (tab === "orders") setEditingOrder(blankOrder())
                   if (tab === "work") setEditingWork(blankWork())
                   if (tab === "customers") setEditingCustomer(blankCustomer())
                   if (tab === "products") setEditingProduct(blankProduct())
@@ -1466,7 +1531,7 @@ export default function SalesKanbanPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
               >
                 <Plus className="size-4" />
-                {tab === "sales" ? "案件を追加" : tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
+                {tab === "sales" ? "案件を追加" : tab === "orders" ? "受注を追加" : tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
               </button>
             )}
             </div>
@@ -1526,6 +1591,9 @@ export default function SalesKanbanPage() {
                   <p className="mt-2 text-sm leading-6 text-white/45">
                     本発注・リピート発注をここに蓄積して、継続率や累計売上のKPIにつなげます。
                   </p>
+                  <button type="button" onClick={() => setEditingOrder(blankOrder())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
+                    <Plus className="size-4" /> 最初の受注を追加
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -2703,6 +2771,146 @@ export default function SalesKanbanPage() {
           </section>
         )}
       </div>
+
+      {editingOrder && (
+        <Modal onClose={() => setEditingOrder(null)} wide>
+          <form onSubmit={saveOrder}>
+            <ModalTitle eyebrow="受注履歴" title={editingOrder.id ? "受注を編集" : "新しい受注"} onClose={() => setEditingOrder(null)} />
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="取引先">
+                <select
+                  required
+                  autoFocus
+                  className={inputClass}
+                  value={editingOrder.customerId}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, customerId: e.target.value })}
+                >
+                  <option value="">選択してください</option>
+                  {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>)}
+                </select>
+              </Field>
+
+              <Field label="関連営業案件">
+                <select
+                  className={inputClass}
+                  value={editingOrder.salesCaseId || ""}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, salesCaseId: e.target.value })}
+                >
+                  <option value="">紐づけなし</option>
+                  {salesCases
+                    .filter((item) => !editingOrder.customerId || item.customerId === editingOrder.customerId)
+                    .map((item) => <option key={item.id} value={item.id}>{item.theme || item.title}</option>)}
+                </select>
+              </Field>
+
+              <Field label="受注種別">
+                <select className={inputClass} value={editingOrder.orderType} onChange={(e) => setEditingOrder({ ...editingOrder, orderType: e.target.value as Order["orderType"] })}>
+                  <option value="first">初回発注</option>
+                  <option value="repeat">リピート</option>
+                </select>
+              </Field>
+
+              <Field label="受注日">
+                <input required type="date" className={inputClass} value={editingOrder.orderDate} onChange={(e) => setEditingOrder({ ...editingOrder, orderDate: e.target.value })} />
+              </Field>
+
+              <Field label="通貨">
+                <select className={inputClass} value={editingOrder.currency} onChange={(e) => setEditingOrder({ ...editingOrder, currency: e.target.value })}>
+                  <option value="JPY">JPY</option>
+                  <option value="SGD">SGD</option>
+                  <option value="USD">USD</option>
+                  <option value="BHD">BHD</option>
+                </select>
+              </Field>
+
+              <Field label="送料">
+                <input inputMode="decimal" className={inputClass} placeholder="例：2800" value={editingOrder.shippingAmount || ""} onChange={(e) => setEditingOrder({ ...editingOrder, shippingAmount: e.target.value })} />
+              </Field>
+            </div>
+
+            <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">受注明細</h3>
+                  <p className="mt-1 text-xs text-white/40">商品ごとの数量と受注単価。受注総額は自動計算。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder({
+                    ...editingOrder,
+                    items: [...editingOrder.items, { id: uid(), productId: "", quantity: "", unit: "kg", unitPrice: "", lineAmount: "" }],
+                  })}
+                  className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
+                >
+                  ＋ 商品を追加
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {editingOrder.items.map((item) => (
+                  <div key={item.id} className="grid gap-3 rounded-xl bg-white/[0.035] p-3 md:grid-cols-[1.5fr_.7fr_.6fr_.8fr_auto]">
+                    <select
+                      required
+                      className={inputClass}
+                      value={item.productId}
+                      onChange={(e) => setEditingOrder({
+                        ...editingOrder,
+                        items: editingOrder.items.map((row) => row.id === item.id ? { ...row, productId: e.target.value } : row),
+                      })}
+                    >
+                      <option value="">商品を選択</option>
+                      {products.map((product) => <option key={product.id} value={product.id}>{product.id} {product.name}</option>)}
+                    </select>
+                    <input required inputMode="decimal" className={inputClass} placeholder="数量" value={item.quantity} onChange={(e) => setEditingOrder({
+                      ...editingOrder,
+                      items: editingOrder.items.map((row) => row.id === item.id ? { ...row, quantity: e.target.value } : row),
+                    })} />
+                    <select className={inputClass} value={item.unit} onChange={(e) => setEditingOrder({
+                      ...editingOrder,
+                      items: editingOrder.items.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row),
+                    })}>
+                      <option value="kg">kg</option>
+                      <option value="g">g</option>
+                      <option value="pc">個</option>
+                    </select>
+                    <input required inputMode="decimal" className={inputClass} placeholder="単価" value={item.unitPrice} onChange={(e) => setEditingOrder({
+                      ...editingOrder,
+                      items: editingOrder.items.map((row) => row.id === item.id ? { ...row, unitPrice: e.target.value } : row),
+                    })} />
+                    <button
+                      type="button"
+                      disabled={editingOrder.items.length === 1}
+                      onClick={() => setEditingOrder({ ...editingOrder, items: editingOrder.items.filter((row) => row.id !== item.id) })}
+                      className="rounded-xl border border-white/10 px-3 text-xs text-white/45 disabled:opacity-20"
+                    >
+                      削除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Field label="注文番号・参照番号">
+                <input className={inputClass} value={editingOrder.externalOrderRef || ""} onChange={(e) => setEditingOrder({ ...editingOrder, externalOrderRef: e.target.value })} />
+              </Field>
+              <Field label="メモ">
+                <input className={inputClass} value={editingOrder.note || ""} onChange={(e) => setEditingOrder({ ...editingOrder, note: e.target.value })} />
+              </Field>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingOrder(null)} className="rounded-full border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5">
+                キャンセル
+              </button>
+              <button type="submit" className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white">
+                受注を保存
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {wonFollowupSource && (
         <Modal onClose={() => setWonFollowupSource(null)}>
