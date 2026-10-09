@@ -37,7 +37,7 @@ create policy shipping_rates_insert
   on public.shipping_rates
   for insert
   to authenticated
-  with check (public.is_app_user());
+  with check (public.is_app_admin());
 
 drop policy if exists shipping_rates_update on public.shipping_rates;
 create policy shipping_rates_update
@@ -47,8 +47,7 @@ create policy shipping_rates_update
   using (public.is_app_admin())
   with check (public.is_app_admin());
 
-grant select, insert on public.shipping_rates to authenticated;
-grant update on public.shipping_rates to authenticated;
+grant select, insert, update on public.shipping_rates to authenticated;
 revoke delete on public.shipping_rates from authenticated;
 
 create index if not exists shipping_rates_destination_idx
@@ -58,4 +57,4 @@ create index if not exists shipping_rates_carrier_service_idx
   on public.shipping_rates(carrier, service);
 
 comment on table public.shipping_rates is
-  'Verified logistics/freight reference rates. Keep separate from product and customer prices.';
+  'Verified logistics/freight reference rates. Keep separate from product and customer prices. AI may propose rates but authoritative rows require owner/admin approval.';
