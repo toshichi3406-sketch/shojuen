@@ -1471,9 +1471,13 @@ export default function SalesKanbanPage() {
                             <div className="text-[10px] font-semibold tracking-[0.1em] text-white/35">次回フォロー</div>
                             <div className="mt-1 text-sm text-white/75">{item.nextFollowUpDate || "未設定"}</div>
                           </div>
-                          <div className="mt-3 flex items-center justify-between text-xs text-white/35">
+                          <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/35">
                             <span>{item.assignee || "未担当"}</span>
-                            <span>{item.lastContactAt ? "最終接触あり" : "接触記録なし"}</span>
+                            <span className={item.lastContactAt ? "text-white/50" : ""}>
+                              {item.lastContactAt
+                                ? `最終接触 ${new Date(item.lastContactAt).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`
+                                : "接触記録なし"}
+                            </span>
                           </div>
                         </article>
                       )
