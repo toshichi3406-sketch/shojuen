@@ -39,14 +39,14 @@ type Lead = {
 }
 
 const STAGES: { id: Stage; label: string; short: string }[] = [
-  { id: "lead", label: "Lead", short: "Lead" },
-  { id: "sent", label: "Email sent", short: "Sent" },
-  { id: "followup", label: "Follow-up", short: "Follow" },
-  { id: "replied", label: "Replied", short: "Reply" },
-  { id: "negotiation", label: "Negotiation", short: "Talk" },
-  { id: "sample", label: "Sample", short: "Sample" },
-  { id: "won", label: "Won", short: "Won" },
-  { id: "lost", label: "Lost", short: "Lost" },
+  { id: "lead", label: "候補", short: "候補" },
+  { id: "sent", label: "送信済み", short: "送信" },
+  { id: "followup", label: "フォロー", short: "追客" },
+  { id: "replied", label: "返信あり", short: "返信" },
+  { id: "negotiation", label: "商談中", short: "商談" },
+  { id: "sample", label: "サンプル", short: "試供" },
+  { id: "won", label: "成約", short: "成約" },
+  { id: "lost", label: "見送り", short: "終了" },
 ]
 
 const STORAGE_KEY = "shojuen-sales-kanban-v1"
@@ -54,24 +54,24 @@ const STORAGE_KEY = "shojuen-sales-kanban-v1"
 const starterLeads: Lead[] = [
   {
     id: "demo-1",
-    company: "Example Cafe",
+    company: "サンプルカフェ",
     country: "Singapore",
-    category: "Cafe",
+    category: "カフェ",
     email: "hello@example.com",
     stage: "lead",
-    owner: "Akane",
-    nextAction: "Send first outreach",
+    owner: "あかね",
+    nextAction: "初回営業メールを送る",
   },
   {
     id: "demo-2",
-    company: "Example Distributor",
+    company: "サンプル卸会社",
     country: "Singapore",
-    category: "Distributor",
+    category: "卸・代理店",
     email: "buyer@example.com",
     stage: "sent",
     sentAt: "2026-10-09",
-    owner: "Akane",
-    nextAction: "Check reply in 4 business days",
+    owner: "あかね",
+    nextAction: "4営業日後に返信確認",
   },
 ]
 
@@ -84,10 +84,10 @@ function blankLead(stage: Stage = "lead"): Lead {
     id: uid(),
     company: "",
     country: "Singapore",
-    category: "Cafe",
+    category: "カフェ",
     email: "",
     stage,
-    owner: "Akane",
+    owner: "あかね",
     nextAction: "",
     memo: "",
   }
@@ -96,7 +96,7 @@ function blankLead(stage: Stage = "lead"): Lead {
 export default function SalesKanbanPage() {
   const [leads, setLeads] = useState<Lead[]>(starterLeads)
   const [query, setQuery] = useState("")
-  const [country, setCountry] = useState("All")
+  const [country, setCountry] = useState("すべて")
   const [editing, setEditing] = useState<Lead | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
@@ -119,14 +119,14 @@ export default function SalesKanbanPage() {
   }, [leads, hydrated])
 
   const countries = useMemo(
-    () => ["All", ...Array.from(new Set(leads.map((lead) => lead.country))).sort()],
+    () => ["すべて", ...Array.from(new Set(leads.map((lead) => lead.country))).sort()],
     [leads]
   )
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return leads.filter((lead) => {
-      const matchesCountry = country === "All" || lead.country === country
+      const matchesCountry = country === "すべて" || lead.country === country
       const matchesQuery =
         !q ||
         [lead.company, lead.email, lead.category, lead.country, lead.owner, lead.memo]
@@ -198,50 +198,50 @@ export default function SalesKanbanPage() {
   }
 
   return (
-    <main className="fixed inset-0 z-[200] overflow-hidden bg-[#f5f4ef] text-[#151713]">
+    <main className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
       <div className="flex h-full flex-col">
-        <header className="border-b border-black/10 bg-[#f5f4ef]/95 px-5 py-4 backdrop-blur md:px-7">
+        <header className="border-b border-white/10 bg-[#090a09]/95 px-5 py-4 backdrop-blur md:px-7">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-black/45">
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
                 <span className="inline-block size-2 rounded-full bg-[#4f6f45]" />
                 SHOJUEN
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                Sales Pipeline
+                営業パイプライン
               </h1>
-              <p className="mt-1 text-sm text-black/50">
-                Singapore first. Track outreach, replies, samples and wins.
+              <p className="mt-1 text-sm text-white/50">
+                まずはシンガポール。送信・返信・商談・サンプル・成約までを一元管理。
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setEditing(blankLead())}
-                className="inline-flex items-center gap-2 rounded-full bg-[#20231f] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black"
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f] transition hover:bg-white"
               >
                 <Plus className="size-4" />
-                Add lead
+                営業先を追加
               </button>
             </div>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-5">
-            <Kpi label="Leads" value={stats.total} />
-            <Kpi label="Sent" value={stats.sent} />
-            <Kpi label="Replies" value={stats.replies} />
-            <Kpi label="Reply rate" value={`${stats.replyRate}%`} />
-            <Kpi label="Won" value={stats.won} />
+            <Kpi label="候補" value={stats.total} />
+            <Kpi label="送信済み" value={stats.sent} />
+            <Kpi label="返信" value={stats.replies} />
+            <Kpi label="返信率" value={`${stats.replyRate}%`} />
+            <Kpi label="成約" value={stats.won} />
           </div>
 
           <div className="mt-4 flex flex-col gap-2 md:flex-row">
-            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-black/10 bg-white px-3">
-              <Search className="size-4 text-black/35" />
+            <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3">
+              <Search className="size-4 text-white/35" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search company, email, category..."
-                className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-black/30"
+                placeholder="会社名・メール・業態で検索..."
+                className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-white/25"
               />
             </label>
 
@@ -249,13 +249,13 @@ export default function SalesKanbanPage() {
               <select
                 value={country}
                 onChange={(event) => setCountry(event.target.value)}
-                className="h-11 w-full appearance-none rounded-xl border border-black/10 bg-white px-3 pr-9 text-sm outline-none"
+                className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-[#111311] px-3 pr-9 text-sm text-white outline-none"
               >
                 {countries.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/40" />
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-white/40" />
             </label>
           </div>
         </header>
@@ -272,14 +272,14 @@ export default function SalesKanbanPage() {
                     if (draggingId) moveLead(draggingId, stage.id)
                     setDraggingId(null)
                   }}
-                  className="flex h-full w-[300px] flex-col rounded-[20px] border border-black/8 bg-white/55 p-3"
+                  className="flex h-full w-[300px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3"
                 >
                   <div className="mb-3 flex items-center justify-between px-1">
                     <div className="flex items-center gap-2">
                       <span className={`size-2 rounded-full ${stageDot(stage.id)}`} />
                       <h2 className="text-sm font-semibold">{stage.label}</h2>
                     </div>
-                    <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs tabular-nums text-black/50">
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs tabular-nums text-white/50">
                       {stageLeads.length}
                     </span>
                   </div>
@@ -292,14 +292,14 @@ export default function SalesKanbanPage() {
                         onDragStart={() => setDraggingId(lead.id)}
                         onDragEnd={() => setDraggingId(null)}
                         onClick={() => setEditing(lead)}
-                        className={`cursor-grab rounded-2xl border border-black/8 bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:-translate-y-0.5 hover:shadow-md ${draggingId === lead.id ? "opacity-40" : ""}`}
+                        className={`cursor-grab rounded-2xl border border-white/10 bg-[#111311] p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition hover:-translate-y-0.5 hover:shadow-md ${draggingId === lead.id ? "opacity-40" : ""}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h3 className="truncate font-semibold tracking-[-0.015em]">
                               {lead.company}
                             </h3>
-                            <div className="mt-1 flex items-center gap-1.5 text-xs text-black/45">
+                            <div className="mt-1 flex items-center gap-1.5 text-xs text-white/45">
                               <Building2 className="size-3" />
                               <span>{lead.category}</span>
                               <span>·</span>
@@ -308,30 +308,30 @@ export default function SalesKanbanPage() {
                           </div>
                           {lead.positive && (
                             <span className="rounded-full bg-[#e6f0df] px-2 py-1 text-[10px] font-semibold text-[#426137]">
-                              POSITIVE
+                              前向き
                             </span>
                           )}
                         </div>
 
                         {lead.email && (
-                          <div className="mt-3 flex items-center gap-2 text-xs text-black/55">
+                          <div className="mt-3 flex items-center gap-2 text-xs text-white/55">
                             <Mail className="size-3.5" />
                             <span className="truncate">{lead.email}</span>
                           </div>
                         )}
 
                         {lead.nextAction && (
-                          <div className="mt-3 rounded-xl bg-[#f5f4ef] p-2.5">
-                            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-black/35">
+                          <div className="mt-3 rounded-xl bg-white/[0.045] p-2.5">
+                            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
                               <CalendarClock className="size-3" />
-                              Next action
+                              次のアクション
                             </div>
-                            <p className="text-xs leading-5 text-black/65">{lead.nextAction}</p>
+                            <p className="text-xs leading-5 text-white/65">{lead.nextAction}</p>
                           </div>
                         )}
 
-                        <div className="mt-3 flex items-center justify-between text-[11px] text-black/35">
-                          <span>{lead.owner || "Unassigned"}</span>
+                        <div className="mt-3 flex items-center justify-between text-[11px] text-white/35">
+                          <span>{lead.owner || "未担当"}</span>
                           <span>{lead.sentAt || "—"}</span>
                         </div>
                       </article>
@@ -339,10 +339,10 @@ export default function SalesKanbanPage() {
 
                     <button
                       onClick={() => setEditing(blankLead(stage.id))}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 py-3 text-xs font-medium text-black/35 transition hover:border-black/25 hover:bg-white hover:text-black/60"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 py-3 text-xs font-medium text-white/35 transition hover:border-black/25 hover:bg-white hover:text-black/60"
                     >
                       <Plus className="size-3.5" />
-                      Add
+                      追加
                     </button>
                   </div>
                 </section>
@@ -354,45 +354,45 @@ export default function SalesKanbanPage() {
 
       {editing && (
         <div
-          className="absolute inset-0 z-50 flex items-end justify-center bg-black/30 p-0 backdrop-blur-sm md:items-center md:p-6"
+          className="absolute inset-0 z-50 flex items-end justify-center bg-black/65 p-0 backdrop-blur-sm md:items-center md:p-6"
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) setEditing(null)
           }}
         >
           <form
             onSubmit={saveLead}
-            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[26px] bg-[#fbfaf6] p-5 shadow-2xl md:rounded-[26px] md:p-6"
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[26px] bg-[#111311] p-5 shadow-2xl md:rounded-[26px] md:p-6"
           >
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/35">
-                  Lead details
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/35">
+                  営業先詳細
                 </div>
                 <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">
-                  {leads.some((lead) => lead.id === editing.id) ? "Edit lead" : "New lead"}
+                  {leads.some((lead) => lead.id === editing.id) ? "営業先を編集" : "新しい営業先"}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-full p-2 text-black/50 hover:bg-black/5"
+                className="rounded-full p-2 text-white/50 hover:bg-white/10"
               >
                 <X className="size-5" />
               </button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Company">
+              <Field label="会社名">
                 <input
                   autoFocus
                   value={editing.company}
                   onChange={(event) => setEditing({ ...editing, company: event.target.value })}
                   className={inputClass}
-                  placeholder="Company name"
+                  placeholder="会社名"
                 />
               </Field>
 
-              <Field label="Stage">
+              <Field label="ステータス">
                 <select
                   value={editing.stage}
                   onChange={(event) =>
@@ -408,7 +408,7 @@ export default function SalesKanbanPage() {
                 </select>
               </Field>
 
-              <Field label="Country">
+              <Field label="国">
                 <input
                   value={editing.country}
                   onChange={(event) => setEditing({ ...editing, country: event.target.value })}
@@ -416,16 +416,16 @@ export default function SalesKanbanPage() {
                 />
               </Field>
 
-              <Field label="Category">
+              <Field label="業態">
                 <input
                   value={editing.category}
                   onChange={(event) => setEditing({ ...editing, category: event.target.value })}
                   className={inputClass}
-                  placeholder="Cafe / Distributor / Retail"
+                  placeholder="カフェ / 卸 / 小売"
                 />
               </Field>
 
-              <Field label="Email">
+              <Field label="メール">
                 <input
                   type="email"
                   value={editing.email}
@@ -435,16 +435,16 @@ export default function SalesKanbanPage() {
                 />
               </Field>
 
-              <Field label="Owner">
+              <Field label="担当">
                 <input
                   value={editing.owner || ""}
                   onChange={(event) => setEditing({ ...editing, owner: event.target.value })}
                   className={inputClass}
-                  placeholder="Akane"
+                  placeholder="あかね"
                 />
               </Field>
 
-              <Field label="Sent date">
+              <Field label="初回送信日">
                 <input
                   type="date"
                   value={editing.sentAt || ""}
@@ -463,32 +463,32 @@ export default function SalesKanbanPage() {
               </Field>
 
               <div className="md:col-span-2">
-                <Field label="Next action">
+                <Field label="次のアクション">
                   <input
                     value={editing.nextAction || ""}
                     onChange={(event) =>
                       setEditing({ ...editing, nextAction: event.target.value })
                     }
                     className={inputClass}
-                    placeholder="Follow up in 4 business days"
+                    placeholder="4営業日後にフォロー"
                   />
                 </Field>
               </div>
 
               <div className="md:col-span-2">
-                <Field label="Memo">
+                <Field label="メモ">
                   <textarea
                     rows={4}
                     value={editing.memo || ""}
                     onChange={(event) => setEditing({ ...editing, memo: event.target.value })}
                     className={`${inputClass} min-h-28 resize-y py-3`}
-                    placeholder="Notes, menu fit, pricing, sample requests..."
+                    placeholder="商品適性・価格・サンプル希望・会話メモなど"
                   />
                 </Field>
               </div>
             </div>
 
-            <label className="mt-4 flex items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-3 text-sm">
+            <label className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm">
               <input
                 type="checkbox"
                 checked={Boolean(editing.positive)}
@@ -497,7 +497,7 @@ export default function SalesKanbanPage() {
                 }
                 className="size-4 accent-[#4f6f45]"
               />
-              Mark as positive response
+              前向きな返信として記録
             </label>
 
             <div className="mt-6 flex items-center justify-between gap-3">
@@ -508,7 +508,7 @@ export default function SalesKanbanPage() {
                   className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
                 >
                   <Trash2 className="size-4" />
-                  Delete
+                  削除
                 </button>
               ) : (
                 <span />
@@ -518,15 +518,15 @@ export default function SalesKanbanPage() {
                 <button
                   type="button"
                   onClick={() => setEditing(null)}
-                  className="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium"
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium"
                 >
-                  Cancel
+                  キャンセル
                 </button>
                 <button
                   type="submit"
-                  className="rounded-full bg-[#20231f] px-5 py-2.5 text-sm font-medium text-white"
+                  className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]"
                 >
-                  Save
+                  保存
                 </button>
               </div>
             </div>
@@ -534,21 +534,21 @@ export default function SalesKanbanPage() {
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-3 right-4 hidden items-center gap-2 rounded-full border border-black/8 bg-white/80 px-3 py-1.5 text-[10px] text-black/40 backdrop-blur md:flex">
+      <div className="pointer-events-none absolute bottom-3 right-4 hidden items-center gap-2 rounded-full border border-white/10 bg-[#111311]/90 px-3 py-1.5 text-[10px] text-white/40 backdrop-blur md:flex">
         <BarChart3 className="size-3" />
-        Data is stored in this browser only
+        データは現在このブラウザ内だけに保存されます
       </div>
     </main>
   )
 }
 
 const inputClass =
-  "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition focus:border-black/25 focus:ring-2 focus:ring-black/5"
+  "h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none transition focus:border-black/25 focus:ring-2 focus:ring-black/5"
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-medium text-black/55">{label}</span>
+      <span className="mb-1.5 block text-xs font-medium text-white/55">{label}</span>
       {children}
     </label>
   )
@@ -556,8 +556,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-black/8 bg-white px-4 py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-black/35">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
         {label}
       </div>
       <div className="mt-1 text-xl font-semibold tracking-[-0.03em]">{value}</div>
