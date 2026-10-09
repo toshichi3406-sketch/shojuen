@@ -138,7 +138,6 @@ type WorkItem = {
   channel?: string
   productIds?: string[]
   memo?: string
-  salesCaseId?: string
 }
 
 type CustomerPrice = {
@@ -2524,80 +2523,6 @@ export default function SalesKanbanPage() {
               })}
             />
 
-            {editingSalesCase.id && (
-              <>
-                <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold">関連業務</h3>
-                      <p className="mt-1 text-xs text-white/40">この営業案件に紐づく業務カード。</p>
-                    </div>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
-                      {work.filter((item) => item.salesCaseId === editingSalesCase.id).length}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    {work.filter((item) => item.salesCaseId === editingSalesCase.id).length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-white/35">
-                        まだ関連業務はありません。
-                      </div>
-                    ) : (
-                      work
-                        .filter((item) => item.salesCaseId === editingSalesCase.id)
-                        .map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setEditingWork(item)}
-                            className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0d0f0d] p-3 text-left hover:border-white/20"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium">{item.title}</div>
-                              <div className="mt-1 text-xs text-white/35">{STATUSES.find((row) => row.id === item.status)?.label || item.status}</div>
-                            </div>
-                            <div className="text-xs text-white/35">{item.assignee || "未担当"}</div>
-                          </button>
-                        ))
-                    )}
-                  </div>
-                </section>
-
-                <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold">最近の活動履歴</h3>
-                      <p className="mt-1 text-xs text-white/40">この営業案件に直接紐づく活動。</p>
-                    </div>
-                    <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
-                      {events.filter((event) => event.salesCaseId === editingSalesCase.id).length}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 space-y-2">
-                    {events.filter((event) => event.salesCaseId === editingSalesCase.id).length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-white/35">
-                        まだ案件に直接紐づく活動履歴はありません。
-                      </div>
-                    ) : (
-                      events
-                        .filter((event) => event.salesCaseId === editingSalesCase.id)
-                        .slice(0, 8)
-                        .map((event) => (
-                          <div key={event.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/35">
-                              <span>{event.eventDate ? new Date(event.eventDate).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "日時不明"}</span>
-                              <Tag>{event.eventType}</Tag>
-                            </div>
-                            {event.note && <div className="mt-2 text-xs leading-5 text-white/60">{event.note}</div>}
-                          </div>
-                        ))
-                    )}
-                  </div>
-                </section>
-              </>
-            )}
-
             <ModalActions
               existing={Boolean(editingSalesCase.id) && ["owner", "admin"].includes(auth.user?.role || "")}
               onDelete={async () => {
@@ -2625,16 +2550,7 @@ export default function SalesKanbanPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="件名"><input autoFocus className={inputClass} value={editingWork.title} onChange={(e) => setEditingWork({ ...editingWork, title: e.target.value })} /></Field>
               <Field label="状態"><select className={inputClass} value={editingWork.status} onChange={(e) => setEditingWork({ ...editingWork, status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></Field>
-              <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => {
-  const customerId = e.target.value || undefined
-  const currentCase = salesCases.find((salesCase) => salesCase.id === editingWork.salesCaseId)
-  setEditingWork({
-    ...editingWork,
-    customerId,
-    salesCaseId: currentCase && customerId && currentCase.customerId === customerId ? editingWork.salesCaseId : undefined,
-  })
-}}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
-              <Field label="営業案件"><select className={inputClass} value={editingWork.salesCaseId || ""} onChange={(e) => setEditingWork({ ...editingWork, salesCaseId: e.target.value || undefined })}><option value="">なし</option>{salesCases.filter((salesCase) => !editingWork.customerId || salesCase.customerId === editingWork.customerId).map((salesCase) => <option key={salesCase.id} value={salesCase.id}>{salesCase.title || salesCase.theme}</option>)}</select></Field>
+              <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => setEditingWork({ ...editingWork, customerId: e.target.value || undefined })}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
               <Field label="業務種別"><select className={inputClass} value={editingWork.workType || ""} onChange={(e) => setEditingWork({ ...editingWork, workType: e.target.value })}>{WORK_TYPES.map((v) => <option key={v}>{v}</option>)}</select></Field>
               <Field label="担当"><input className={inputClass} value={editingWork.assignee || ""} onChange={(e) => setEditingWork({ ...editingWork, assignee: e.target.value })} /></Field>
               <Field label="優先度"><select className={inputClass} value={editingWork.priority || "中"} onChange={(e) => setEditingWork({ ...editingWork, priority: e.target.value as WorkItem["priority"] })}>{["低","中","高","緊急"].map((v) => <option key={v}>{v}</option>)}</select></Field>
