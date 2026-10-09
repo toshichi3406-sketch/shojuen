@@ -90,7 +90,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const [products, customers, prices, workItems, links, docs, events] = await Promise.all([
+    const [products, customers, prices, workItems, links, docs, events, shippingRates] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
       sb("customer_prices_current?select=*", token),
@@ -98,6 +98,7 @@ export async function GET() {
       sb("work_item_products?select=*", token),
       sb("product_documents?select=*", token),
       sb("work_events?select=*&order=event_date.desc", token),
+      sb("shipping_rates?select=*&order=created_at.desc", token),
     ])
 
     const mappedProducts = (products || []).map((p: any) => ({
@@ -161,6 +162,29 @@ export async function GET() {
       sourceCandidateId: e.source_candidate_id || undefined,
     }))
 
+    const mappedShippingRates = (shippingRates || []).map((r: any) => ({
+      id: r.id,
+      rateStage: r.rate_stage || "",
+      origin: r.origin || "",
+      destination: r.destination || "",
+      carrier: r.carrier || "",
+      service: r.service || "",
+      weightFromKg: r.weight_from_kg == null ? "" : String(r.weight_from_kg),
+      weightToKg: r.weight_to_kg == null ? "" : String(r.weight_to_kg),
+      actualWeightKg: r.actual_weight_kg == null ? "" : String(r.actual_weight_kg),
+      sizeClass: r.size_class || "",
+      price: r.price == null ? "" : String(r.price),
+      currency: r.currency || "JPY",
+      transitTime: r.transit_time || "",
+      terms: r.terms || "",
+      source: r.source || "",
+      verifiedAt: r.verified_at || "",
+      shipmentDate: r.shipment_date || "",
+      customerId: r.customer_id || "",
+      note: r.note || "",
+      createdAt: r.created_at,
+    }))
+
     const mappedWork = (workItems || []).map((w: any) => ({
       id: w.id,
       title: w.title,
@@ -185,6 +209,7 @@ export async function GET() {
       customers: mappedCustomers,
       products: mappedProducts,
       events: mappedEvents,
+      shippingRates: mappedShippingRates,
     })
   } catch (error) {
     return NextResponse.json(
