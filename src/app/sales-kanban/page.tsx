@@ -443,6 +443,28 @@ export default function SalesKanbanPage() {
     setEvents((current) => [event, ...current])
   }
 
+  async function appendSalesCaseEvent(
+    salesCaseId: string,
+    eventType: string,
+    label: string,
+    channel?: string
+  ) {
+    const note = window.prompt(`${label}のメモを入力してください（空欄でも登録できます）`, "") ?? null
+    if (note === null) return
+
+    const event: WorkEvent = {
+      id: uid(),
+      salesCaseId,
+      eventType,
+      eventDate: new Date().toISOString(),
+      channel,
+      note,
+      source: "manual",
+    }
+    await saveShared("work_event", event)
+    setEvents((current) => [event, ...current])
+  }
+
   async function deleteShared(type: "work" | "customer" | "product" | "sales_case", id: string) {
     if (!(auth.configured && auth.authenticated)) return
     const response = await fetch(
@@ -2582,7 +2604,7 @@ export default function SalesKanbanPage() {
 
             {editingSalesCase.id && (
               <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">最近の活動履歴</h3>
                     <p className="mt-1 text-xs text-white/40">この営業案件に直接紐づく活動。</p>
@@ -2590,6 +2612,28 @@ export default function SalesKanbanPage() {
                   <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
                     {events.filter((event) => event.salesCaseId === editingSalesCase.id).length}
                   </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    ["email_sent", "メール送信", "Email"],
+                    ["reply_received", "返信あり", "Email"],
+                    ["quote_sent", "見積提示", "Email"],
+                    ["sample_sent", "サンプル送付", "その他"],
+                    ["note", "メモ", "その他"],
+                  ].map(([eventType, label, channel]) => (
+                    <button
+                      key={eventType}
+                      type="button"
+                      onClick={() => appendSalesCaseEvent(editingSalesCase.id, eventType, label, channel).catch((error) => {
+                        console.error(error)
+                        alert(error instanceof Error ? error.message : "活動履歴の保存に失敗しました。")
+                      })}
+                      className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
+                    >
+                      ＋ {label}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="mt-3 space-y-2">
