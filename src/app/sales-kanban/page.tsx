@@ -29,6 +29,13 @@ type Status =
 
 type Tab = "work" | "customers" | "products"
 
+type AuthState = {
+  loading: boolean
+  configured: boolean
+  authenticated: boolean
+  user?: { email?: string; role?: string; displayName?: string }
+}
+
 type WorkItem = {
   id: string
   title: string
@@ -187,6 +194,25 @@ export default function SalesKanbanPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [auth, setAuth] = useState<AuthState>({ loading: true, configured: false, authenticated: false })
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState("")
+  const [loginBusy, setLoginBusy] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/workboard/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        setAuth({
+          loading: false,
+          configured: Boolean(data.configured),
+          authenticated: Boolean(data.authenticated),
+          user: data.user,
+        })
+      })
+      .catch(() => setAuth({ loading: false, configured: false, authenticated: false }))
+  }, [])
 
   useEffect(() => {
     try {
@@ -386,6 +412,90 @@ export default function SalesKanbanPage() {
     })
   }
 
+  async function login(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setLoginBusy(true)
+    setLoginError("")
+    try {
+      const response = await fetch("/api/workboard/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setLoginError(data.error || "ログインできませんでした。")
+        return
+      }
+      const session = await fetch("/api/workboard/auth/session", { cache: "no-store" })
+      const sessionData = await session.json()
+      if (!sessionData.authenticated) {
+        setLoginError("このアカウントはWORKBOARDの利用許可がありません。")
+        return
+      }
+      setAuth({
+        loading: false,
+        configured: true,
+        authenticated: true,
+        user: sessionData.user,
+      })
+      setLoginPassword("")
+    } finally {
+      setLoginBusy(false)
+    }
+  }
+
+  async function logout() {
+    await fetch("/api/workboard/auth/logout", { method: "POST" })
+    setAuth({ loading: false, configured: true, authenticated: false })
+  }
+
+  if (auth.loading) {
+    return (
+      <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] text-[#f4f5f2]">
+        <div className="text-sm text-white/45">WORKBOARDを確認中...</div>
+      </main>
+    )
+  }
+
+  if (auth.configured && !auth.authenticated) {
+    return (
+      <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] px-5 text-[#f4f5f2]">
+        <form onSubmit={login} className="w-full max-w-sm rounded-[24px] border border-white/10 bg-[#111311] p-6 shadow-2xl">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/40">SHOJUEN WORKBOARD</div>
+          <h1 className="text-2xl font-semibold">社内ログイン</h1>
+          <p className="mt-2 text-sm leading-6 text-white/45">許可されたメンバーだけが業務・取引先・価格情報を閲覧できます。</p>
+          <div className="mt-6 space-y-3">
+            <input
+              type="email"
+              required
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              className={inputClass}
+              placeholder="メールアドレス"
+            />
+            <input
+              type="password"
+              required
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className={inputClass}
+              placeholder="パスワード"
+            />
+          </div>
+          {loginError && <p className="mt-3 text-xs leading-5 text-red-300">{loginError}</p>}
+          <button
+            type="submit"
+            disabled={loginBusy}
+            className="mt-5 w-full rounded-xl bg-[#eef3ea] px-4 py-3 text-sm font-semibold text-[#11150f] disabled:opacity-50"
+          >
+            {loginBusy ? "確認中..." : "ログイン"}
+          </button>
+        </form>
+      </main>
+    )
+  }
+
   return (
     <main className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
       <div className="flex h-full flex-col">
@@ -409,6 +519,12 @@ export default function SalesKanbanPage() {
               </p>
             </div>
 
+            <div className="flex items-center gap-2">
+              {auth.configured && auth.authenticated && (
+                <button onClick={logout} className="rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
+                  ログアウト
+                </button>
+              )}
             <button
               onClick={() => {
                 if (tab === "work") setEditingWork(blankWork())
@@ -420,6 +536,7 @@ export default function SalesKanbanPage() {
               <Plus className="size-4" />
               {tab === "work" ? "業務を追加" : tab === "customers" ? "取引先を追加" : "商品を追加"}
             </button>
+            </div>
           </div>
 
           <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
@@ -734,7 +851,7 @@ export default function SalesKanbanPage() {
 
       <div className="pointer-events-none absolute bottom-3 right-4 hidden items-center gap-2 rounded-full border border-white/10 bg-[#111311]/90 px-3 py-1.5 text-[10px] text-white/40 backdrop-blur md:flex">
         <FileText className="size-3" />
-        現在はこのブラウザ内保存。共有DB化が次の段階。
+        {auth.configured ? "認証接続済み・データ移行準備中" : "DB未接続の試作モード"}
       </div>
     </main>
   )
