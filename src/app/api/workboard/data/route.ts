@@ -93,7 +93,7 @@ export async function GET() {
     const [products, customers, prices, workItems, links, docs] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
-      sb("customer_prices?select=*", token),
+      sb("customer_prices_current?select=*", token),
       sb("work_items?select=*&order=created_at.asc", token),
       sb("work_item_products?select=*", token),
       sb("product_documents?select=*", token),
@@ -217,30 +217,53 @@ export async function POST(request: NextRequest) {
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify(customerToDb(data)),
       })
-      await sb(`customer_prices?customer_id=eq.${encodeURIComponent(data.id)}`, token, {
-        method: "DELETE",
-        headers: { Prefer: "return=minimal" },
-      })
       if ((data.prices || []).length) {
-        await sb("customer_prices", token, {
-          method: "POST",
-          headers: { Prefer: "return=minimal" },
-          body: JSON.stringify(
-            data.prices.map((row: any) => ({
-              customer_id: data.id,
-              product_id: row.productId,
-              price: row.price === "" ? null : Number(row.price),
-              currency: row.currency || "JPY",
-              unit: row.unit || "kg",
-              moq: row.moq || null,
-              shipping_terms: row.shipping || null,
-              payment_terms: row.payment || null,
-              effective_from: row.effectiveFrom || null,
-              is_current: true,
-              ai_locked: row.locked !== false,
-            }))
-          ),
+        const currentPrices = await sb(
+          `customer_prices_current?select=*&customer_id=eq.${encodeURIComponent(data.id)}`,
+          token
+        )
+
+        const normalize = (row: any) => ({
+          productId: row.product_id ?? row.productId ?? "",
+          price: row.price == null || row.price === "" ? null : Number(row.price),
+          currency: row.currency || "JPY",
+          unit: row.unit || "kg",
+          moq: row.moq || null,
+          shipping: row.shipping_terms ?? row.shipping ?? null,
+          payment: row.payment_terms ?? row.payment ?? null,
+          effectiveFrom: row.effective_from ?? row.effectiveFrom ?? null,
         })
+
+        const inserts = (data.prices || [])
+          .filter((row: any) => {
+            const current = (currentPrices || []).find((p: any) => p.product_id === row.productId)
+            if (!current) return true
+            const a = normalize(current)
+            const b = normalize(row)
+            return JSON.stringify(a) !== JSON.stringify(b)
+          })
+          .map((row: any) => ({
+            customer_id: data.id,
+            product_id: row.productId,
+            price: row.price === "" ? null : Number(row.price),
+            currency: row.currency || "JPY",
+            unit: row.unit || "kg",
+            moq: row.moq || null,
+            shipping_terms: row.shipping || null,
+            payment_terms: row.payment || null,
+            effective_from: row.effectiveFrom || new Date().toISOString().slice(0, 10),
+            is_current: true,
+            ai_locked: true,
+            approved_at: new Date().toISOString(),
+          }))
+
+        if (inserts.length) {
+          await sb("customer_prices", token, {
+            method: "POST",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify(inserts),
+          })
+        }
       }
     } else if (type === "product") {
       await sb("products?on_conflict=id", token, {
