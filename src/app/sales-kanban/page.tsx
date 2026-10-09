@@ -1064,7 +1064,6 @@ export default function SalesKanbanPage() {
       nextAction: "",
       assignee,
       productIds: [],
-      salesCaseId: undefined,
     }
   }
 
