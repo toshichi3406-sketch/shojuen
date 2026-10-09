@@ -547,7 +547,7 @@ export default function SalesKanbanPage() {
     const existing = aiCostRows[candidate.id]
     if (existing?.length) return existing
     return [{
-      id: candidate.id + "-cost-1",
+      id: uid(),
       cost_type: String(candidate.payload?.cost_type || "base_purchase"),
       label: candidate.title || "原価",
       amount: String(candidate.payload?.amount || candidate.payload?.price || candidate.payload?.cost || ""),
@@ -730,46 +730,64 @@ export default function SalesKanbanPage() {
     const productId = aiCostGroupProduct[groupKey] || ""
     if (!productId) throw new Error("一括反映する商品を選択してください。")
     const vendor = aiCostGroupVendor[groupKey] || groupKey
-    const rows = candidates.flatMap((candidate) =>
-      getAiCostRows(candidate).map((row) => ({
-        ...row,
-        supplier_or_vendor: row.supplier_or_vendor || vendor,
-      }))
-    )
 
-    if (!rows.length) throw new Error("原価内訳を1件以上入力してください。")
-    for (const row of rows) {
-      const amount = Number(String(row.amount || "").replace(/[,\s¥￥]/g, ""))
-      if (!row.label?.trim() || !Number.isFinite(amount) || amount < 0) {
-        throw new Error("各行の内訳名と金額を確認してください。")
+    const prepared = candidates.map((candidate) => {
+      const draft = aiPriceDraft[candidate.id] || {}
+      const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
+      const amount = draft.amount || String(payload.amount || payload.price || payload.cost || "")
+      const costType = draft.cost_type || String(payload.cost_type || "")
+      if (!amount || !Number.isFinite(Number(String(amount).replace(/[,\\s¥￥]/g, "")))) {
+        throw new Error("金額を確認してください: " + (candidate.title || "原価候補"))
       }
-      if (!row.cost_type) throw new Error("各行の原価区分を選択してください。")
-    }
+      if (!costType) {
+        throw new Error("原価区分を選択してください: " + (candidate.title || "原価候補"))
+      }
+      return {
+        candidate,
+        payload: {
+          ...payload,
+          price_classification: "supplier_cost",
+          product_id: productId,
+          amount,
+          cost_type: costType,
+          currency: draft.currency || String(payload.currency || "JPY"),
+          unit: draft.unit || String(payload.unit || "kg"),
+          effective_from: draft.effective_from || String(payload.effective_from || ""),
+          supplier_or_vendor: draft.supplier_or_vendor || vendor,
+        },
+      }
+    })
 
     setAiBulkCostBusy((current) => ({ ...current, [groupKey]: true }))
     try {
-      for (const row of rows) {
-        await saveShared("product_cost", {
-          id: row.id || uid(),
-          productId,
-          costType: row.cost_type as ProductCost["costType"],
-          label: row.label.trim(),
-          amount: row.amount,
-          currency: row.currency || "JPY",
-          unit: row.unit || "kg",
-          effectiveFrom: row.effective_from || new Date().toISOString().slice(0, 10),
-          supplierOrVendor: row.supplier_or_vendor || "",
-        } as ProductCost)
+      for (const item of prepared) {
+        const response = await fetch("/api/workboard/ai-import", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: item.candidate.id,
+            candidate_type: item.candidate.candidate_type,
+            title: item.candidate.title,
+            payload: item.payload,
+          }),
+        })
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(result.error || "原価の一括反映に失敗しました。")
       }
 
-      for (const candidate of candidates) {
-        await updateAiCandidate(candidate.id, "approved")
-      }
+      const approvedIds = new Set(candidates.map((candidate) => candidate.id))
+      setAiCandidates((current) =>
+        current.map((item) => approvedIds.has(item.id) ? { ...item, status: "approved" } : item)
+      )
 
       const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
       const refreshedData = await refreshed.json().catch(() => ({}))
       if (refreshed.ok) {
-        setProductCosts(Array.isArray(refreshedData.productCosts) ? refreshedData.productCosts : [])
+        setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
+        setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
+        setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
+        setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
+        setShippingRates(Array.isArray(refreshedData.shippingRates) ? refreshedData.shippingRates : [])
       }
     } finally {
       setAiBulkCostBusy((current) => ({ ...current, [groupKey]: false }))
@@ -1510,7 +1528,7 @@ export default function SalesKanbanPage() {
                 </div>
               </div>
 
-              {supplierCostGroups.length > 0 && (
+              {false && supplierCostGroups.length > 0 && (
                 <div className="mb-4 space-y-3">
                   {supplierCostGroups.map(({ key, candidates }) => {
                     const total = candidates.reduce((sum, candidate) => {
@@ -1519,7 +1537,6 @@ export default function SalesKanbanPage() {
                       const value = Number(String(raw).replace(/[,\\s¥￥]/g, ""))
                       return Number.isFinite(value) ? sum + value : sum
                     }, 0)
-                    const totalRows = candidates.reduce((sum, candidate) => sum + getAiCostRows(candidate).length, 0)
                     return (
                       <section key={key} className="rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.04] p-4">
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -1555,10 +1572,10 @@ export default function SalesKanbanPage() {
 
                         <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
                           {candidates.map((candidate, index) => (
-                            <div key={candidate.id} className={"grid gap-2 bg-black/10 p-3 md:grid-cols-[1fr_150px_130px_80px_auto] " + (index ? "border-t border-white/10" : "")}>
+                            <div key={candidate.id} className={"grid gap-2 bg-black/10 p-3 md:grid-cols-[1fr_150px_130px_80px] " + (index ? "border-t border-white/10" : "")}>
                               <div className="min-w-0">
                                 <div className="truncate text-xs font-medium">{candidate.title || "原価候補"}</div>
-                                <div className="mt-1 text-[10px] text-white/35">内訳 {getAiCostRows(candidate).length}件。追加分の詳細は下の候補カードで編集できます。</div>
+                                <div className="mt-1 text-[10px] text-white/35">候補ごとに区分と金額だけ確認</div>
                               </div>
                               <select
                                 value={aiPriceDraft[candidate.id]?.cost_type ?? String(candidate.payload?.cost_type || "")}
@@ -1583,13 +1600,6 @@ export default function SalesKanbanPage() {
                               <div className="flex h-9 items-center rounded-lg border border-white/10 bg-white/[0.03] px-2 text-xs text-white/45">
                                 {String(candidate.payload?.currency || "JPY")}
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => addAiCostRow(candidate)}
-                                className="h-9 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-[10px] text-white/70"
-                              >
-                                ＋ 内訳
-                              </button>
                             </div>
                           ))}
                         </div>
@@ -1600,7 +1610,7 @@ export default function SalesKanbanPage() {
                           onClick={() => applySupplierCostGroup(key, candidates).catch((error) => alert(error instanceof Error ? error.message : "原価の一括反映に失敗しました。"))}
                           className="mt-3 w-full rounded-xl bg-[#eef3ea] px-4 py-2.5 text-xs font-semibold text-[#11150f] disabled:opacity-50"
                         >
-                          {aiBulkCostBusy[key] ? "反映中..." : totalRows + "件の内訳を原価履歴へ一括反映"}
+                          {aiBulkCostBusy[key] ? "反映中..." : candidates.length + "件を原価履歴へ一括反映"}
                         </button>
                       </section>
                     )
