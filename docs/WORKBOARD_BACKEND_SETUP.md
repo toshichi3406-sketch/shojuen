@@ -11,11 +11,19 @@ The current UI is a prototype using browser localStorage. The shared version sho
 - Certificates/spec sheets live in the private `workboard-private` storage bucket.
 - Commercial terms are authoritative only from `customer_prices`; AI must not infer or alter price, MOQ, freight or payment terms from email history.
 
+## API keys
+
+Use the current Supabase key model:
+- Browser/client: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_...`)
+- Server-only controlled integrations: `SUPABASE_SECRET_KEY` (`sb_secret_...`)
+
+Do not use a secret key in browser code. Supabase is deprecating the legacy anon/service_role keys by the end of 2026.
+
 ## Intended identities
 
 - owner: 松下さん
 - member: employees such as あかねさん
-- ai: future controlled integration identities for ChatGPT / Claude, ideally via server-side API routes rather than exposing service-role credentials
+- ai: future controlled integration identities for ChatGPT / Claude, ideally via server-side API routes rather than exposing secret credentials
 
 ## Data model
 
@@ -24,12 +32,12 @@ The current UI is a prototype using browser localStorage. The shared version sho
 - Mxxx: `products`
 - `customer_prices`: customer-specific approved commercial terms
 - `work_item_products`: links work to products
-- `work_events`: immutable-ish activity history such as outbound email, reply, sample shipment and decision
+- `work_events`: activity history such as outbound email, reply, sample shipment and decision
 - `product_documents`: metadata pointing to files in private storage
 
 ## Setup sequence
 
-1. Create a private Supabase project.
+1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor.
 3. Enable the desired Auth provider. Email magic-link or email/password is sufficient initially.
 4. Add the approved users to `public.app_users` using their Supabase auth UUIDs.
@@ -40,4 +48,4 @@ The current UI is a prototype using browser localStorage. The shared version sho
 
 ## Important
 
-Do not put a real Supabase service-role key into GitHub, client-side code or NEXT_PUBLIC_* variables.
+Never put a real `sb_secret_...` key into GitHub, client-side code or any `NEXT_PUBLIC_*` variable.
