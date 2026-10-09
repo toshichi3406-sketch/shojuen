@@ -486,13 +486,14 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "配送先が確認できません。送料マスタ反映前に配送先が必要です。" }, { status: 400 })
       }
 
-      const weightSingle = payload.weight_kg != null ? Number(payload.weight_kg) : null
-      const weightFrom = payload.weight_from_kg != null
-        ? Number(payload.weight_from_kg)
-        : (Number.isFinite(weightSingle as number) ? weightSingle : null)
-      const weightTo = payload.weight_to_kg != null
-        ? Number(payload.weight_to_kg)
-        : (Number.isFinite(weightSingle as number) ? weightSingle : null)
+      const parseWeight = (value: unknown) => {
+        if (value == null || value === "") return null
+        const parsed = Number(String(value).replace(/[,\s]/g, "").replace(/kg$/i, ""))
+        return Number.isFinite(parsed) ? parsed : null
+      }
+      const weightSingle = parseWeight(payload.weight_kg)
+      const weightFrom = parseWeight(payload.weight_from_kg) ?? weightSingle
+      const weightTo = parseWeight(payload.weight_to_kg) ?? weightSingle
 
       await sb("shipping_rates", token, {
         method: "POST",
@@ -514,7 +515,7 @@ export async function PUT(request: NextRequest) {
           note: payload.note || payload.memo || body.title || null,
           rate_stage: rateStage,
           shipment_date: payload.shipment_date || payload.shipped_date || null,
-          actual_weight_kg: payload.actual_weight_kg != null ? Number(payload.actual_weight_kg) : null,
+          actual_weight_kg: parseWeight(payload.actual_weight_kg),
           customer_id: payload.customer_id || null,
           created_by: null,
           updated_at: now,
