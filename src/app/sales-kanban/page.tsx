@@ -1174,7 +1174,7 @@ export default function SalesKanbanPage() {
                           </div>
 
                           <div className="w-full shrink-0 space-y-2 md:w-72">
-                            {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update") && (
+                            {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                               <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
                                 <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-white/35">紐付け確認</div>
 
@@ -1205,6 +1205,24 @@ export default function SalesKanbanPage() {
                                     </select>
                                     <p className="text-[10px] leading-4 text-white/35">
                                       既存取引先なら選択。未選択なら新しいC番号を発行します。価格情報はここでは反映しません。
+                                    </p>
+                                  </>
+                                )}
+
+                                {candidate.candidate_type === "product_update" && (
+                                  <>
+                                    <select
+                                      value={(aiMatchProducts[candidate.id] || [])[0] || ""}
+                                      onChange={(e) => setAiMatchProducts((current) => ({ ...current, [candidate.id]: e.target.value ? [e.target.value] : [] }))}
+                                      className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">新規商品として登録</option>
+                                      {products.map((product) => (
+                                        <option key={product.id} value={product.id}>既存に反映: {product.id} {product.name}</option>
+                                      ))}
+                                    </select>
+                                    <p className="text-[10px] leading-4 text-white/35">
+                                      既存商品なら選択。未選択なら新しいM番号を発行します。原価・標準卸価格はここでは変更しません。
                                     </p>
                                   </>
                                 )}
@@ -1248,7 +1266,7 @@ export default function SalesKanbanPage() {
                             )}
 
                             <div className="flex flex-wrap gap-2">
-                              {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update") && (
+                              {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                                 <button
                                   onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
                                   className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
@@ -1257,7 +1275,9 @@ export default function SalesKanbanPage() {
                                     ? "単独履歴として反映"
                                     : candidate.candidate_type === "customer_update" && !aiMatchCustomer[candidate.id]
                                       ? "新規取引先として反映"
-                                      : "正式反映"}
+                                      : candidate.candidate_type === "product_update" && !(aiMatchProducts[candidate.id] || []).length
+                                        ? "新規商品として反映"
+                                        : "正式反映"}
                                 </button>
                               )}
                               <button
