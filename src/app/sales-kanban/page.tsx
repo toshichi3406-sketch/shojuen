@@ -1273,6 +1273,18 @@ export default function SalesKanbanPage() {
     setAuth({ loading: false, configured: true, authenticated: false })
   }
 
+  function salesCaseLastContact(caseId: string, stored?: string) {
+    const contactTypes = new Set(["email_sent", "reply_received", "quote_sent", "sample_sent"])
+    const latestEvent = events
+      .filter((event) => event.salesCaseId === caseId && contactTypes.has(event.eventType) && event.eventDate)
+      .map((event) => event.eventDate)
+      .sort((a, b) => b.localeCompare(a))[0]
+
+    if (!stored) return latestEvent || ""
+    if (!latestEvent) return stored
+    return latestEvent > stored ? latestEvent : stored
+  }
+
   if (auth.loading) {
     return (
       <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] text-[#f4f5f2]">
@@ -1439,7 +1451,7 @@ export default function SalesKanbanPage() {
                       const aDate = a.nextFollowUpDate || "9999-12-31"
                       const bDate = b.nextFollowUpDate || "9999-12-31"
                       if (aDate !== bDate) return aDate.localeCompare(bDate)
-                      return (a.lastContactAt || "").localeCompare(b.lastContactAt || "")
+                      return salesCaseLastContact(a.id, a.lastContactAt).localeCompare(salesCaseLastContact(b.id, b.lastContactAt))
                     })
                     .map((item) => {
                       const customer = customers.find((row) => row.id === item.customerId)
@@ -1473,9 +1485,9 @@ export default function SalesKanbanPage() {
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/35">
                             <span>{item.assignee || "未担当"}</span>
-                            <span className={item.lastContactAt ? "text-white/50" : ""}>
-                              {item.lastContactAt
-                                ? `最終接触 ${new Date(item.lastContactAt).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`
+                            <span className={salesCaseLastContact(item.id, item.lastContactAt) ? "text-white/50" : ""}>
+                              {salesCaseLastContact(item.id, item.lastContactAt)
+                                ? `最終接触 ${new Date(salesCaseLastContact(item.id, item.lastContactAt)).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })}`
                                 : "接触記録なし"}
                             </span>
                           </div>
