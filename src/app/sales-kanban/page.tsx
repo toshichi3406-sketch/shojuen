@@ -1134,7 +1134,7 @@ export default function SalesKanbanPage() {
     const productIds = source.productIds || []
     return {
       ...base,
-      orderType: "first",
+      orderType: source.caseType === "new_business" ? "first" : "repeat",
       items: productIds.length
         ? productIds.map((productId) => ({
             id: uid(),
@@ -1241,7 +1241,6 @@ export default function SalesKanbanPage() {
     const original = salesCases.find((row) => row.id === editingSalesCase.id)
     const becameWon =
       Boolean(editingSalesCase.id) &&
-      editingSalesCase.caseType === "new_business" &&
       editingSalesCase.stage === "won" &&
       original?.stage !== "won"
     const wonTimestamp = becameWon ? new Date().toISOString() : editingSalesCase.wonAt
@@ -2989,7 +2988,9 @@ export default function SalesKanbanPage() {
                   className="mt-1 size-4"
                 />
                 <div>
-                  <div className="text-sm font-semibold">初回受注を登録する</div>
+                  <div className="text-sm font-semibold">
+                    {wonFollowupSource.caseType === "new_business" ? "初回受注を登録する" : "リピート受注を登録する"}
+                  </div>
                   <div className="mt-1 text-xs leading-5 text-white/45">
                     商品・数量・単価・送料・受注金額を実績として残します。
                   </div>
