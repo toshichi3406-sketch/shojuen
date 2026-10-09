@@ -397,6 +397,13 @@ export default function SalesKanbanPage() {
       payload.product_ids = aiMatchProducts[candidate.id]
     }
 
+    if (candidate.candidate_type === "price_candidate") {
+      const selectedClass = aiPriceClass[candidate.id] || String(payload.price_classification || "")
+      const selectedStage = aiShippingStage[candidate.id] || String(payload.shipping_stage || "")
+      if (selectedClass) payload.price_classification = selectedClass
+      if (selectedClass === "shipping_rate" && selectedStage) payload.shipping_stage = selectedStage
+    }
+
     if (
       candidate.candidate_type === "price_candidate" &&
       String(payload.price_classification || "") === "shipping_rate"
