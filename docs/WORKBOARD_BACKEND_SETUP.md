@@ -49,3 +49,8 @@ Do not use a secret key in browser code. Supabase is deprecating the legacy anon
 ## Important
 
 Never put a real `sb_secret_...` key into GitHub, client-side code or any `NEXT_PUBLIC_*` variable.
+
+
+## Deployment note
+
+Vercel environment variables configured for Production / Preview / Development. A new branch deployment is required for the values to take effect.
