@@ -215,6 +215,25 @@ export default function SalesKanbanPage() {
   }, [])
 
   useEffect(() => {
+    if (auth.loading) return
+
+    if (auth.configured && auth.authenticated) {
+      fetch("/api/workboard/data", { cache: "no-store" })
+        .then(async (response) => {
+          const data = await response.json().catch(() => ({}))
+          if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
+          setWork(Array.isArray(data.work) ? data.work : [])
+          setCustomers(Array.isArray(data.customers) ? data.customers : [])
+          setProducts(Array.isArray(data.products) ? data.products : [])
+          setHydrated(true)
+        })
+        .catch((error) => {
+          console.error(error)
+          setHydrated(true)
+        })
+      return
+    }
+
     try {
       const savedWork = window.localStorage.getItem(WORK_KEY)
       const savedCustomers = window.localStorage.getItem(CUSTOMER_KEY)
@@ -228,14 +247,35 @@ export default function SalesKanbanPage() {
       setProducts(starterProducts)
     }
     setHydrated(true)
-  }, [])
+  }, [auth.loading, auth.configured, auth.authenticated])
 
   useEffect(() => {
-    if (!hydrated) return
+    if (!hydrated || (auth.configured && auth.authenticated)) return
     window.localStorage.setItem(WORK_KEY, JSON.stringify(work))
     window.localStorage.setItem(CUSTOMER_KEY, JSON.stringify(customers))
     window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
-  }, [work, customers, products, hydrated])
+  }, [work, customers, products, hydrated, auth.configured, auth.authenticated])
+
+  async function saveShared(type: "work" | "customer" | "product", data: WorkItem | Customer | Product) {
+    if (!(auth.configured && auth.authenticated)) return
+    const response = await fetch("/api/workboard/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, data }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || "共有DBへの保存に失敗しました。")
+  }
+
+  async function deleteShared(type: "work" | "customer" | "product", id: string) {
+    if (!(auth.configured && auth.authenticated)) return
+    const response = await fetch(
+      `/api/workboard/data?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`,
+      { method: "DELETE" }
+    )
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || "共有DBからの削除に失敗しました。")
+  }
 
   const filteredWork = useMemo(() => {
     const q = workQuery.trim().toLowerCase()
@@ -289,44 +329,70 @@ export default function SalesKanbanPage() {
   const decisionCount = work.filter((item) => item.status === "decision").length
   const dueCount = work.filter((item) => item.dueDate && item.status !== "done").length
 
-  function moveWork(id: string, status: Status) {
-    setWork((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
+  async function moveWork(id: string, status: Status) {
+    const currentItem = work.find((item) => item.id === id)
+    if (!currentItem) return
+    const updated = { ...currentItem, status }
+    setWork((current) => current.map((item) => (item.id === id ? updated : item)))
+    try {
+      await saveShared("work", updated)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
-  function saveWork(event: FormEvent<HTMLFormElement>) {
+  async function saveWork(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingWork || !editingWork.title.trim()) return
+    const item = editingWork
     setWork((current) => {
-      const exists = current.some((item) => item.id === editingWork.id)
+      const exists = current.some((row) => row.id === item.id)
       return exists
-        ? current.map((item) => (item.id === editingWork.id ? editingWork : item))
-        : [...current, editingWork]
+        ? current.map((row) => (row.id === item.id ? item : row))
+        : [...current, item]
     })
     setEditingWork(null)
+    try {
+      await saveShared("work", item)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
-  function saveCustomer(event: FormEvent<HTMLFormElement>) {
+  async function saveCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingCustomer || !editingCustomer.name.trim()) return
+    const item = editingCustomer
     setCustomers((current) => {
-      const exists = current.some((item) => item.id === editingCustomer.id)
+      const exists = current.some((row) => row.id === item.id)
       return exists
-        ? current.map((item) => (item.id === editingCustomer.id ? editingCustomer : item))
-        : [...current, editingCustomer]
+        ? current.map((row) => (row.id === item.id ? item : row))
+        : [...current, item]
     })
     setEditingCustomer(null)
+    try {
+      await saveShared("customer", item)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
-  function saveProduct(event: FormEvent<HTMLFormElement>) {
+  async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!editingProduct || !editingProduct.name.trim()) return
+    const item = editingProduct
     setProducts((current) => {
-      const exists = current.some((item) => item.id === editingProduct.id)
+      const exists = current.some((row) => row.id === item.id)
       return exists
-        ? current.map((item) => (item.id === editingProduct.id ? editingProduct : item))
-        : [...current, editingProduct]
+        ? current.map((row) => (row.id === item.id ? item : row))
+        : [...current, item]
     })
     setEditingProduct(null)
+    try {
+      await saveShared("product", item)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   function blankWork(status: Status = "todo"): WorkItem {
@@ -754,7 +820,7 @@ export default function SalesKanbanPage() {
 
             <div className="mt-4"><Field label="メモ"><textarea rows={4} className={`${inputClass} min-h-28 resize-y py-3`} value={editingWork.memo || ""} onChange={(e) => setEditingWork({ ...editingWork, memo: e.target.value })} /></Field></div>
 
-            <ModalActions existing={work.some((item) => item.id === editingWork.id)} onDelete={() => { setWork((current) => current.filter((item) => item.id !== editingWork.id)); setEditingWork(null) }} onCancel={() => setEditingWork(null)} />
+            <ModalActions existing={work.some((item) => item.id === editingWork.id)} onDelete={async () => { const id = editingWork.id; setWork((current) => current.filter((item) => item.id !== id)); setEditingWork(null); try { await deleteShared("work", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingWork(null)} />
           </form>
         </Modal>
       )}
@@ -806,7 +872,7 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => { setCustomers((current) => current.filter((item) => item.id !== editingCustomer.id)); setEditingCustomer(null) }} onCancel={() => setEditingCustomer(null)} />
+            <ModalActions existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={async () => { const id = editingCustomer.id; setCustomers((current) => current.filter((item) => item.id !== id)); setEditingCustomer(null); try { await deleteShared("customer", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingCustomer(null)} />
           </form>
         </Modal>
       )}
@@ -844,14 +910,14 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions existing={products.some((item) => item.id === editingProduct.id)} onDelete={() => { setProducts((current) => current.filter((item) => item.id !== editingProduct.id)); setEditingProduct(null) }} onCancel={() => setEditingProduct(null)} />
+            <ModalActions existing={products.some((item) => item.id === editingProduct.id)} onDelete={async () => { const id = editingProduct.id; setProducts((current) => current.filter((item) => item.id !== id)); setEditingProduct(null); try { await deleteShared("product", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingProduct(null)} />
           </form>
         </Modal>
       )}
 
       <div className="pointer-events-none absolute bottom-3 right-4 hidden items-center gap-2 rounded-full border border-white/10 bg-[#111311]/90 px-3 py-1.5 text-[10px] text-white/40 backdrop-blur md:flex">
         <FileText className="size-3" />
-        {auth.configured ? "認証接続済み・データ移行準備中" : "DB未接続の試作モード"}
+        {auth.configured && auth.authenticated ? "共有DB接続中" : "DB未接続の試作モード"}
       </div>
     </main>
   )
