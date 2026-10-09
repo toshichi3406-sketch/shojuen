@@ -1285,6 +1285,47 @@ export default function SalesKanbanPage() {
     return latestEvent > stored ? latestEvent : stored
   }
 
+  function followUpState(date?: string) {
+    if (!date) return { label: "未設定", className: "bg-white/[0.045] text-white/75" }
+
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date())
+
+    if (date === today) {
+      return { label: `${date} · 今日`, className: "bg-amber-400/10 text-amber-100" }
+    }
+
+    if (date > today) {
+      return { label: date, className: "bg-white/[0.045] text-white/75" }
+    }
+
+    const start = new Date(`${date}T00:00:00+09:00`)
+    const end = new Date(`${today}T00:00:00+09:00`)
+    let businessDays = 0
+    const cursor = new Date(start)
+    cursor.setDate(cursor.getDate() + 1)
+
+    while (cursor <= end) {
+      const day = cursor.getDay()
+      if (day !== 0 && day !== 6) businessDays += 1
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    if (businessDays >= 4) {
+      return { label: `${date} · ${businessDays}営業日遅れ`, className: "bg-red-400/10 text-red-200" }
+    }
+
+    if (businessDays >= 1) {
+      return { label: `${date} · ${businessDays}営業日遅れ`, className: "bg-amber-400/10 text-amber-100" }
+    }
+
+    return { label: `${date} · 期限超過`, className: "bg-amber-400/10 text-amber-100" }
+  }
+
   if (auth.loading) {
     return (
       <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] text-[#f4f5f2]">
@@ -1479,9 +1520,9 @@ export default function SalesKanbanPage() {
                             <Tag>{item.caseType === "new_business" ? "新規営業" : "既存顧客"}</Tag>
                             <Tag>{(item.productIds || []).length}商品</Tag>
                           </div>
-                          <div className="mt-4 rounded-xl bg-white/[0.045] p-3">
-                            <div className="text-[10px] font-semibold tracking-[0.1em] text-white/35">次回フォロー</div>
-                            <div className="mt-1 text-sm text-white/75">{item.nextFollowUpDate || "未設定"}</div>
+                          <div className={`mt-4 rounded-xl p-3 ${followUpState(item.nextFollowUpDate).className}`}>
+                            <div className="text-[10px] font-semibold tracking-[0.1em] opacity-60">次回フォロー</div>
+                            <div className="mt-1 text-sm">{followUpState(item.nextFollowUpDate).label}</div>
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3 text-xs text-white/35">
                             <span>{item.assignee || "未担当"}</span>
