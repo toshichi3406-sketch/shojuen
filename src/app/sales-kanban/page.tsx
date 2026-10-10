@@ -364,6 +364,7 @@ export default function SalesKanbanPage() {
   const [aiEdit, setAiEdit] = useState<{ id: string; title: string; candidateType: string; payloadJson: string } | null>(null)
   const [aiEditError, setAiEditError] = useState("")
   const [aiEditMessage, setAiEditMessage] = useState("")
+  const [aiCreatedBoxId, setAiCreatedBoxId] = useState("")
   const [aiImportJson, setAiImportJson] = useState("")
   const [aiImportMessage, setAiImportMessage] = useState("")
   const [aiImportBusy, setAiImportBusy] = useState(false)
@@ -905,7 +906,62 @@ export default function SalesKanbanPage() {
     }
   }
 
+
+  function boxCandidateDetails(candidate: AiImportCandidate) {
+    const payload = candidate.payload || {}
+    return {
+      customerId: aiMatchCustomer[candidate.id] ?? String(payload.customer_id || ""),
+      title: candidate.title || String(payload.title || ""),
+      theme: String(payload.theme || candidate.title || ""),
+      assignee: String(payload.assignee || auth.user?.displayName || auth.user?.email || ""),
+      stage: String(payload.stage || "uncontacted"),
+      caseType: String(payload.case_type || "new_business"),
+      heat: String(payload.heat || "B"),
+    }
+  }
+
+  function openImportedBox(id: string) {
+    const box = salesCases.find((item) => item.id === id)
+    if (!box) { setAiReviewError("作成済みの案件BOXを読み込めていません。画面を再読み込みしてください。"); return }
+    setTab("sales")
+    setEditingSalesCase({ ...box, productIds: [...(box.productIds || [])] })
+    setSalesEventNote("")
+  }
+
+  async function applyAiSalesBox(candidate: AiImportCandidate) {
+    if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
+    const details = boxCandidateDetails(candidate)
+    if (!details.customerId || !customers.some((item) => item.id === details.customerId) || !details.title.trim() || !details.theme.trim() || !details.assignee.trim()) {
+      setAiReviewError("取引先を選び、候補の案件名・テーマ・担当者を確認してください。")
+      return
+    }
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
+    setAiReviewError("")
+    setAiEditMessage("")
+    setAiCreatedBoxId("")
+    try {
+      const response = await fetch("/api/workboard/ai-import", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: candidate.id, candidate_type: "new_sales_case", title: candidate.title, payload: { ...candidate.payload, customer_id: details.customerId, theme: details.theme, assignee: details.assignee } }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "案件BOXを作成できませんでした。")
+      if (!result.salesCaseId) throw new Error("作成結果を確認できません。再読み込みして案件BOXを確認してください。")
+      setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", target_id: result.salesCaseId, decision_note: result.decisionNote || `案件BOX ${result.salesCaseId} を作成` } : item))
+      setAiCreatedBoxId(result.salesCaseId)
+      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の案件BOXは作成済みです。" : "案件BOXを作成しました。「作成した案件BOXを開く」から確認できます。"))
+      await refreshSharedAfterWrite()
+    } catch (error) {
+      setAiReviewError(error instanceof Error ? error.message : "案件BOXを作成できませんでした。")
+    } finally {
+      aiReviewLock.current = false
+      setAiReviewBusy(false)
+    }
+  }
+
   async function applyAiCandidate(candidate: AiImportCandidate) {
+    if (candidate.candidate_type === "new_sales_case") { await applyAiSalesBox(candidate); return }
     if (candidate.candidate_type === "work_event") { await applyAiWorkEvent(candidate); return }
     const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
 
@@ -1148,6 +1204,7 @@ export default function SalesKanbanPage() {
 
   function aiCandidateLabel(type: string) {
     const labels: Record<string, string> = {
+      new_sales_case: "新規案件BOX",
       new_work: "新規業務",
       work_update: "業務更新",
       work_event: "活動履歴",
@@ -2106,9 +2163,9 @@ export default function SalesKanbanPage() {
             <p className="mt-2 text-xs leading-5 text-white/55">保存すると未判定へ戻ります。候補だけの修正で、正式データへの反映は別操作です。分類を変える場合は、その分類に合う内容へ修正してください。</p>
             {aiEditError && <p role="alert" className="mt-3 text-sm text-red-300">{aiEditError}</p>}
             <fieldset disabled={aiReviewBusy} className="mt-4 space-y-4">
-              <Field label="候補の件名"><input autoFocus value={aiEdit.title} onChange={(e) => setAiEdit({ ...aiEdit, title: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>
+              <Field label={aiEdit.candidateType === "new_sales_case" ? "案件BOX名" : "候補の件名"}><input autoFocus value={aiEdit.title} onChange={(e) => setAiEdit({ ...aiEdit, title: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>
               <Field label="候補の分類"><select value={aiEdit.candidateType} onChange={(e) => setAiEdit({ ...aiEdit, candidateType: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm">
-                {["new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"].map((type) => <option key={type} value={type}>{aiCandidateLabel(type)}</option>)}
+                {["new_sales_case", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"].map((type) => <option key={type} value={type}>{aiCandidateLabel(type)}</option>)}
               </select></Field>
               {aiEdit.candidateType === "customer_update" && <div className="grid gap-3 sm:grid-cols-2">
                 {[["company_name", "会社名"], ["country", "国"], ["contact_name", "担当者"], ["email", "メール"], ["phone", "電話"], ["memo", "メモ"]].map(([key, label]) => <Field key={key} label={label}><input value={readAiEditField(key)} onChange={(e) => changeAiEditField(key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>)}
@@ -2127,7 +2184,15 @@ export default function SalesKanbanPage() {
                   </div>
                 })}
               </div>}
-              <details open={aiEdit.candidateType !== "customer_update" && aiEdit.candidateType !== "work_update"} className="rounded-xl border border-white/10">
+
+              {aiEdit.candidateType === "new_sales_case" && <div className="space-y-3 rounded-xl border border-white/10 p-3">
+                <p className="text-xs leading-5 text-white/55">取引先は候補保存後に選びます。新しい取引先なら、取引先候補を先に反映してください。テーマ未入力時は案件BOX名、担当者未入力時はログイン中の利用者を作成前の確認欄に表示します。</p>
+                {[["theme","テーマ"],["assignee","担当者"],["next_follow_up_date","次回フォロー日"],["next_action","次のアクション"]].map(([key,label]) => <Field key={key} label={label}><input type={key === "next_follow_up_date" ? "date" : "text"} value={readAiEditField(key)} onChange={(e) => changeAiEditField(key,e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>)}
+                <Field label="案件区分"><select value={readAiEditField("case_type") || "new_business"} onChange={(e) => changeAiEditField("case_type",e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm"><option value="new_business">新規商談</option><option value="existing_followup">既存フォロー</option></select></Field>
+                <Field label="状態"><select value={readAiEditField("stage") || "uncontacted"} onChange={(e) => changeAiEditField("stage",e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm">{Object.entries(SALES_STAGE_LABELS).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
+                <Field label="温度感"><select value={readAiEditField("heat") || "B"} onChange={(e) => changeAiEditField("heat",e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm">{["A","B","C"].map((value) => <option key={value}>{value}</option>)}</select></Field>
+              </div>}
+              <details open={aiEdit.candidateType !== "customer_update" && aiEdit.candidateType !== "work_update" && aiEdit.candidateType !== "new_sales_case"} className="rounded-xl border border-white/10">
                 <summary className="cursor-pointer px-3 py-2 text-xs text-white/65">詳細JSONを編集</summary>
                 <p className="px-3 text-xs leading-5 text-white/45">通常の取引先修正は上の項目で入力できます。その他の分類や項目はここで修正します。確認できた内容だけを書き換えてください。</p>
                 <textarea aria-label="候補の詳細JSON" spellCheck={false} value={aiEdit.payloadJson} onChange={(e) => setAiEdit({ ...aiEdit, payloadJson: e.target.value })} className="mt-2 min-h-56 w-full rounded-b-xl bg-black/25 p-3 font-mono text-xs leading-5" />
@@ -2927,6 +2992,7 @@ export default function SalesKanbanPage() {
                 >
                   <option value="all">全種類</option>
                   <option value="work_event">活動履歴</option>
+                  <option value="new_sales_case">新規案件BOX</option>
                   <option value="new_work">新規業務</option>
                   <option value="work_update">業務更新</option>
                   <option value="customer_update">取引先更新</option>
@@ -3043,7 +3109,7 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {aiEditMessage && <p role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100">{aiEditMessage}</p>}
+                  {aiEditMessage && <div role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100"><p>{aiEditMessage}</p>{aiCreatedBoxId && <button type="button" disabled={!salesCases.some((item) => item.id === aiCreatedBoxId)} onClick={() => openImportedBox(aiCreatedBoxId)} className="mt-2 rounded-full border border-emerald-300/30 px-3 py-2 text-xs disabled:opacity-40">作成した案件BOXを開く</button>}</div>}
                   {visibleAiCandidates.map((candidate) => {
                     const batch = aiBatches.find((item) => item.id === candidate.batch_id)
                     return (
@@ -3100,6 +3166,19 @@ export default function SalesKanbanPage() {
                           </div>
 
                           <div className="w-full shrink-0 space-y-2 md:w-72">
+
+                            {candidate.candidate_type === "new_sales_case" && <div className="space-y-2 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-xs">
+                              <div className="font-semibold text-emerald-100">案件BOXの作成内容</div>
+                              <select aria-label="案件BOXの取引先" value={boxCandidateDetails(candidate).customerId} onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))} className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2"><option value="">取引先を選択</option>{customers.map((item) => <option key={item.id} value={item.id}>{item.id} {item.name}</option>)}</select>
+                              <p>テーマ：{boxCandidateDetails(candidate).theme || "未設定"}</p>
+                              <p>担当者：{boxCandidateDetails(candidate).assignee || "未設定"}</p>
+                              <p>区分：{boxCandidateDetails(candidate).caseType === "existing_followup" ? "既存フォロー" : "新規商談"}</p>
+                              <p>状態：{SALES_STAGE_LABELS[boxCandidateDetails(candidate).stage as SalesCase["stage"]] || "不正な状態"} ／温度感：{boxCandidateDetails(candidate).heat}</p>
+                              <p>次回フォロー：{String(candidate.payload?.next_follow_up_date || "未設定")}</p>
+                              <p>次のアクション：{String(candidate.payload?.next_action || "未設定")}</p>
+                              <p className="text-[10px] leading-4 text-white/45">確認後に案件BOXを作成します。業務カード・受注はこの操作では作成しません。</p>
+                              {isAiCandidateApplied(candidate.decision_note) && candidate.target_id ? <button type="button" onClick={() => openImportedBox(candidate.target_id!)} className="rounded-full border border-white/15 px-3 py-2">案件BOXを開く</button> : <button type="button" disabled={aiReviewBusy} onClick={() => applyAiSalesBox(candidate)} className="w-full rounded-full bg-[#eef3ea] px-4 py-2 font-semibold text-[#11150f]">案件BOXを作成</button>}
+                            </div>}
                             {candidate.candidate_type === "price_candidate" && (
                               <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3">
                                 <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">価格の種類</div>
@@ -4461,5 +4540,5 @@ function statusDot(status: Status) {
 
 
 function isAiCandidateApplied(note?: string | null) {
-  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新/.test(note || "")
+  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成/.test(note || "")
 }
