@@ -1,4 +1,5 @@
 import { buildWorkUpdatePatch, workUpdateValue } from "../../../sales-kanban/work-update"
+import { stageRecordNote } from "../../../../lib/workboard-time-analysis"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -349,6 +350,15 @@ export async function PUT(request: NextRequest) {
             })
           } catch { warning = "案件BOXは作成済みですが、関連商品の登録に失敗しました。BOXを開いて関連商品を確認してください。" }
         }
+      }
+      if (created) {
+        try {
+          await sb("work_events", token, {
+            method: "POST", headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: now, source: "workboard_auto",
+              note: stageRecordNote(null, payload.stage || "uncontacted", { channel: payload.channel, originType: payload.origin_type, caseType: payload.case_type }) }),
+          })
+        } catch { warning = [warning, "案件BOXは作成済みですが、段階の開始日時を記録できませんでした。滞在日数は不明として扱います。"].filter(Boolean).join(" ") }
       }
       const decisionNote = `案件BOX ${salesCaseId} を作成`
       try {
@@ -886,3 +896,4 @@ export async function PUT(request: NextRequest) {
     )
   }
 }
+
