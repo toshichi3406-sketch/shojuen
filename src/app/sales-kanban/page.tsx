@@ -330,6 +330,7 @@ export default function SalesKanbanPage() {
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
+  const [showOverdueSalesOnly, setShowOverdueSalesOnly] = useState(false)
   const [orders, setOrders] = useState<Order[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
@@ -1011,6 +1012,11 @@ export default function SalesKanbanPage() {
   const waitingCount = work.filter((item) => ["external_wait", "internal_wait"].includes(item.status)).length
   const decisionCount = work.filter((item) => item.status === "decision").length
   const dueCount = work.filter((item) => item.dueDate && item.status !== "done").length
+  const activeSalesCases = salesCases.filter((item) => !["won", "lost", "hold"].includes(item.stage))
+  const overdueSalesCases = activeSalesCases.filter(
+    (item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo()
+  )
+  const visibleSalesCases = showOverdueSalesOnly ? overdueSalesCases : activeSalesCases
   const emailedCaseIds = new Set(
     events
       .filter((event) => event.salesCaseId && event.eventType === "email_sent")
@@ -1723,11 +1729,26 @@ export default function SalesKanbanPage() {
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="返信率" value={salesReplyRate} detail={`返信 ${repliedEmailedCaseCount}件 ／ 送信 ${emailedCaseIds.size}件`} description="メール送信した案件が対象。同じ案件の複数送信は1件として集計。" />
                 <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
-                <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setShowOverdueSalesOnly((current) => !current)} active={showOverdueSalesOnly} />
                 <Kpi label="Aランク案件" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
               </div>
 
-              {salesCases.length === 0 ? (
+              {showOverdueSalesOnly && (
+                <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3">
+                  <p className="text-sm text-amber-100">フォロー遅延のみ表示中：{overdueSalesCases.length}件</p>
+                  <button type="button" onClick={() => setShowOverdueSalesOnly(false)} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+                    すべて表示
+                  </button>
+                </div>
+              )}
+
+              {showOverdueSalesOnly && visibleSalesCases.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
+                  <CalendarClock className="mx-auto size-7 text-white/30" />
+                  <h2 className="mt-3 text-base font-semibold">フォロー遅延の案件はありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">次回フォロー日が今日より前の進行中案件を表示します。</p>
+                </div>
+              ) : salesCases.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
                   <Building2 className="mx-auto size-7 text-white/30" />
                   <h2 className="mt-3 text-base font-semibold">営業案件はまだありません</h2>
@@ -1738,8 +1759,8 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {salesCases
-                    .filter((item) => !["won", "lost", "hold"].includes(item.stage))
+                  {visibleSalesCases
+                    .slice()
                     .sort((a, b) => {
                       const heatOrder = { A: 0, B: 1, C: 2 }
                       const heatDiff = heatOrder[a.heat] - heatOrder[b.heat]
@@ -1793,7 +1814,7 @@ export default function SalesKanbanPage() {
                 </div>
               )}
 
-              {salesCases.some((item) => ["won", "lost", "hold"].includes(item.stage)) && (
+              {!showOverdueSalesOnly && salesCases.some((item) => ["won", "lost", "hold"].includes(item.stage)) && (
                 <section className="mt-8 border-t border-white/10 pt-6">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
@@ -3529,15 +3550,24 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
   return <button onClick={onClick} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-white text-[#11150f]" : "text-white/50 hover:bg-white/5 hover:text-white"}`}>{icon}{label}</button>
 }
 
-function Kpi({ label, value, detail, description }: { label: string; value: string | number; detail?: string; description?: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+function Kpi({ label, value, detail, description, onClick, active = false }: { label: string; value: string | number; detail?: string; description?: string; onClick?: () => void; active?: boolean }) {
+  const content = (
+    <>
       <div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">{label}</div>
       <div className="mt-1 text-xl font-semibold">{value}</div>
       {detail && <div className="mt-2 text-xs leading-5 text-white/65">{detail}</div>}
       {description && <p className="mt-1 text-[10px] leading-4 text-white/40">{description}</p>}
-    </div>
+    </>
   )
+  const className = "rounded-2xl border px-4 py-3"
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-pressed={active} className={`${className} text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200 ${active ? "border-amber-300/40 bg-amber-300/10" : "border-white/10 bg-white/[0.045] hover:border-white/25 hover:bg-white/[0.08]"}`}>
+        {content}
+      </button>
+    )
+  }
+  return <div className={`${className} border-white/10 bg-white/[0.045]`}>{content}</div>
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
