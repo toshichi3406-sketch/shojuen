@@ -334,6 +334,7 @@ export default function SalesKanbanPage() {
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
   const [salesAttributionConfigured, setSalesAttributionConfigured] = useState(false)
   const [salesFilter, setSalesFilter] = useState<"all" | "overdue" | "a_rank">("all")
+  const [salesKpiGroupBy, setSalesKpiGroupBy] = useState<"channel" | "originType">("channel")
   const [orders, setOrders] = useState<Order[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
@@ -1068,16 +1069,21 @@ export default function SalesKanbanPage() {
   const quotedSalesCaseCount = countSalesCasesWithEvent("quote_sent")
   const sampleSentSalesCaseCount = countSalesCasesWithEvent("sample_sent")
 
-  const mediaKpiRows = [...CHANNELS, "未設定"].map((channel) => {
-    const cases = salesCases.filter((item) =>
-      (CHANNELS.includes(item.channel || "") ? item.channel : "未設定") === channel
-    )
+  const salesKpiGroups: string[] = salesKpiGroupBy === "channel"
+    ? CHANNELS
+    : ORIGINS.filter((origin): origin is NonNullable<WorkItem["originType"]> => Boolean(origin))
+  const salesKpiGroupLabel = salesKpiGroupBy === "channel" ? "媒体" : "接点区分"
+  const comparisonKpiRows = [...salesKpiGroups, "未設定"].map((label) => {
+    const cases = salesCases.filter((item) => {
+      const value = salesKpiGroupBy === "channel" ? item.channel : item.originType
+      return (salesKpiGroups.includes(value || "") ? value : "未設定") === label
+    })
     const sentCases = cases.filter((item) => contactCaseIds.has(item.id))
     const repliedCount = sentCases.filter((item) => repliedContactCaseIds.has(item.id)).length
     const closedCases = cases.filter((item) => item.caseType === "new_business" && ["won", "lost"].includes(item.stage))
     const wonCount = closedCases.filter((item) => item.stage === "won").length
     return {
-      channel,
+      label,
       caseCount: cases.length,
       sentCount: sentCases.length,
       repliedCount,
@@ -1801,28 +1807,35 @@ export default function SalesKanbanPage() {
               <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
                 <summary className="flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
                   <BarChart3 className="size-4 text-white/45" />
-                  媒体別KPI
+                  媒体・接点区分別KPI
                   <ChevronDown className="ml-auto size-4 text-white/45" />
                 </summary>
                 <div className="px-4 pb-4">
+                  <label className="mb-3 block max-w-xs text-xs text-white/60">
+                    比較する項目
+                    <select className={inputClass + " mt-2"} value={salesKpiGroupBy} onChange={(e) => setSalesKpiGroupBy(e.target.value as "channel" | "originType")}>
+                      <option value="channel">媒体別</option>
+                      <option value="originType">接点区分別</option>
+                    </select>
+                  </label>
                   <p id="media-kpi-description" className="mb-3 text-xs leading-5 text-white/45">
-                    案件が生まれた媒体ごとの累計です。返信・反応率は、こちらから連絡した案件のうち、同じ連絡媒体で返信・反応の記録がある案件の割合です。複数回の連絡は1案件として集計し、初回受信のみは分母に含めません。成約率は新規営業の成約・失注が対象です。媒体未登録は未設定に表示し、案件の絞り込みとは連動しません。
+                    案件の{salesKpiGroupLabel}ごとの累計です。返信・反応率は、こちらから連絡した案件のうち、同じ連絡媒体で返信・反応の記録がある案件の割合です。複数回の連絡は1案件として集計し、初回受信のみは分母に含めません。成約率は新規営業の成約・失注が対象です。未登録は未設定に表示し、案件の絞り込みとは連動しません。
                   </p>
                   <div className="overflow-x-auto rounded-xl border border-white/10">
                     <table aria-describedby="media-kpi-description" className="w-full min-w-[520px] text-left text-xs">
-                      <caption className="sr-only">案件の起点媒体ごとの案件数・返信反応率・新規営業成約率</caption>
+                      <caption className="sr-only">案件の{salesKpiGroupLabel}ごとの案件数・返信反応率・新規営業成約率</caption>
                       <thead className="bg-white/[0.045] text-white/50">
                         <tr>
-                          <th scope="col" className="px-4 py-3 font-medium">媒体</th>
+                          <th scope="col" className="px-4 py-3 font-medium">{salesKpiGroupLabel}</th>
                           <th scope="col" className="px-4 py-3 text-right font-medium">案件数</th>
                           <th scope="col" className="px-4 py-3 text-right font-medium">返信・反応率</th>
                           <th scope="col" className="px-4 py-3 text-right font-medium">新規営業成約率</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {mediaKpiRows.map((row) => (
-                          <tr key={row.channel} className="border-t border-white/10">
-                            <th scope="row" className="px-4 py-3 font-medium text-white/75">{row.channel}</th>
+                        {comparisonKpiRows.map((row) => (
+                          <tr key={row.label} className="border-t border-white/10">
+                            <th scope="row" className="px-4 py-3 font-medium text-white/75">{row.label}</th>
                             <td className="px-4 py-3 text-right text-white/75">{row.caseCount}件</td>
                             <td className="px-4 py-3 text-right">
                               <div className="font-medium text-white/75">{row.replyRate}</div>
