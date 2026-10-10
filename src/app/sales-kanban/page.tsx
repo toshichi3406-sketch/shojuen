@@ -513,6 +513,7 @@ export default function SalesKanbanPage() {
     })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBへの保存に失敗しました。")
+    return result
   }
 
   async function saveEventLink() {
@@ -545,8 +546,8 @@ export default function SalesKanbanPage() {
       note,
       source: "workboard_auto",
     }
-    await saveShared("work_event", event)
-    setEvents((current) => [event, ...current])
+    const saved = await saveShared("work_event", event)
+    setEvents((current) => [{ ...event, id: saved?.id || event.id }, ...current])
   }
 
   async function appendSalesCaseEvent(
@@ -566,16 +567,20 @@ export default function SalesKanbanPage() {
       note: note.trim(),
       source: "manual",
     }
-    await saveShared("work_event", event)
-    setEvents((current) => [event, ...current])
+    const saved = await saveShared("work_event", event)
+    setEvents((current) => [{ ...event, id: saved?.id || event.id }, ...current])
 
     if (["email_sent", "contact_sent", "reply_received", "contact_received", "quote_sent", "sample_sent"].includes(eventType)) {
       const currentCase = salesCases.find((item) => item.id === salesCaseId)
       if (currentCase) {
         const updatedCase = { ...currentCase, lastContactAt: eventDate }
-        await saveShared("sales_case", updatedCase)
-        setSalesCases((current) => current.map((item) => item.id === salesCaseId ? updatedCase : item))
-        setEditingSalesCase((current) => current?.id === salesCaseId ? { ...current, lastContactAt: eventDate } : current)
+        try {
+          await saveShared("sales_case", updatedCase)
+          setSalesCases((current) => current.map((item) => item.id === salesCaseId ? updatedCase : item))
+          setEditingSalesCase((current) => current?.id === salesCaseId ? { ...current, lastContactAt: eventDate } : current)
+        } catch {
+          alert("活動履歴は保存済みですが、最終接触日時を更新できませんでした。再読み込みして確認してください。")
+        }
       }
     }
   }
@@ -3278,7 +3283,7 @@ export default function SalesKanbanPage() {
                   autoFocus
                   className={inputClass}
                   value={editingOrder.customerId}
-                  onChange={(e) => setEditingOrder({ ...editingOrder, customerId: e.target.value })}
+                  onChange={(e) => setEditingOrder({ ...editingOrder, customerId: e.target.value, salesCaseId: "" })}
                 >
                   <option value="">選択してください</option>
                   {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>)}
@@ -3762,8 +3767,8 @@ export default function SalesKanbanPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="件名"><input autoFocus className={inputClass} value={editingWork.title} onChange={(e) => setEditingWork({ ...editingWork, title: e.target.value })} /></Field>
               <Field label="状態"><select className={inputClass} value={editingWork.status} onChange={(e) => setEditingWork({ ...editingWork, status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></Field>
-              <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => setEditingWork({ ...editingWork, customerId: e.target.value || undefined })}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
-              <Field label="営業案件"><select className={inputClass} value={editingWork.salesCaseId || ""} onChange={(e) => setEditingWork({ ...editingWork, salesCaseId: e.target.value || undefined })}><option value="">なし</option>{salesCases.filter((salesCase) => !editingWork.customerId || salesCase.customerId === editingWork.customerId).map((salesCase) => <option key={salesCase.id} value={salesCase.id}>{salesCase.title || salesCase.theme}</option>)}</select></Field>
+              <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => setEditingWork({ ...editingWork, customerId: e.target.value || undefined, salesCaseId: "" })}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
+              <Field label="営業案件"><select className={inputClass} value={editingWork.salesCaseId || ""} onChange={(e) => setEditingWork({ ...editingWork, salesCaseId: e.target.value || undefined, customerId: e.target.value ? salesCases.find((item) => item.id === e.target.value)?.customerId || editingWork.customerId : editingWork.customerId })}><option value="">なし</option>{salesCases.filter((salesCase) => !editingWork.customerId || salesCase.customerId === editingWork.customerId).map((salesCase) => <option key={salesCase.id} value={salesCase.id}>{salesCase.title || salesCase.theme}</option>)}</select></Field>
               <Field label="業務種別"><select className={inputClass} value={editingWork.workType || ""} onChange={(e) => setEditingWork({ ...editingWork, workType: e.target.value })}>{WORK_TYPES.map((v) => <option key={v}>{v}</option>)}</select></Field>
               <Field label="担当"><input className={inputClass} value={editingWork.assignee || ""} onChange={(e) => setEditingWork({ ...editingWork, assignee: e.target.value })} /></Field>
               <Field label="優先度"><select className={inputClass} value={editingWork.priority || "中"} onChange={(e) => setEditingWork({ ...editingWork, priority: e.target.value as WorkItem["priority"] })}>{["低","中","高","緊急"].map((v) => <option key={v}>{v}</option>)}</select></Field>

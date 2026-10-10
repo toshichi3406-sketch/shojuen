@@ -58,6 +58,27 @@ const trashTables: Record<string, string> = {
   sales_case: "sales_cases", order: "orders",
 }
 
+class RelationError extends Error {}
+
+async function validateCaseCustomer(salesCaseId: unknown, customerId: unknown, token: string) {
+  if (!salesCaseId) return
+  if (typeof salesCaseId !== "string") throw new RelationError("営業案件を確認してください。")
+  const rows = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(salesCaseId)}`, token)
+  if (!rows?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
+  if (customerId && rows[0].customer_id !== customerId) throw new RelationError("取引先と営業案件が一致していません。紐づけ先を選び直してください。")
+}
+
+async function validateProductIds(value: unknown, token: string): Promise<string[]> {
+  if (value == null) return []
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id))) throw new RelationError("関連商品を確認してください。")
+  const ids = [...new Set(value)] as string[]
+  if (!ids.length) return ids
+  const rows = await sb(`products?select=id&id=in.(${ids.map(encodeURIComponent).join(",")})`, token)
+  const existing = new Set((rows || []).map((row: any) => row.id))
+  if (ids.some((id) => !existing.has(id))) throw new RelationError("関連商品が見つかりません。再読み込みして選び直してください。")
+  return ids
+}
+
 async function hasTrashColumns(token: string) {
   try {
     await sb("work_items?select=deleted_at&limit=1", token)
@@ -398,6 +419,8 @@ export async function POST(request: NextRequest) {
       })
       return NextResponse.json({ ok: true, id: data.id, salesCaseId: data.salesCaseId })
     } else if (type === "work") {
+      await validateCaseCustomer(data.salesCaseId, data.customerId, token)
+      const productIds = await validateProductIds(data.productIds, token)
       await sb("work_items?on_conflict=id", token, {
         method: "POST",
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -407,12 +430,12 @@ export async function POST(request: NextRequest) {
         method: "DELETE",
         headers: { Prefer: "return=minimal" },
       })
-      if ((data.productIds || []).length) {
+      if (productIds.length) {
         await sb("work_item_products", token, {
           method: "POST",
           headers: { Prefer: "return=minimal" },
           body: JSON.stringify(
-            data.productIds.map((productId: string) => ({
+            productIds.map((productId: string) => ({
               work_item_id: data.id,
               product_id: productId,
               relation_type: "related",
@@ -423,6 +446,21 @@ export async function POST(request: NextRequest) {
     } else if (type === "sales_case") {
       if (!data.customerId || !data.title || !data.theme || !data.caseType || !data.stage || !data.heat || !data.assignee) {
         return NextResponse.json({ error: "営業案件の必須項目を確認してください。" }, { status: 400 })
+      }
+
+      const productIds = await validateProductIds(data.productIds, token)
+      if (data.id) {
+        const current = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(data.id)}`, token)
+        if (!current?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
+        if (current[0].customer_id !== data.customerId) {
+          const linked = await Promise.all([
+            sb(`work_items?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            sb(`orders?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            sb(`work_events?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            loadEventSalesLinks(token).then((result) => result.rows.filter((row: any) => row.sales_case_id === data.id)),
+          ])
+          if (linked.some((rows) => rows?.length)) throw new RelationError("関連業務・受注・活動履歴がある営業案件の取引先は変更できません。紐づけを確認してください。")
+        }
       }
 
       const hasOrigin = Object.prototype.hasOwnProperty.call(data, "originType")
@@ -482,12 +520,12 @@ export async function POST(request: NextRequest) {
         headers: { Prefer: "return=minimal" },
       })
 
-      if ((data.productIds || []).length) {
+      if (productIds.length) {
         await sb("sales_case_products", token, {
           method: "POST",
           headers: { Prefer: "return=minimal" },
           body: JSON.stringify(
-            data.productIds.map((productId: string) => ({
+            productIds.map((productId: string) => ({
               sales_case_id: salesCaseId,
               product_id: productId,
             }))
@@ -505,6 +543,8 @@ export async function POST(request: NextRequest) {
       if (!items.length) {
         return NextResponse.json({ error: "受注明細を1件以上追加してください。" }, { status: 400 })
       }
+      await validateCaseCustomer(data.salesCaseId, data.customerId, token)
+      await validateProductIds(items.map((item: any) => item.productId), token)
 
       const normalizedItems = items.map((item: any) => {
         const quantity = Number(String(item.quantity ?? "").replace(/,/g, ""))
@@ -582,9 +622,16 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ ok: true, id: orderId, totalAmount: payload.total_amount })
     } else if (type === "work_event") {
-      await sb("work_events", token, {
+      let customerId: string | undefined
+      if (data.workItemId) {
+        const rows = await sb(`work_items?select=id,customer_id&id=eq.${encodeURIComponent(data.workItemId)}`, token)
+        if (!rows?.length) throw new RelationError("関連業務が見つかりません。再読み込みしてください。")
+        customerId = rows[0].customer_id
+      }
+      await validateCaseCustomer(data.salesCaseId, customerId, token)
+      const inserted = await sb("work_events", token, {
         method: "POST",
-        headers: { Prefer: "return=minimal" },
+        headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           work_item_id: data.workItemId || null,
           sales_case_id: data.salesCaseId || null,
@@ -596,6 +643,8 @@ export async function POST(request: NextRequest) {
           source: data.source || "manual",
         }),
       })
+      if (!inserted?.[0]?.id) throw new Error("活動履歴IDを取得できませんでした。再読み込みしてください。")
+      return NextResponse.json({ ok: true, id: inserted[0].id })
     } else if (type === "customer") {
       await sb("customers?on_conflict=id", token, {
         method: "POST",
@@ -674,6 +723,8 @@ export async function POST(request: NextRequest) {
         }),
       })
     } else if (type === "product") {
+      const publicDocs = (Array.isArray(data.docs) ? data.docs : [])
+        .filter((doc: any) => doc.title && typeof doc.url === "string" && doc.url && !doc.url.startsWith("products/"))
       await sb("products?on_conflict=id", token, {
         method: "POST",
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -683,13 +734,12 @@ export async function POST(request: NextRequest) {
         method: "DELETE",
         headers: { Prefer: "return=minimal" },
       })
-      if ((data.docs || []).length) {
+      if (publicDocs.length) {
         await sb("product_documents", token, {
           method: "POST",
           headers: { Prefer: "return=minimal" },
           body: JSON.stringify(
-            data.docs
-              .filter((doc: any) => doc.title && typeof doc.url === "string" && doc.url && !doc.url.startsWith("products/"))
+            publicDocs
               .map((doc: any) => ({
                 product_id: data.id,
                 title: doc.title,
@@ -706,7 +756,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to save WORKBOARD data" },
-      { status: 500 }
+      { status: error instanceof RelationError ? 400 : 500 }
     )
   }
 }
