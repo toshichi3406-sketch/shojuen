@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
 import { useWorkDrag } from "./work-drag"
+import { OperationSoundDiagnostics } from "./sound-diagnostics"
 import {
   Activity,
   BarChart3,
@@ -335,7 +336,7 @@ const starterWork: WorkItem[] = [
 ]
 
 export default function SalesKanbanPage() {
-  const { prepareOperationSounds, playOperationSound } = useOperationSounds()
+  const { playOperationSound, readSoundDiagnostics } = useOperationSounds()
   const suppressClickSoundUntil = useRef(0)
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
@@ -404,14 +405,14 @@ export default function SalesKanbanPage() {
   const mutationLock = useRef(false)
   const [mutationBusy, setMutationBusy] = useState(false)
   const workDrag = useWorkDrag({
-    onLift: () => {
+    onLift: (eventTime) => {
       suppressClickSoundUntil.current = Infinity
-      playOperationSound("drag")
+      playOperationSound("drag", eventTime)
     },
-    onDrop: (id, statusId) => {
+    onDrop: (id, statusId, eventTime) => {
       const status = STATUSES.find((row) => row.id === statusId)
       if (!status || mutationLock.current) return
-      playOperationSound("drop")
+      playOperationSound("drop", eventTime)
       void moveWork(id, status.id)
     },
     onFinish: (lifted) => {
@@ -1893,15 +1894,14 @@ export default function SalesKanbanPage() {
 
   return (
     <main
-      onPointerDownCapture={prepareOperationSounds}
-      onKeyDownCapture={prepareOperationSounds}
       onClickCapture={(event) => {
         if (performance.now() < suppressClickSoundUntil.current || !(event.target instanceof Element)) return
         const target = event.target.closest("button, a, summary, [role='button'], [data-operation-sound]")
         if (!target || target.matches(":disabled, [aria-disabled='true']")) return
-        playOperationSound("click")
+        playOperationSound("click", event.timeStamp)
       }}
       className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
+      <OperationSoundDiagnostics read={readSoundDiagnostics} />
       <div className="flex h-full flex-col">
         <header className="border-b border-white/10 bg-[#090a09]/95 px-5 py-4 backdrop-blur md:px-7">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

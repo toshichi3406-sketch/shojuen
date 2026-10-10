@@ -6,9 +6,12 @@ type OperationSound = "click" | "drag" | "drop" | "saved"
 const SOUND_TONES = {
   click: [{ frequency: 720, end: 420, delay: 0, duration: 0.065 }],
   drag: [{ frequency: 480, end: 720, delay: 0, duration: 0.12 }],
-  drop: [{ frequency: 660, end: 660, delay: 0, duration: 0.1 }, { frequency: 990, end: 990, delay: 0.05, duration: 0.13 }],
-  saved: [{ frequency: 880, end: 1175, delay: 0, duration: 0.09 }, { frequency: 1320, end: 1320, delay: 0.04, duration: 0.12 }],
+  drop: [{ frequency: 560, end: 320, delay: 0, duration: 0.105 }],
+  saved: [{ frequency: 1320, end: 1568, delay: 0, duration: 0.065 }],
 }
+
+export type SoundTiming = { kind: OperationSound; eventDelayMs: number | null; startupMs: number; state: string }
+export type SoundDiagnostics = { state: string; outputMs: number | null; timings: SoundTiming[] }
 
 export function createOperationSoundPlayer() {
   let context: AudioContext | null = null
@@ -16,7 +19,12 @@ export function createOperationSoundPlayer() {
   const buffers = new Map<OperationSound, AudioBuffer>()
   const active = new Set<AudioBufferSourceNode>()
 
-  function prepare() {
+  let quiet: AudioBufferSourceNode | null = null
+  let resuming: Promise<void> | null = null
+  const timers = new Set<ReturnType<typeof setTimeout>>()
+  const timings: SoundTiming[] = []
+
+  function initialize() {
     if (typeof window === "undefined") return
     try {
       const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -40,44 +48,105 @@ export function createOperationSoundPlayer() {
               phase += 2 * Math.PI * frequency / context.sampleRate
               const attack = Math.min(1, t / 0.003)
               const release = Math.min(1, (tone.duration - t) / (tone.duration * 0.65))
-              samples[offset + i] += Math.sin(phase) * 0.14 * attack * Math.max(0, release)
+              samples[offset + i] += Math.sin(phase) * (kind === "saved" ? 0.075 : 0.14) * attack * Math.max(0, release)
             }
           }
           buffers.set(kind, buffer)
         }
       }
-      if (context.state !== "running") void context.resume().catch(() => {})
+      // Keep the foreground audio path open between gestures, without audible output.
+      if (!quiet) {
+        quiet = context.createBufferSource()
+        quiet.buffer = context.createBuffer(1, 128, context.sampleRate)
+        quiet.loop = true
+        quiet.connect(context.destination)
+        quiet.start()
+      }
     } catch {
       // Audio availability must never interrupt editing or saving.
     }
   }
 
+  function prepare() {
+    initialize()
+    if (!context || context.state === "running") return
+    try {
+      const pending = context.resume()
+      resuming = pending
+      void pending.then(() => { if (resuming === pending) resuming = null }, () => { if (resuming === pending) resuming = null })
+    } catch { /* Editing still works if audio cannot resume. */ }
+  }
+
   return {
+    initialize,
     prepare,
-    play(kind: OperationSound) {
+    diagnostics(): SoundDiagnostics {
+      let outputMs: number | null = null
+      if (context) {
+        const output = context.outputLatency
+        if (Number.isFinite(output) && Number.isFinite(context.baseLatency)) outputMs = (context.baseLatency + output) * 1000
+      }
+      return { state: context?.state || "unavailable", outputMs, timings: timings.slice(-5).map((row) => ({ ...row })) }
+    },
+    play(kind: OperationSound, eventTime?: number) {
       try {
         prepare()
         const current = context
         const buffer = buffers.get(kind)
-        // Never replay a stale gesture when an audio context finishes waking up.
-        if (!current || current.state !== "running" || !buffer) return
+        if (!current || current.state === "closed" || !buffer) return
         if (kind === "click") {
           const now = performance.now()
           if (now - lastClickAt < 45) return
           lastClickAt = now
         }
+        const now = performance.now()
+        const timing: SoundTiming = { kind, eventDelayMs: eventTime === undefined ? null : Math.max(0, now - eventTime), startupMs: 0, state: current.state }
+        timings.push(timing)
+        if (timings.length > 30) timings.shift()
         const source = current.createBufferSource()
         source.buffer = buffer
         source.connect(current.destination)
         active.add(source)
         source.onended = () => { active.delete(source); source.disconnect() }
         // Start now, not at a captured currentTime that can expire during a busy handler.
-        source.start()
+        if (current.state === "running") source.start()
+        else {
+          // Give a brief first-gesture wake-up a chance. Never replay an old gesture.
+          const expire = () => {
+            active.delete(source)
+            source.disconnect()
+            timing.state = "expired"
+          }
+          const timer = setTimeout(() => { timers.delete(timer); expire() }, 120)
+          timers.add(timer)
+          void resuming?.then(() => {
+            clearTimeout(timer)
+            timers.delete(timer)
+            timing.startupMs = performance.now() - now
+            if (context !== current || timing.state === "expired" || timing.startupMs > 120) { expire(); return }
+            if (current.state === "running") { source.start(); timing.state = "running" }
+            else expire()
+          }, () => {
+            clearTimeout(timer)
+            timers.delete(timer)
+            active.delete(source)
+            source.disconnect()
+            timing.state = "blocked"
+          })
+        }
       } catch {
         // Audio availability must never interrupt editing or saving.
       }
     },
     dispose() {
+      for (const timer of timers) clearTimeout(timer)
+      timers.clear()
+      resuming = null
+      if (quiet) {
+        try { quiet.stop() } catch { /* Already stopped. */ }
+        quiet.disconnect()
+        quiet = null
+      }
       for (const source of active) {
         try { source.stop() } catch { /* Already stopped. */ }
         source.disconnect()
@@ -94,9 +163,22 @@ export function createOperationSoundPlayer() {
 export function useOperationSounds() {
   const player = useRef<ReturnType<typeof createOperationSoundPlayer> | null>(null)
   if (!player.current) player.current = createOperationSoundPlayer()
-  useEffect(() => () => { player.current?.dispose() }, [])
+  useEffect(() => {
+    player.current?.initialize()
+    const wake = () => { player.current?.prepare() }
+    document.addEventListener("pointerdown", wake, true)
+    document.addEventListener("keydown", wake, true)
+    window.addEventListener("focus", wake)
+    return () => {
+      document.removeEventListener("pointerdown", wake, true)
+      document.removeEventListener("keydown", wake, true)
+      window.removeEventListener("focus", wake)
+      player.current?.dispose()
+    }
+  }, [])
   return {
     prepareOperationSounds: () => { player.current?.prepare() },
-    playOperationSound: (kind: OperationSound) => { player.current?.play(kind) },
+    playOperationSound: (kind: OperationSound, eventTime?: number) => { player.current?.play(kind, eventTime) },
+    readSoundDiagnostics: () => player.current!.diagnostics(),
   }
 }

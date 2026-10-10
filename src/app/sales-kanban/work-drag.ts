@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react"
 
 export function createWorkDragController(callbacks: {
-  onLift: () => void
-  onDrop: (id: string, status: string) => void
+  onLift: (eventTime: number) => void
+  onDrop: (id: string, status: string, eventTime: number) => void
   onFinish: (lifted: boolean) => void
 }) {
   let cancel: (() => void) | null = null
@@ -16,6 +16,9 @@ export function createWorkDragController(callbacks: {
       let lifted = false
       let ghost: HTMLElement | null = null
       let column: HTMLElement | null = null
+      let hitX = NaN, hitY = NaN
+      let nextX = x, nextY = y
+      let frame = 0
       const previousOpacity = card.style.opacity
       const board = card.closest<HTMLElement>("[data-work-board]")
       function mark(next: HTMLElement | null) {
@@ -25,6 +28,8 @@ export function createWorkDragController(callbacks: {
         column?.setAttribute("data-work-drag-over", "true")
       }
       function finish() {
+        if (frame) window.cancelAnimationFrame(frame)
+        frame = 0
         window.removeEventListener("pointermove", move)
         window.removeEventListener("pointerup", up)
         window.removeEventListener("pointercancel", abort)
@@ -42,7 +47,7 @@ export function createWorkDragController(callbacks: {
         e.preventDefault()
         if (!lifted) {
           lifted = true
-          callbacks.onLift()
+          callbacks.onLift(e.timeStamp)
           const rect = card.getBoundingClientRect()
           ghost = card.cloneNode(true) as HTMLElement
           ghost.removeAttribute("id")
@@ -51,21 +56,34 @@ export function createWorkDragController(callbacks: {
           document.body.appendChild(ghost)
           card.style.opacity = "0.35"
         }
-        if (ghost) ghost.style.transform = `translate(${e.clientX - x}px, ${e.clientY - y}px)`
-        if (board) {
-          const rect = board.getBoundingClientRect()
-          if (e.clientX > rect.right - 48) board.scrollLeft += 24
-          else if (e.clientX < rect.left + 48) board.scrollLeft -= 24
+        nextX = e.clientX
+        nextY = e.clientY
+        if (!frame) frame = window.requestAnimationFrame(paint)
+      }
+      function paint() {
+        frame = 0
+        // Coalesce pointer events; read the target before writing the ghost's styles.
+        mark(document.elementFromPoint(nextX, nextY)?.closest<HTMLElement>("[data-work-column]") ?? null)
+        hitX = nextX
+        hitY = nextY
+        const rect = board?.getBoundingClientRect()
+        if (ghost) ghost.style.transform = `translate(${nextX - x}px, ${nextY - y}px)`
+        if (board && rect) {
+          const before = board.scrollLeft
+          if (nextX > rect.right - 48) board.scrollLeft += 24
+          else if (nextX < rect.left + 48) board.scrollLeft -= 24
+          if (board.scrollLeft !== before) hitX = NaN
         }
-        mark(document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-work-column]") ?? null)
       }
       function up(e: PointerEvent) {
         if (e.pointerId !== pointerId) return
-        const target = lifted ? document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-work-column]") : null
+        const target = lifted ? (e.clientX === hitX && e.clientY === hitY ? column : document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-work-column]")) : null
         const status = target?.dataset.workColumn
         const wasLifted = lifted
-        finish()
-        if (wasLifted && status) callbacks.onDrop(id, status)
+        try {
+          // Play placement feedback before DOM cleanup or the save starts rendering.
+          if (wasLifted && status) callbacks.onDrop(id, status, e.timeStamp)
+        } finally { finish() }
       }
       function abort(e?: PointerEvent | Event) {
         if (e && "pointerId" in e && e.pointerId !== pointerId) return
@@ -88,8 +106,8 @@ export function useWorkDrag(callbacks: Parameters<typeof createWorkDragControlle
   latest.current = callbacks
   const controller = useRef<ReturnType<typeof createWorkDragController> | null>(null)
   if (!controller.current) controller.current = createWorkDragController({
-    onLift: () => latest.current.onLift(),
-    onDrop: (id, status) => latest.current.onDrop(id, status),
+    onLift: (eventTime) => latest.current.onLift(eventTime),
+    onDrop: (id, status, eventTime) => latest.current.onDrop(id, status, eventTime),
     onFinish: (lifted) => latest.current.onFinish(lifted),
   })
   useEffect(() => () => controller.current?.dispose(), [])
