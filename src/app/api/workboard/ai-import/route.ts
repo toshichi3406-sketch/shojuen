@@ -31,6 +31,24 @@ async function sb(path: string, token: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : null
 }
 
+
+function decodedCandidate(candidate: any) {
+  if (candidate?.candidate_type === "decision" && candidate?.payload?._workboard_candidate_type === "new_sales_case") {
+    const payload = { ...candidate.payload }
+    delete payload._workboard_candidate_type
+    return { ...candidate, candidate_type: "new_sales_case", payload }
+  }
+  return candidate
+}
+
+function encodedCandidate(type: string, payload: Record<string, unknown>) {
+  const clean = { ...payload }
+  delete clean._workboard_candidate_type
+  return type === "new_sales_case"
+    ? { candidate_type: "decision", payload: { ...clean, _workboard_candidate_type: "new_sales_case" } }
+    : { candidate_type: type, payload: clean }
+}
+
 export async function GET() {
   const token = await getToken()
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -43,7 +61,7 @@ export async function GET() {
 
     return NextResponse.json({
       batches: batches || [],
-      candidates: candidates || [],
+      candidates: (candidates || []).map(decodedCandidate),
     })
   } catch (error) {
     return NextResponse.json(
@@ -78,6 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     const allowedTypes = new Set([
+      "new_sales_case",
       "new_work",
       "work_update",
       "work_event",
@@ -141,10 +160,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(
         candidates.map((candidate: any) => ({
           batch_id: batch.id,
-          candidate_type: candidate.candidate_type,
+          ...encodedCandidate(candidate.candidate_type, candidate.payload && typeof candidate.payload === "object" && !Array.isArray(candidate.payload) ? candidate.payload : {}),
           target_id: candidate.target_id || null,
           title: candidate.title.trim(),
-          payload: candidate.payload && typeof candidate.payload === "object" ? candidate.payload : {},
           confidence: candidate.confidence == null ? null : Number(candidate.confidence),
           status: "pending",
         }))
@@ -168,14 +186,14 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const id = body?.id
     if (body?.action === "edit") {
-      const types = ["new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"]
+      const types = ["new_sales_case", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"]
       if (typeof id !== "string" || !id.trim() || typeof body.title !== "string" || !body.title.trim() || !types.includes(body.candidateType) || !body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
         return NextResponse.json({ error: "件名・分類・詳細JSONを確認してください。" }, { status: 400 })
       }
       const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
-      const candidate = Array.isArray(rows) ? rows[0] : null
+      const candidate = Array.isArray(rows) ? decodedCandidate(rows[0]) : null
       if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
-      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新/
+      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成/
       if (applied.test(candidate.decision_note || "")) {
         return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
       }
@@ -184,8 +202,7 @@ export async function PATCH(request: NextRequest) {
         headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           title: body.title.trim(),
-          candidate_type: body.candidateType,
-          payload: body.payload,
+          ...encodedCandidate(body.candidateType, body.payload),
           target_id: candidate.candidate_type === body.candidateType ? candidate.target_id : null,
           status: "pending",
           decision_note: "候補を編集。正式反映前の再確認が必要です。",
@@ -193,7 +210,7 @@ export async function PATCH(request: NextRequest) {
         }),
       })
       if (!Array.isArray(updated) || !updated[0]) throw new Error("保存結果を確認できませんでした。")
-      return NextResponse.json({ ok: true, candidate: updated[0] })
+      return NextResponse.json({ ok: true, candidate: decodedCandidate(updated[0]) })
     }
     const status = body?.status
     const decisionNote = body?.decisionNote ?? null
@@ -251,6 +268,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const allowedTypes = new Set([
+      "new_sales_case",
       "new_work",
       "work_update",
       "work_event",
@@ -266,6 +284,81 @@ export async function PUT(request: NextRequest) {
 
     const now = new Date().toISOString()
 
+
+
+    if (candidateType === "new_sales_case") {
+      const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      const candidate = rows?.[0] && decodedCandidate(rows[0])
+      if (!candidate || candidate.candidate_type !== "new_sales_case" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidate.id)) {
+        return NextResponse.json({ error: "新規案件BOX候補が見つからないか、分類が変更されています。再読み込みしてください。" }, { status: 409 })
+      }
+      // The candidate UUID is also this import's box UUID, so retries cannot create another box.
+      const salesCaseId = candidate.id
+      const existing = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(salesCaseId)}&limit=1`, token)
+      if (existing?.[0]?.deleted_at) return NextResponse.json({ error: "この候補の案件BOXはゴミ箱内です。ゴミ箱から復元してください。" }, { status: 409 })
+      let created = false
+      let warning = ""
+      if (!existing?.length) {
+        const customerId = typeof payload.customer_id === "string" ? payload.customer_id.trim() : ""
+        const title = String(candidate.title || payload.title || "").trim()
+        const theme = String(payload.theme || title).trim()
+        const assignee = typeof payload.assignee === "string" ? payload.assignee.trim() : ""
+        const caseType = payload.case_type || "new_business"
+        const stage = payload.stage || "uncontacted"
+        const heat = payload.heat || "B"
+        if (!customerId || !title || !theme || !assignee) return NextResponse.json({ error: "取引先・案件名・テーマ・担当者を確認してください。" }, { status: 400 })
+        if (!["new_business","existing_followup"].includes(caseType) || !["uncontacted","initial_sent","replied","qualifying","quoted","sample_requested","sample_sent","considering","won","lost","hold"].includes(stage) || !["A","B","C"].includes(heat)) {
+          return NextResponse.json({ error: "案件区分・状態・温度感を確認してください。" }, { status: 400 })
+        }
+        if (["theme","next_action","origin_type","channel"].some((key) => payload[key] != null && typeof payload[key] !== "string")) return NextResponse.json({ error: "案件の詳細項目は文字列で入力してください。" }, { status: 400 })
+        const date = payload.next_follow_up_date
+        if (date && (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z")) || new Date(date + "T00:00:00Z").toISOString().slice(0,10) !== date)) return NextResponse.json({ error: "次回フォロー日は有効なYYYY-MM-DDで入力してください。" }, { status: 400 })
+        if ((payload.origin_type && !["Outbound","Inbound","Referral","Existing"].includes(payload.origin_type)) || (payload.channel && !["Email","Instagram DM","Threads","LinkedIn","Web","電話","展示会","紹介","その他"].includes(payload.channel))) {
+          return NextResponse.json({ error: "接点区分・媒体を確認してください。" }, { status: 400 })
+        }
+        const customers = await sb(`customers?select=id&id=eq.${encodeURIComponent(customerId)}&deleted_at=is.null&limit=1`, token)
+        if (!customers?.length) return NextResponse.json({ error: "取引先が見つかりません。取引先候補を先に反映するか、ゴミ箱から復元してください。" }, { status: 404 })
+        const productIds = payload.product_ids == null ? [] : payload.product_ids
+        if (!Array.isArray(productIds) || productIds.some((value: unknown) => typeof value !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(value))) return NextResponse.json({ error: "関連商品を確認してください。" }, { status: 400 })
+        const uniqueProducts = [...new Set(productIds)] as string[]
+        if (uniqueProducts.length) {
+          const products = await sb(`products?select=id&id=in.(${uniqueProducts.map(encodeURIComponent).join(",")})&deleted_at=is.null`, token)
+          if (uniqueProducts.some((productId) => !products?.some((product: any) => product.id === productId))) return NextResponse.json({ error: "関連商品が見つかりません。選び直してください。" }, { status: 404 })
+        }
+        const inserted = await sb("sales_cases?on_conflict=id", token, {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+          body: JSON.stringify({
+            id: salesCaseId, customer_id: customerId, title, theme, case_type: caseType, stage, heat, assignee,
+            next_follow_up_date: date || null, next_action: payload.next_action || null,
+            origin_type: payload.origin_type || null, channel: payload.channel || null,
+            won_at: stage === "won" ? now : null, closed_at: ["won","lost"].includes(stage) ? now : null,
+            updated_at: now,
+          }),
+        })
+        created = Boolean(inserted?.length)
+        if (!created) {
+          const concurrent = await sb(`sales_cases?select=id,deleted_at&id=eq.${encodeURIComponent(salesCaseId)}&limit=1`, token)
+          if (!concurrent?.length || concurrent[0].deleted_at) return NextResponse.json({ error: "案件BOXの保存結果を確認できません。再読み込みしてください。" }, { status: 409 })
+        } else if (uniqueProducts.length) {
+          try {
+            await sb("sales_case_products", token, {
+              method: "POST",
+              headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+              body: JSON.stringify(uniqueProducts.map((productId) => ({ sales_case_id: salesCaseId, product_id: productId }))),
+            })
+          } catch { warning = "案件BOXは作成済みですが、関連商品の登録に失敗しました。BOXを開いて関連商品を確認してください。" }
+        }
+      }
+      const decisionNote = `案件BOX ${salesCaseId} を作成`
+      try {
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "approved", target_id: salesCaseId, reviewed_at: now, decision_note: decisionNote }),
+        })
+      } catch { warning = [warning, "案件BOXは作成済みですが、候補の反映済み記録に失敗しました。同じJSONを再取込せず、作成したBOXを確認してください。"].filter(Boolean).join(" ") }
+      return NextResponse.json({ ok: true, salesCaseId, decisionNote, alreadyApplied: !created, warning })
+    }
 
     if (candidateType === "work_update") {
       const candidates = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
