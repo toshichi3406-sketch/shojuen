@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
 import { useWorkDrag } from "./work-drag"
 import { workboardFetch } from "./workboard-request"
+import { AnalysisOverview, ComparisonChart, monthlyOrderRows } from "./management-analysis"
 import { OperationSoundDiagnostics } from "./sound-diagnostics"
 import { WORK_UPDATE_FIELDS, buildWorkUpdatePatch, workUpdateValue } from "./work-update"
 import {
@@ -35,7 +36,7 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai" | "trash"
+type Tab = "analysis" | "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai" | "trash"
 type TrashItem = { type: "work" | "customer" | "product" | "sales_case" | "order"; id: string; title: string; deletedAt: string }
 const TRASH_LABELS = { work: "業務", customer: "取引先", product: "商品", sales_case: "案件", order: "受注" }
 // Orders are kept as confirmed business history, separate from sales opportunities.
@@ -2232,9 +2233,10 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "trash" ? "ゴミ箱" : tab === "sales" ? "案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
+                {tab === "analysis" ? "経営分析" : tab === "trash" ? "ゴミ箱" : tab === "sales" ? "案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
+                {tab === "analysis" && "案件の進み方・営業方法・受注の継続を、グラフと詳細KPIで確認。"}
                 {tab === "sales" &&
                   "取引先ごとの商談を、ステージ・温度感・フォロー日で管理。"}
                 {tab === "orders" &&
@@ -2261,7 +2263,7 @@ export default function SalesKanbanPage() {
                   {logoutBusy ? "ログアウト中..." : "ログアウト"}
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "trash" && (
+            {tab !== "analysis" && tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "trash" && (
               <button
                 onClick={() => {
                   if (tab === "sales") setEditingSalesCase(blankSalesCase())
@@ -2284,6 +2286,7 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
             <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<FileText className="size-4" />} label={"受注履歴" + (orders.length ? " (" + orders.length + ")" : "")} />
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
+            <TabButton active={tab === "analysis"} onClick={() => setTab("analysis")} icon={<BarChart3 className="size-4" />} label="経営分析" />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
             <TabButton active={tab === "shipping"} onClick={() => setTab("shipping")} icon={<Truck className="size-4" />} label={"送料マスタ" + (shippingRates.length ? " (" + shippingRates.length + ")" : "")} />
@@ -2416,17 +2419,17 @@ export default function SalesKanbanPage() {
           </section>
         )}
 
-        {tab === "sales" && (
+        {tab === "analysis" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
-              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <Kpi label="返信・反応率" value={salesReplyRate} detail={`反応 ${repliedContactCaseCount}件 ／ 連絡 ${contactCaseIds.size}件`} description="こちらから連絡した案件が対象。同じ媒体で返信・反応を記録した案件を1件として集計。" />
-                <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
-                <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setSalesFilter((current) => current === "overdue" ? "all" : "overdue")} active={salesFilter === "overdue"} />
-                <Kpi label="Aランク案件" value={aRankSalesCases.length} detail="押すとAランク案件を表示" onClick={() => setSalesFilter((current) => current === "a_rank" ? "all" : "a_rank")} active={salesFilter === "a_rank"} />
+              <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/50">
+                案件・営業KPIは全期間の累計、段階別は現在の状態、受注推移は直近12か月です。案件ページの絞り込みとは連動しません。
               </div>
-
-              <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
+              <AnalysisOverview
+                stages={Object.entries(SALES_STAGE_LABELS).map(([id, label]) => ({ id, label, count: salesCases.filter((item) => item.stage === id).length }))}
+                months={monthlyOrderRows(orders, todayInTokyo())}
+              />
+              <details open className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
                 <summary className="flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
                   <BarChart3 className="size-4 text-white/45" />
                   詳細KPI（見積・サンプル）
@@ -2443,7 +2446,7 @@ export default function SalesKanbanPage() {
                 </div>
               </details>
 
-              <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
+              <details open className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
                 <summary className="flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
                   <BarChart3 className="size-4 text-white/45" />
                   媒体・接点区分別KPI
@@ -2460,6 +2463,7 @@ export default function SalesKanbanPage() {
                   <p id="media-kpi-description" className="mb-3 text-xs leading-5 text-white/45">
                     案件の{salesKpiGroupLabel}ごとの累計です。返信・反応率は、こちらから連絡した案件のうち、同じ連絡媒体で返信・反応の記録がある案件の割合です。複数回の連絡は1案件として集計し、初回受信のみは分母に含めません。成約率は新規営業の成約・失注が対象です。未登録は未設定に表示し、案件の絞り込みとは連動しません。
                   </p>
+                  <ComparisonChart rows={comparisonKpiRows} />
                   <div className="overflow-x-auto rounded-xl border border-white/10">
                     <table aria-describedby="media-kpi-description" className="w-full min-w-[520px] text-left text-xs">
                       <caption className="sr-only">案件の{salesKpiGroupLabel}ごとの案件数・返信反応率・新規営業成約率</caption>
@@ -2491,6 +2495,20 @@ export default function SalesKanbanPage() {
                   </div>
                 </div>
               </details>
+
+            </div>
+          </section>
+        )}
+
+        {tab === "sales" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-6xl">
+              <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                <Kpi label="返信・反応率" value={salesReplyRate} detail={`反応 ${repliedContactCaseCount}件 ／ 連絡 ${contactCaseIds.size}件`} description="こちらから連絡した案件が対象。同じ媒体で返信・反応を記録した案件を1件として集計。" />
+                <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
+                <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setSalesFilter((current) => current === "overdue" ? "all" : "overdue")} active={salesFilter === "overdue"} />
+                <Kpi label="Aランク案件" value={aRankSalesCases.length} detail="押すとAランク案件を表示" onClick={() => setSalesFilter((current) => current === "a_rank" ? "all" : "a_rank")} active={salesFilter === "a_rank"} />
+              </div>
 
               {salesFilter !== "all" && (
                 <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3">
