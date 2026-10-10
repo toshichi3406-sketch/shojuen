@@ -6,6 +6,7 @@ import { useWorkDrag } from "./work-drag"
 import { workboardFetch } from "./workboard-request"
 import { AnalysisOverview, ComparisonChart, monthlyOrderRows, StageTimeAnalysis, MonthlySalesChart } from "./management-analysis"
 import { OperationSoundDiagnostics } from "./sound-diagnostics"
+import { SALES_CASE_UPDATE_FIELDS, buildSalesCaseUpdatePatch, salesCaseUpdateValue } from "../../lib/sales-case-update"
 import { displayActivityNote, stageDurations } from "../../lib/workboard-time-analysis"
 import { WORK_UPDATE_FIELDS, buildWorkUpdatePatch, workUpdateValue } from "./work-update"
 import {
@@ -374,6 +375,7 @@ export default function SalesKanbanPage() {
   const [aiTypeFilter, setAiTypeFilter] = useState("all")
   const [aiStatusFilter, setAiStatusFilter] = useState("pending")
   const [aiMatchCustomer, setAiMatchCustomer] = useState<Record<string, string>>({})
+  const [aiMatchCase, setAiMatchCase] = useState<Record<string, string>>({})
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
   const [aiEventTarget, setAiEventTarget] = useState<Record<string, string>>({})
   const [aiNewWorkStatus, setAiNewWorkStatus] = useState<Record<string, Status>>({})
@@ -756,10 +758,10 @@ export default function SalesKanbanPage() {
     try {
       const payload = JSON.parse(aiEdit.payloadJson)
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error()
-      const field = WORK_UPDATE_FIELDS.find((item) => item.key === key)
+      const field = (aiEdit?.candidateType === "sales_case_update" ? SALES_CASE_UPDATE_FIELDS : WORK_UPDATE_FIELDS).find((item) => item.key === key)
       if (!field) return
       const currentKey = [field.key, ...field.aliases].find((name) => Object.prototype.hasOwnProperty.call(payload, name))
-      const value = currentKey ? payload[currentKey] : (key === "status" ? "todo" : "")
+      const value = currentKey ? payload[currentKey] : (key === "status" ? "todo" : key === "stage" ? "uncontacted" : "")
       for (const name of [field.key, ...field.aliases]) delete payload[name]
       if (enabled) payload[key] = value
       setAiEdit({ ...aiEdit, payloadJson: JSON.stringify(payload, null, 2) })
@@ -771,7 +773,7 @@ export default function SalesKanbanPage() {
   function aiWorkEditFieldEnabled(key: string) {
     try {
       const payload = JSON.parse(aiEdit?.payloadJson || "{}")
-      const field = WORK_UPDATE_FIELDS.find((item) => item.key === key)
+      const field = (aiEdit?.candidateType === "sales_case_update" ? SALES_CASE_UPDATE_FIELDS : WORK_UPDATE_FIELDS).find((item) => item.key === key)
       return Boolean(field && [field.key, ...field.aliases].some((name) => Object.prototype.hasOwnProperty.call(payload, name)))
     } catch { return false }
   }
@@ -779,9 +781,10 @@ export default function SalesKanbanPage() {
   function readAiWorkEditField(key: string) {
     try {
       const payload = JSON.parse(aiEdit?.payloadJson || "{}")
-      const field = WORK_UPDATE_FIELDS.find((item) => item.key === key)
+      const field = (aiEdit?.candidateType === "sales_case_update" ? SALES_CASE_UPDATE_FIELDS : WORK_UPDATE_FIELDS).find((item) => item.key === key)
       const name = field && [field.key, ...field.aliases].find((name) => Object.prototype.hasOwnProperty.call(payload, name))
       const value = name ? workUpdateValue(payload[name]) : ""
+      if (key === "stage") return Object.entries(SALES_STAGE_LABELS).find(([id,label]) => id === value || label === value)?.[0] || value
       return key === "status" ? STATUSES.find((status) => status.id === value || status.label === value)?.id || value : value
     } catch { return "" }
   }
@@ -815,6 +818,47 @@ export default function SalesKanbanPage() {
     }
   }
 
+  function caseUpdateTarget(candidate: AiImportCandidate) {
+    return aiMatchCase[candidate.id] ?? String(candidate.payload?.sales_case_id || candidate.target_id || "")
+  }
+
+  function caseUpdatePreview(candidate: AiImportCandidate) {
+    try {
+      const patch = buildSalesCaseUpdatePatch(candidate.payload || {})
+      const selected = salesCases.find((item) => item.id === caseUpdateTarget(candidate))
+      if (!selected) return { error: "更新する既存案件BOXを選択してください。", rows: [], expected: {} }
+      const rows = SALES_CASE_UPDATE_FIELDS.filter((field) => Object.prototype.hasOwnProperty.call(patch, field.key)).map((field) => ({
+        key: field.key, label: field.label, before: salesCaseUpdateValue(selected[field.uiKey]), after: salesCaseUpdateValue(patch[field.key]),
+      }))
+      return { error: "", rows, expected: Object.fromEntries(rows.map((row) => [row.key, row.before])) }
+    } catch (error) { return { error: error instanceof Error ? error.message : "変更内容を確認してください。", rows: [], expected: {} } }
+  }
+
+  async function applyAiCaseUpdate(candidate: AiImportCandidate) {
+    if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
+    const preview = caseUpdatePreview(candidate)
+    if (preview.error) { setAiReviewError(preview.error); return }
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
+    setAiReviewError("")
+    setAiEditMessage("")
+    setAiCreatedBoxId("")
+    try {
+      const response = await workboardFetch("/api/workboard/ai-import", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: candidate.id, candidate_type: "sales_case_update", payload: { ...candidate.payload, sales_case_id: caseUpdateTarget(candidate) }, expectedCase: preview.expected }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "案件BOXを更新できませんでした。")
+      if (!result.salesCaseId) throw new Error("更新結果を確認できません。再読み込みしてください。")
+      setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", target_id: result.salesCaseId, decision_note: result.decisionNote || `既存案件BOX ${result.salesCaseId} を更新` } : item))
+      setAiCreatedBoxId(result.salesCaseId)
+      setAiEditMessage(result.warning || (result.alreadyApplied ? "この案件BOX更新は反映済みです。" : result.noChange ? "案件BOXは既に提案どおりです。候補を反映済みにしました。" : "案件BOXを更新しました。段階を変更した場合は、その日時も記録しました。"))
+      await refreshSharedAfterWrite()
+    } catch (error) { setAiReviewError(error instanceof Error ? error.message : "案件BOXを更新できませんでした。") }
+    finally { aiReviewLock.current = false; setAiReviewBusy(false) }
+  }
+
   function openAiCandidateEditor(candidate: AiImportCandidate) {
     if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
     setAiEditError("")
@@ -831,6 +875,10 @@ export default function SalesKanbanPage() {
     try {
       const payload = JSON.parse(aiEdit.payloadJson)
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error()
+      if (aiEdit.candidateType === "sales_case_update") {
+        const field = SALES_CASE_UPDATE_FIELDS.find((item) => item.key === key)
+        if (field) for (const alias of field.aliases) delete payload[alias]
+      }
       setAiEdit({ ...aiEdit, payloadJson: JSON.stringify({ ...payload, [key]: value }, null, 2) })
     } catch {
       setAiEditError("詳細JSONの書式を直してから項目を編集してください。")
@@ -847,6 +895,7 @@ export default function SalesKanbanPage() {
       if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("詳細JSONはオブジェクト形式で入力してください。")
       if (!aiEdit.title.trim()) throw new Error("候補の件名を入力してください。")
       if (aiEdit.candidateType === "work_update") buildWorkUpdatePatch(payload)
+      if (aiEdit.candidateType === "sales_case_update") buildSalesCaseUpdatePatch(payload)
     } catch (error) {
       setAiEditError(error instanceof SyntaxError ? "詳細JSONの書式が正しくありません。" : error instanceof Error ? error.message : "入力を確認してください。")
       return
@@ -866,6 +915,7 @@ export default function SalesKanbanPage() {
       setAiCandidates((current) => current.map((item) => item.id === saved.id ? saved : item))
       setAiMatchCustomer((current) => ({ ...current, [saved.id]: "" }))
       setAiMatchWork((current) => ({ ...current, [saved.id]: "" }))
+      setAiMatchCase((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiEventTarget((current) => ({ ...current, [saved.id]: "" }))
       setAiNewWorkStatus((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiMatchProducts((current) => ({ ...current, [saved.id]: [] }))
@@ -939,7 +989,7 @@ export default function SalesKanbanPage() {
 
   function openImportedBox(id: string) {
     const box = salesCases.find((item) => item.id === id)
-    if (!box) { setAiReviewError("作成済みの案件BOXを読み込めていません。画面を再読み込みしてください。"); return }
+    if (!box) { setAiReviewError("対象の案件BOXを読み込めていません。画面を再読み込みしてください。"); return }
     setTab("sales")
     setEditingSalesCase({ ...box, productIds: [...(box.productIds || [])] })
     setSalesEventNote("")
@@ -967,7 +1017,7 @@ export default function SalesKanbanPage() {
       if (!result.salesCaseId) throw new Error("作成結果を確認できません。再読み込みして案件BOXを確認してください。")
       setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", target_id: result.salesCaseId, decision_note: result.decisionNote || `案件BOX ${result.salesCaseId} を作成` } : item))
       setAiCreatedBoxId(result.salesCaseId)
-      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の案件BOXは作成済みです。" : "案件BOXを作成しました。「作成した案件BOXを開く」から確認できます。"))
+      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の案件BOXは作成済みです。" : "案件BOXを作成しました。「案件BOXを開く」から確認できます。"))
       await refreshSharedAfterWrite()
     } catch (error) {
       setAiReviewError(error instanceof Error ? error.message : "案件BOXを作成できませんでした。")
@@ -1230,6 +1280,7 @@ export default function SalesKanbanPage() {
   function aiCandidateLabel(type: string) {
     const labels: Record<string, string> = {
       new_sales_case: "新規案件BOX",
+      sales_case_update: "案件BOX更新",
       new_work: "新規業務",
       work_update: "業務更新",
       work_event: "活動履歴",
@@ -2195,7 +2246,7 @@ export default function SalesKanbanPage() {
             <fieldset disabled={aiReviewBusy} className="mt-4 space-y-4">
               <Field label={aiEdit.candidateType === "new_sales_case" ? "案件BOX名" : "候補の件名"}><input autoFocus value={aiEdit.title} onChange={(e) => setAiEdit({ ...aiEdit, title: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>
               <Field label="候補の分類"><select value={aiEdit.candidateType} onChange={(e) => setAiEdit({ ...aiEdit, candidateType: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm">
-                {["new_sales_case", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"].map((type) => <option key={type} value={type}>{aiCandidateLabel(type)}</option>)}
+                {["new_sales_case", "sales_case_update", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"].map((type) => <option key={type} value={type}>{aiCandidateLabel(type)}</option>)}
               </select></Field>
               {aiEdit.candidateType === "customer_update" && <div className="grid gap-3 sm:grid-cols-2">
                 {[["company_name", "会社名"], ["country", "国"], ["contact_name", "担当者"], ["email", "メール"], ["phone", "電話"], ["memo", "メモ"]].map(([key, label]) => <Field key={key} label={label}><input value={readAiEditField(key)} onChange={(e) => changeAiEditField(key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>)}
@@ -2211,6 +2262,18 @@ export default function SalesKanbanPage() {
                     field.key === "priority" ? <select aria-label="変更後の優先度" value={readAiWorkEditField(field.key)} onChange={(e) => changeAiEditField(field.key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm"><option value="">未設定にする</option>{["低","中","高","緊急"].map((value) => <option key={value}>{value}</option>)}</select> :
                     field.key === "origin_type" || field.key === "channel" || field.key === "work_type" ? <select aria-label={`変更後の${field.label}`} value={readAiWorkEditField(field.key)} onChange={(e) => changeAiEditField(field.key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm"><option value="">未設定にする</option>{(field.key === "origin_type" ? ["Outbound","Inbound","Referral","Existing"] : field.key === "channel" ? CHANNELS : WORK_TYPES).map((value) => <option key={value}>{value}</option>)}</select> :
                     <input aria-label={`変更後の${field.label}`} type={field.key === "due_date" ? "date" : "text"} value={readAiWorkEditField(field.key)} onChange={(e) => changeAiEditField(field.key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" />)}
+                  </div>
+                })}
+              </div>}
+
+              {aiEdit.candidateType === "sales_case_update" && <div className="space-y-3 rounded-xl border border-white/10 p-3">
+                <p className="text-xs leading-5 text-white/55">変更する項目だけチェックしてください。指定しない項目は維持します。更新先の案件BOXは候補保存後に選びます。段階変更の日時は正式反映時に記録します。</p>
+                {SALES_CASE_UPDATE_FIELDS.map((field) => {
+                  const enabled = aiWorkEditFieldEnabled(field.key)
+                  const choices: [string, string][] | null = field.key === "stage" ? Object.entries(SALES_STAGE_LABELS) : field.key === "heat" ? ["A","B","C"].map((value) => [value,value]) : field.key === "case_type" ? [["new_business","新規商談"],["existing_followup","既存フォロー"]] : field.key === "origin_type" ? ["Outbound","Inbound","Referral","Existing"].map((value) => [value,value]) : field.key === "channel" ? CHANNELS.map((value) => [value,value]) : null
+                  return <div key={field.key} className="space-y-1">
+                    <label className="flex items-center gap-2 text-xs text-white/65"><input type="checkbox" checked={enabled} onChange={(e) => toggleAiWorkEditField(field.key,e.target.checked)} />{field.label}を変更</label>
+                    {enabled && (choices ? <select aria-label={`変更後の${field.label}`} value={readAiWorkEditField(field.key)} onChange={(e) => changeAiEditField(field.key,e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm"><option value="">選択してください</option>{choices.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select> : <input aria-label={`変更後の${field.label}`} type={field.key === "next_follow_up_date" ? "date" : "text"} value={readAiWorkEditField(field.key)} onChange={(e) => changeAiEditField(field.key,e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" />)}
                   </div>
                 })}
               </div>}
@@ -3042,6 +3105,7 @@ export default function SalesKanbanPage() {
                   <option value="all">全種類</option>
                   <option value="work_event">活動履歴</option>
                   <option value="new_sales_case">新規案件BOX</option>
+                  <option value="sales_case_update">案件BOX更新</option>
                   <option value="new_work">新規業務</option>
                   <option value="work_update">業務更新</option>
                   <option value="customer_update">取引先更新</option>
@@ -3158,7 +3222,7 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {aiEditMessage && <div role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100"><p>{aiEditMessage}</p>{aiCreatedBoxId && <button type="button" disabled={!salesCases.some((item) => item.id === aiCreatedBoxId)} onClick={() => openImportedBox(aiCreatedBoxId)} className="mt-2 rounded-full border border-emerald-300/30 px-3 py-2 text-xs disabled:opacity-40">作成した案件BOXを開く</button>}</div>}
+                  {aiEditMessage && <div role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100"><p>{aiEditMessage}</p>{aiCreatedBoxId && <button type="button" disabled={!salesCases.some((item) => item.id === aiCreatedBoxId)} onClick={() => openImportedBox(aiCreatedBoxId)} className="mt-2 rounded-full border border-emerald-300/30 px-3 py-2 text-xs disabled:opacity-40">案件BOXを開く</button>}</div>}
                   {visibleAiCandidates.map((candidate) => {
                     const batch = aiBatches.find((item) => item.id === candidate.batch_id)
                     return (
@@ -3216,6 +3280,14 @@ export default function SalesKanbanPage() {
 
                           <div className="w-full shrink-0 space-y-2 md:w-72">
 
+                            {candidate.candidate_type === "sales_case_update" && <div className="space-y-3 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-xs">
+                              <Field label="更新する既存案件BOX"><select disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} value={caseUpdateTarget(candidate)} onChange={(e) => setAiMatchCase((old) => ({ ...old, [candidate.id]: e.target.value }))} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-2 text-xs"><option value="">案件BOXを選択</option>{salesCases.map((item) => <option key={item.id} value={item.id}>{customers.find((customer) => customer.id === item.customerId)?.name || "取引先未設定"} / {item.title}</option>)}</select></Field>
+                              {isAiCandidateApplied(candidate.decision_note) && candidate.target_id ? <button type="button" onClick={() => openImportedBox(candidate.target_id!)} className="rounded-full border border-white/15 px-3 py-2">更新した案件BOXを開く</button> : <>
+                                {caseUpdatePreview(candidate).error ? <p role="alert" className="text-amber-100/70">{caseUpdatePreview(candidate).error}</p> : <div className="overflow-x-auto"><table className="w-full min-w-[280px] text-left text-[10px]"><caption className="sr-only">案件BOXの変更前後</caption><thead className="text-white/40"><tr><th className="py-2">項目</th><th className="py-2">変更前</th><th className="py-2">変更後</th></tr></thead><tbody>{caseUpdatePreview(candidate).rows.map((row) => <tr key={row.key} className="border-t border-white/10"><th className="py-2 pr-2 font-medium">{row.label}</th><td className="break-words py-2 pr-2 text-white/50">{row.key === "stage" ? SALES_STAGE_LABELS[row.before as SalesCase["stage"]] || row.before : row.before || "未設定"}</td><td className="break-words py-2 text-emerald-100">{row.key === "stage" ? SALES_STAGE_LABELS[row.after as SalesCase["stage"]] || row.after : row.after || "未設定"}</td></tr>)}</tbody></table></div>}
+                                <p className="text-[10px] leading-5 text-white/45">指定した項目だけを更新します。段階が変わる場合は反映時刻から新しい段階の滞在日数を測定します。業務カードや活動内容は別候補です。</p>
+                                <button type="button" disabled={aiReviewBusy || Boolean(caseUpdatePreview(candidate).error)} onClick={() => applyAiCaseUpdate(candidate)} className="w-full rounded-full bg-[#eef3ea] px-4 py-2 font-semibold text-[#11150f] disabled:opacity-40">案件BOXを更新</button>
+                              </>}
+                            </div>}
                             {candidate.candidate_type === "new_sales_case" && <div className="space-y-2 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-xs">
                               <div className="font-semibold text-emerald-100">案件BOXの作成内容</div>
                               <select aria-label="案件BOXの取引先" value={boxCandidateDetails(candidate).customerId} onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))} className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2"><option value="">取引先を選択</option>{customers.map((item) => <option key={item.id} value={item.id}>{item.id} {item.name}</option>)}</select>
@@ -4648,5 +4720,5 @@ function statusDot(status: Status) {
 
 
 function isAiCandidateApplied(note?: string | null) {
-  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成/.test(note || "")
+  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/.test(note || "")
 }
