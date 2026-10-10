@@ -205,6 +205,7 @@ type Customer = {
   linkedin?: string
   note?: string
   prices?: CustomerPrice[]
+  priceHistory?: { id: string; productId: string; price: string; currency: string; unit: string; effectiveFrom: string; createdAt: string; current: boolean; note: string }[]
 }
 
 type ProductDoc = {
@@ -913,12 +914,12 @@ export default function SalesKanbanPage() {
       const saved = result.candidate as AiImportCandidate | undefined
       if (!saved || saved.id !== aiEdit.id || !saved.payload || !saved.candidate_type) throw new Error("保存結果を確認できませんでした。再読み込みして内容を確認してください。")
       setAiCandidates((current) => current.map((item) => item.id === saved.id ? saved : item))
-      setAiMatchCustomer((current) => ({ ...current, [saved.id]: "" }))
+      setAiMatchCustomer((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiMatchWork((current) => ({ ...current, [saved.id]: "" }))
       setAiMatchCase((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiEventTarget((current) => ({ ...current, [saved.id]: "" }))
       setAiNewWorkStatus((current) => { const next = { ...current }; delete next[saved.id]; return next })
-      setAiMatchProducts((current) => ({ ...current, [saved.id]: [] }))
+      setAiMatchProducts((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiPriceClass((current) => ({ ...current, [saved.id]: "" }))
       setAiShippingStage((current) => ({ ...current, [saved.id]: "" }))
       setAiShippingDraft((current) => ({ ...current, [saved.id]: {} }))
@@ -1034,20 +1035,42 @@ export default function SalesKanbanPage() {
     return STATUSES.find((status) => status.id === proposed || status.label === proposed)?.id || "todo"
   }
 
+  function candidateCustomer(candidate: AiImportCandidate) {
+    return aiMatchCustomer[candidate.id] ?? String(candidate.payload?.customer_id || "")
+  }
+
+  function candidateProducts(candidate: AiImportCandidate): string[] {
+    return aiMatchProducts[candidate.id] ?? (candidate.payload?.product_id ? [String(candidate.payload.product_id)] : Array.isArray(candidate.payload?.product_ids) ? candidate.payload.product_ids as string[] : [])
+  }
+
+  async function repairCaseStage(id: string) {
+    if (mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
+    try {
+      const response = await workboardFetch("/api/workboard/data", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "repair_case_stage", data: { id } }) })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "段階記録を修復できませんでした。")
+      await refreshSharedAfterWrite()
+    } catch (error) { alert(error instanceof Error ? error.message : "段階記録を修復できませんでした。") }
+    finally { mutationLock.current = false; setMutationBusy(false) }
+  }
+
   async function applyAiCandidate(candidate: AiImportCandidate) {
     if (candidate.candidate_type === "new_sales_case") { await applyAiSalesBox(candidate); return }
     if (candidate.candidate_type === "work_event") { await applyAiWorkEvent(candidate); return }
+    if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError || isAiCandidateApplied(candidate.decision_note)) return
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
+    try {
     const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
     if (candidate.candidate_type === "new_work") payload.status = newWorkCandidateStatus(candidate)
 
-    if (aiMatchCustomer[candidate.id]) {
-      payload.customer_id = aiMatchCustomer[candidate.id]
-    }
-    if (aiMatchWork[candidate.id]) {
-      payload.work_item_id = aiMatchWork[candidate.id]
-    }
-    if (aiMatchProducts[candidate.id]?.length) {
-      payload.product_ids = aiMatchProducts[candidate.id]
+    if (["new_work", "customer_update", "price_candidate"].includes(candidate.candidate_type)) payload.customer_id = candidateCustomer(candidate) || null
+    if (candidate.candidate_type === "product_update") payload.product_id = candidateProducts(candidate)[0] || null
+    if (candidate.candidate_type === "new_work") {
+      payload.product_ids = candidateProducts(candidate)
+      if (!payload.assignee) payload.assignee = auth.user?.displayName || auth.user?.email || null
     }
 
     if (candidate.candidate_type === "price_candidate") {
@@ -1083,7 +1106,7 @@ export default function SalesKanbanPage() {
       if (draft.effective_from) payload.effective_from = draft.effective_from
       if (draft.cost_type) payload.cost_type = draft.cost_type
       if (draft.supplier_or_vendor) payload.supplier_or_vendor = draft.supplier_or_vendor
-      const selectedProduct = aiMatchProducts[candidate.id]?.[0]
+      const selectedProduct = candidateProducts(candidate)[0]
       if (selectedProduct) payload.product_id = selectedProduct
     }
 
@@ -1099,8 +1122,8 @@ export default function SalesKanbanPage() {
       if (draft.effective_from) payload.effective_from = draft.effective_from
       if (draft.shipping_terms) payload.shipping_terms = draft.shipping_terms
       if (draft.payment_terms) payload.payment_terms = draft.payment_terms
-      if (aiMatchCustomer[candidate.id]) payload.customer_id = aiMatchCustomer[candidate.id]
-      const selectedProduct = aiMatchProducts[candidate.id]?.[0]
+      payload.customer_id = candidateCustomer(candidate) || null
+      const selectedProduct = candidateProducts(candidate)[0]
       if (selectedProduct) payload.product_id = selectedProduct
     }
 
@@ -1117,16 +1140,18 @@ export default function SalesKanbanPage() {
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "正式反映に失敗しました。")
 
-    setAiCandidates((current) =>
-      current.map((item) => (item.id === candidate.id ? { ...item, status: "approved" } : item))
-    )
-
+    setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", decision_note: result.decisionNote || "正式反映済み" } : item))
     await refreshSharedAfterWrite()
+    } catch (error) {
+      try { const data = await readAiImportData(); setAiCandidates(data.candidates); setAiBatches(data.batches) } catch { setAiLoadError("保存結果の確認が必要です。候補一覧を再読み込みしてください。") }
+      throw error
+    } finally { aiReviewLock.current = false; setAiReviewBusy(false) }
   }
 
   function toggleAiProduct(candidateId: string, productId: string) {
     setAiMatchProducts((current) => {
-      const selected = current[candidateId] || []
+      const candidate = aiCandidates.find(item => item.id === candidateId)
+      const selected = current[candidateId] ?? (candidate ? candidateProducts(candidate) : [])
       return {
         ...current,
         [candidateId]: selected.includes(productId)
@@ -1189,39 +1214,12 @@ export default function SalesKanbanPage() {
   }
 
   async function applyAiCostRows(candidate: AiImportCandidate) {
-    const productId = (aiMatchProducts[candidate.id] || [])[0] || ""
+    const productId = candidateProducts(candidate)[0] || ""
     if (!productId) throw new Error("商品を選択してください。")
     const rows = getAiCostRows(candidate)
-    if (!rows.length) throw new Error("原価内訳を1件以上入力してください。")
-
-    for (const row of rows) {
-      const amount = Number(String(row.amount || "").replace(/[,\s¥￥]/g, ""))
-      if (!row.label?.trim() || !Number.isFinite(amount) || amount < 0) {
-        throw new Error("各行の内訳名と金額を確認してください。")
-      }
-    }
-
-    setAiBulkCostBusy((current) => ({ ...current, [candidate.id]: true }))
-    try {
-      for (const row of rows) {
-        await saveShared("product_cost", {
-          id: row.id,
-          productId,
-          costType: row.cost_type as ProductCost["costType"],
-          label: row.label.trim(),
-          amount: row.amount,
-          currency: row.currency || "JPY",
-          unit: row.unit || "kg",
-          effectiveFrom: row.effective_from || new Date().toISOString().slice(0, 10),
-          supplierOrVendor: row.supplier_or_vendor || "",
-        } as ProductCost)
-      }
-      await updateAiCandidate(candidate.id, "approved")
-
-      await refreshSharedAfterWrite()
-    } finally {
-      setAiBulkCostBusy((current) => ({ ...current, [candidate.id]: false }))
-    }
+    const first = rows[0]
+    if (!first) throw new Error("原価内訳を1件以上入力してください。")
+    await applyAiCandidate({ ...candidate, payload: { ...candidate.payload, ...first, product_id: productId, price_classification: "supplier_cost", cost_rows: rows } })
   }
 
   async function savePriceClassification(candidate: AiImportCandidate) {
@@ -1273,7 +1271,7 @@ export default function SalesKanbanPage() {
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "AI取込候補を更新できませんでした。")
     setAiCandidates((current) =>
-      current.map((item) => (item.id === id ? { ...item, status } : item))
+      current.map((item) => (item.id === id ? { ...item, status, decision_note: result.decisionNote ?? item.decision_note } : item))
     )
   }
 
@@ -1302,7 +1300,7 @@ export default function SalesKanbanPage() {
   const supplierCostGroups = useMemo(() => {
     const groups: Record<string, AiImportCandidate[]> = {}
     for (const candidate of aiCandidates) {
-      if (candidate.status !== "pending" || candidate.candidate_type !== "price_candidate") continue
+      if (candidate.status !== "pending" || candidate.candidate_type !== "price_candidate" || isAiCandidateApplied(candidate.decision_note)) continue
       const classification = aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")
       if (classification !== "supplier_cost") continue
       const supplier = String(
@@ -1319,6 +1317,7 @@ export default function SalesKanbanPage() {
   }, [aiCandidates, aiBatches, aiPriceClass])
 
   async function applySupplierCostGroup(groupKey: string, candidates: AiImportCandidate[]) {
+    if (aiReviewLock.current || aiImportLock.current) return
     const productId = aiCostGroupProduct[groupKey] || ""
     if (!productId) throw new Error("一括反映する商品を選択してください。")
     const vendor = aiCostGroupVendor[groupKey] || groupKey
@@ -1350,6 +1349,8 @@ export default function SalesKanbanPage() {
       }
     })
 
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
     setAiBulkCostBusy((current) => ({ ...current, [groupKey]: true }))
     try {
       for (const item of prepared) {
@@ -1365,15 +1366,19 @@ export default function SalesKanbanPage() {
         })
         const result = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(result.error || "原価の一括反映に失敗しました。")
+        setAiCandidates(current => current.map(candidate => candidate.id === item.candidate.id ? { ...candidate, status: "approved", decision_note: result.decisionNote || "原価履歴へ反映（一括）" } : candidate))
       }
 
       const approvedIds = new Set(candidates.map((candidate) => candidate.id))
       setAiCandidates((current) =>
-        current.map((item) => approvedIds.has(item.id) ? { ...item, status: "approved" } : item)
+        current.map((item) => approvedIds.has(item.id) ? { ...item, status: "approved", decision_note: "原価履歴へ反映（一括）" } : item)
       )
 
       await refreshSharedAfterWrite()
     } finally {
+      try { const data = await readAiImportData(); setAiCandidates(data.candidates); setAiBatches(data.batches) } catch { setAiLoadError("候補の保存結果を確認できません。再読み込みしてください。") }
+      aiReviewLock.current = false
+      setAiReviewBusy(false)
       setAiBulkCostBusy((current) => ({ ...current, [groupKey]: false }))
     }
   }
@@ -3298,10 +3303,10 @@ export default function SalesKanbanPage() {
                               <p>次回フォロー：{String(candidate.payload?.next_follow_up_date || "未設定")}</p>
                               <p>次のアクション：{String(candidate.payload?.next_action || "未設定")}</p>
                               <p className="text-[10px] leading-4 text-white/45">確認後に案件BOXを作成します。業務カード・受注はこの操作では作成しません。</p>
-                              {isAiCandidateApplied(candidate.decision_note) && candidate.target_id ? <button type="button" onClick={() => openImportedBox(candidate.target_id!)} className="rounded-full border border-white/15 px-3 py-2">案件BOXを開く</button> : <button type="button" disabled={aiReviewBusy} onClick={() => applyAiSalesBox(candidate)} className="w-full rounded-full bg-[#eef3ea] px-4 py-2 font-semibold text-[#11150f]">案件BOXを作成</button>}
+                              {isAiCandidateApplied(candidate.decision_note) && candidate.target_id ? <button type="button" onClick={() => openImportedBox(candidate.target_id!)} className="rounded-full border border-white/15 px-3 py-2">案件BOXを開く</button> : <button type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => applyAiSalesBox(candidate)} className="w-full rounded-full bg-[#eef3ea] px-4 py-2 font-semibold text-[#11150f]">案件BOXを作成</button>}
                             </div>}
                             {candidate.candidate_type === "price_candidate" && (
-                              <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3">
+                              <fieldset disabled={isAiCandidateApplied(candidate.decision_note)}><div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.04] p-3">
                                 <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">価格の種類</div>
                                 <select
                                   value={aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")}
@@ -3320,7 +3325,7 @@ export default function SalesKanbanPage() {
                                   <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-black/10 p-2">
                                     <div className="text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">原価履歴への紐付け</div>
                                     <select
-                                      value={(aiMatchProducts[candidate.id] || [])[0] || ""}
+                                      value={candidateProducts(candidate)[0] || ""}
                                       onChange={(e) => setAiMatchProducts((current) => ({ ...current, [candidate.id]: e.target.value ? [e.target.value] : [] }))}
                                       className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3405,7 +3410,7 @@ export default function SalesKanbanPage() {
                                     </button>
                                     <button
                                       type="button"
-                                      disabled={Boolean(aiBulkCostBusy[candidate.id])}
+                                      disabled={Boolean(aiBulkCostBusy[candidate.id]) || isAiCandidateApplied(candidate.decision_note)}
                                       onClick={() => applyAiCostRows(candidate).catch((error) => alert(error instanceof Error ? error.message : "原価履歴への反映に失敗しました。"))}
                                       className="w-full rounded-lg bg-[#eef3ea] px-3 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-50"
                                     >
@@ -3421,7 +3426,7 @@ export default function SalesKanbanPage() {
                                   <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-black/10 p-2">
                                     <div className="text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">提示済み価格の紐付け</div>
                                     <select
-                                      value={aiMatchCustomer[candidate.id] || ""}
+                                      value={candidateCustomer(candidate)}
                                       onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
                                       className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3431,7 +3436,7 @@ export default function SalesKanbanPage() {
                                       ))}
                                     </select>
                                     <select
-                                      value={(aiMatchProducts[candidate.id] || [])[0] || ""}
+                                      value={candidateProducts(candidate)[0] || ""}
                                       onChange={(e) => setAiMatchProducts((current) => ({ ...current, [candidate.id]: e.target.value ? [e.target.value] : [] }))}
                                       className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3611,7 +3616,7 @@ export default function SalesKanbanPage() {
                                     送料マスタへ正式反映
                                   </button>
                                 )}
-                              </div>
+                              </div></fieldset>
                             )}
 
                             {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_update" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
@@ -3622,7 +3627,7 @@ export default function SalesKanbanPage() {
                                   <div className="space-y-2">
                                     <select
                                       aria-label="新規業務カードの取引先"
-                                      value={aiMatchCustomer[candidate.id] || ""}
+                                      value={candidateCustomer(candidate)}
                                       onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
                                       className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3631,6 +3636,7 @@ export default function SalesKanbanPage() {
                                         <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>
                                       ))}
                                     </select>
+                                    <p>担当者：{String(candidate.payload?.assignee || auth.user?.displayName || auth.user?.email || "未設定")}</p>
                                     <Field label="作成する列（状態）">
                                       <select value={newWorkCandidateStatus(candidate)} onChange={(e) => setAiNewWorkStatus((current) => ({ ...current, [candidate.id]: e.target.value as Status }))} className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs">
                                         {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
@@ -3643,7 +3649,7 @@ export default function SalesKanbanPage() {
                                 {candidate.candidate_type === "customer_update" && (
                                   <>
                                     <select
-                                      value={aiMatchCustomer[candidate.id] || ""}
+                                      value={candidateCustomer(candidate)}
                                       onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
                                       className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3661,7 +3667,7 @@ export default function SalesKanbanPage() {
                                 {candidate.candidate_type === "product_update" && (
                                   <>
                                     <select
-                                      value={(aiMatchProducts[candidate.id] || [])[0] || ""}
+                                      value={candidateProducts(candidate)[0] || ""}
                                       onChange={(e) => setAiMatchProducts((current) => ({ ...current, [candidate.id]: e.target.value ? [e.target.value] : [] }))}
                                       className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
@@ -3712,7 +3718,7 @@ export default function SalesKanbanPage() {
                                 {candidate.candidate_type === "new_work" && products.length > 0 && (
                                   <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto">
                                     {products.map((product) => {
-                                      const active = (aiMatchProducts[candidate.id] || []).includes(product.id)
+                                      const active = candidateProducts(candidate).includes(product.id)
                                       return (
                                         <button
                                           key={product.id}
@@ -3731,10 +3737,10 @@ export default function SalesKanbanPage() {
 
                             <div className="flex flex-wrap gap-2">
                               {candidate.candidate_type === "work_update" && !isAiCandidateApplied(candidate.decision_note) && <button type="button" disabled={aiReviewBusy || Boolean(workUpdatePreview(candidate).error)} onClick={() => applyAiWorkUpdate(candidate)} className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f] disabled:opacity-40">変更を反映</button>}
-                              {!isAiCandidateApplied(candidate.decision_note) && <button type="button" disabled={aiReviewBusy} onClick={() => openAiCandidateEditor(candidate)} className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/80">候補を編集</button>}
+                              {!isAiCandidateApplied(candidate.decision_note) && <button type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => openAiCandidateEditor(candidate)} className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/80">候補を編集</button>}
                               {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                                 <button
-                                  type="button" disabled={aiReviewBusy}
+                                  type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)}
                                   onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
                                   className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
                                 >
@@ -3742,9 +3748,9 @@ export default function SalesKanbanPage() {
                                     ? "単独履歴として反映"
                                     : candidate.candidate_type === "work_event" && (aiEventTarget[candidate.id] || "").startsWith("sales:")
                                       ? "案件へ履歴を反映"
-                                      : candidate.candidate_type === "customer_update" && !aiMatchCustomer[candidate.id]
+                                      : candidate.candidate_type === "customer_update" && !candidateCustomer(candidate)
                                       ? "新規取引先として反映"
-                                      : candidate.candidate_type === "product_update" && !(aiMatchProducts[candidate.id] || []).length
+                                      : candidate.candidate_type === "product_update" && !candidateProducts(candidate).length
                                         ? "新規商品として反映"
                                         : candidate.candidate_type === "new_work"
                                           ? "業務カードを作成"
@@ -3752,19 +3758,19 @@ export default function SalesKanbanPage() {
                                 </button>
                               )}
                               <button
-                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "approved")}
+                                type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => reviewAiCandidate(candidate.id, "approved")}
                                 className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/65"
                               >
                                 候補だけ承認
                               </button>
                               <button
-                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "needs_edit")}
+                                type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => reviewAiCandidate(candidate.id, "needs_edit")}
                                 className="rounded-full border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-xs text-amber-100"
                               >
                                 要修正
                               </button>
                               <button
-                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "rejected")}
+                                type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => reviewAiCandidate(candidate.id, "rejected")}
                                 className="rounded-full border border-red-300/15 px-4 py-2 text-xs text-red-300"
                               >
                                 却下
@@ -3773,11 +3779,10 @@ export default function SalesKanbanPage() {
                           </div>
                         </div>
 
-                        {candidate.status !== "pending" && (
-                          <div className="mt-4 text-xs text-white/35">
-                            現在の判定: {candidate.status === "approved" ? "承認" : candidate.status === "rejected" ? "却下" : "要修正"}
-                          </div>
-                        )}
+                        <div className="mt-4 text-xs text-white/55">
+                          {String(candidate.decision_note || "").startsWith("正式反映処理中:") ? "反映処理中／保存結果の確認が必要" : isAiCandidateApplied(candidate.decision_note) ? "正式反映済み" : candidate.status === "approved" ? (candidate.decision_note === "候補だけ承認（正式反映なし）" ? "候補のみ承認（正式反映なし）" : "確認済み（反映記録なし・反映先を確認）") : "現在の判定: " + (candidate.status === "rejected" ? "却下" : candidate.status === "needs_edit" ? "要修正" : "未判定")}
+                          {candidate.decision_note && <p className="mt-1 break-all">{candidate.decision_note}</p>}
+                        </div>
                       </article>
                     )
                   })}
@@ -3841,7 +3846,10 @@ export default function SalesKanbanPage() {
                 <select
                   className={inputClass}
                   value={editingOrder.salesCaseId || ""}
-                  onChange={(e) => setEditingOrder({ ...editingOrder, salesCaseId: e.target.value })}
+                  onChange={(e) => {
+                    const box = salesCases.find(item => item.id === e.target.value)
+                    setEditingOrder({ ...editingOrder, salesCaseId: e.target.value, ...(!editingOrder.id && box ? { orderType: box.caseType === "new_business" ? "first" as const : "repeat" as const } : {}) })
+                  }}
                 >
                   <option value="">紐づけなし</option>
                   {salesCases
@@ -4067,6 +4075,7 @@ export default function SalesKanbanPage() {
               <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-white/60">
                 保存済みの段階：{SALES_STAGE_LABELS[persistedEditingCase.stage]} ／ 滞在：{editingCaseDuration.days === null ? "開始日不明" : Math.round(editingCaseDuration.days * 10) / 10 + "日"}
                 <div className="mt-1 text-[10px] text-white/40">{editingCaseDuration.enteredAt ? "開始：" + new Date(editingCaseDuration.enteredAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "過去の開始日は推測しません。次の段階変更から記録します。"} 段階を変更して保存すると、新しい段階の測定が始まります。</div>
+                {editingCaseDuration.days === null && <button type="button" onClick={() => repairCaseStage(persistedEditingCase.id)} className="mt-2 rounded-full border border-white/20 px-3 py-1">未確定の段階記録を確認・修復</button>}
               </div>
             )}
 
@@ -4435,6 +4444,19 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
+            <section className="mt-4 rounded-2xl border border-white/10 p-4">
+              <h3 className="text-sm font-semibold">提示価格・条件の履歴</h3>
+              <p className="mt-1 text-xs text-white/45">現在の条件と過去の記録を表示します。提示した価格は受注や支払の確定を意味しません。</p>
+              <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                {(customers.find(item => item.id === editingCustomer.id)?.priceHistory || []).map(row => <div key={row.id} className="rounded-xl border border-white/10 p-3 text-xs">
+                  <p>{row.current ? "現在" : "過去"} ／ {row.productId} {products.find(item => item.id === row.productId)?.name} ／ {row.currency} {row.price}/{row.unit}</p>
+                  <p className="mt-1 text-white/45">適用開始：{row.effectiveFrom || "不明"} ／ 記録：{row.createdAt ? new Date(row.createdAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "不明"}</p>
+                  {row.note && <p className="mt-1 whitespace-pre-wrap">{row.note}</p>}
+                </div>)}
+                {!(customers.find(item => item.id === editingCustomer.id)?.priceHistory || []).length && <p className="text-xs text-white/45">価格履歴はありません。</p>}
+              </div>
+            </section>
+
             <ModalActions deleteDisabled={!trashConfigured} busy={mutationBusy} existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => deleteRecord("customer", editingCustomer.id)} onCancel={() => { if (!(mutationBusy)) setEditingCustomer(null) }} />
           </fieldset>
           </form>
@@ -4720,5 +4742,5 @@ function statusDot(status: Status) {
 
 
 function isAiCandidateApplied(note?: string | null) {
-  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/.test(note || "")
+  return /正式反映処理中:|正式反映済み|正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/.test(note || "")
 }
