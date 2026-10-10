@@ -2639,7 +2639,8 @@ export default function SalesKanbanPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="text-xs text-white/40">{customer?.name || item.customerId}</div>
-                              <h2 className="mt-1 text-base font-semibold leading-6">{item.theme || item.title}</h2>
+                              <h2 className="mt-1 break-words text-base font-semibold leading-6">{item.title || item.theme}</h2>
+                              {item.theme && item.theme !== item.title && <p className="mt-1 break-words text-xs leading-5 text-white/40">テーマ：{item.theme}</p>}
                             </div>
                             <span className={`rounded-lg px-2.5 py-1 text-xs font-bold ${
                               item.heat === "A" ? "bg-red-400/15 text-red-200" :
@@ -2700,7 +2701,8 @@ export default function SalesKanbanPage() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="text-xs text-white/40">{customer?.name || item.customerId}</div>
-                                <h3 className="mt-1 text-sm font-semibold leading-5">{item.theme || item.title}</h3>
+                                <h3 className="mt-1 break-words text-sm font-semibold leading-5">{item.title || item.theme}</h3>
+                                {item.theme && item.theme !== item.title && <p className="mt-1 break-words text-xs leading-5 text-white/40">テーマ：{item.theme}</p>}
                               </div>
                               <Tag>{SALES_STAGE_LABELS[item.stage]}</Tag>
                             </div>
@@ -2860,6 +2862,7 @@ export default function SalesKanbanPage() {
                   {visibleActivityEvents.map((event) => {
                     const linkedWork = work.find((item) => item.id === event.workItemId)
                     const linkedCase = salesCases.find((item) => item.id === event.salesCaseId)
+                    const linkedCustomer = customers.find((item) => item.id === (linkedCase?.customerId || linkedWork?.customerId))
                     const date = event.eventDate ? new Date(event.eventDate) : null
                     const dateLabel = date && !Number.isNaN(date.getTime())
                       ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -2882,7 +2885,7 @@ export default function SalesKanbanPage() {
                               <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
                             {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                             </div>
-                            <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedWork?.title || "相手先未設定"}</h2>
+                            <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedCustomer?.name || "相手先未設定"}</h2>
                             {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
                             {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{displayActivityNote(event.note, SALES_STAGE_LABELS)}</p>}
                           </div>
