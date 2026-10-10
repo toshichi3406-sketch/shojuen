@@ -1721,8 +1721,8 @@ export default function SalesKanbanPage() {
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <Kpi label="返信率" value={salesReplyRate} />
-                <Kpi label="成約率" value={salesWinRate} />
+                <Kpi label="返信率" value={salesReplyRate} detail={`返信 ${repliedEmailedCaseCount}件 ／ 送信 ${emailedCaseIds.size}件`} description="メール送信した案件が対象。同じ案件の複数送信は1件として集計。" />
+                <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
                 <Kpi label="フォロー遅延" value={salesCases.filter((item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo() && !["won", "lost", "hold"].includes(item.stage)).length} />
                 <Kpi label="Aランク案件" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
               </div>
@@ -3529,8 +3529,15 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
   return <button onClick={onClick} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-white text-[#11150f]" : "text-white/50 hover:bg-white/5 hover:text-white"}`}>{icon}{label}</button>
 }
 
-function Kpi({ label, value }: { label: string; value: string | number }) {
-  return <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3"><div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">{label}</div><div className="mt-1 text-xl font-semibold">{value}</div></div>
+function Kpi({ label, value, detail, description }: { label: string; value: string | number; detail?: string; description?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+      <div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">{label}</div>
+      <div className="mt-1 text-xl font-semibold">{value}</div>
+      {detail && <div className="mt-2 text-xs leading-5 text-white/65">{detail}</div>}
+      {description && <p className="mt-1 text-[10px] leading-4 text-white/40">{description}</p>}
+    </div>
+  )
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
