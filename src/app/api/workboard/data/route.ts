@@ -153,7 +153,7 @@ export async function GET() {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
-    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts, orders, orderItems] = await Promise.all([
+    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts, orders, orderItems, priceHistory] = await Promise.all([
       sb("products?select=*&order=id.asc", token),
       sb("customers?select=*&order=id.asc", token),
       sb("customer_prices_current?select=*", token),
@@ -167,6 +167,7 @@ export async function GET() {
       sb("sales_case_products?select=*", token),
       sb("orders?select=*&order=order_date.desc,created_at.desc", token),
       sb("order_items?select=*&order=created_at.asc", token),
+      sb("customer_prices?select=*&order=created_at.desc", token),
     ])
 
     const salesAttributionConfigured = await hasSalesAttributionColumns(token)
@@ -205,9 +206,9 @@ export async function GET() {
       instagram: c.instagram || "",
       linkedin: c.linkedin || "",
       note: c.note || "",
-      priceHistory: (prices || []).filter((p: any) => p.customer_id === c.id).map((p: any) => ({
+      priceHistory: (priceHistory || []).filter((p: any) => p.customer_id === c.id).map((p: any) => ({
         id: p.id, productId: p.product_id, price: String(p.price ?? ""), currency: p.currency, unit: p.unit,
-        effectiveFrom: p.effective_from || "", createdAt: p.created_at || "", current: Boolean(p.is_current), note: p.note || "",
+        effectiveFrom: p.effective_from || "", createdAt: p.created_at || "", current: (prices || []).some((current: any) => current.id === p.id), note: p.note || "",
       })),
       prices: (prices || [])
         .filter((p: any) => p.customer_id === c.id && p.is_current)
