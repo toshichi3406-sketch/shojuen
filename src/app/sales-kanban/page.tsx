@@ -4,8 +4,9 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
 import { useWorkDrag } from "./work-drag"
 import { workboardFetch } from "./workboard-request"
-import { AnalysisOverview, ComparisonChart, monthlyOrderRows } from "./management-analysis"
+import { AnalysisOverview, ComparisonChart, monthlyOrderRows, StageTimeAnalysis, MonthlySalesChart } from "./management-analysis"
 import { OperationSoundDiagnostics } from "./sound-diagnostics"
+import { displayActivityNote, stageDurations } from "../../lib/workboard-time-analysis"
 import { WORK_UPDATE_FIELDS, buildWorkUpdatePatch, workUpdateValue } from "./work-update"
 import {
   Activity,
@@ -567,10 +568,12 @@ export default function SalesKanbanPage() {
     const response = await workboardFetch("/api/workboard/data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, data }),
+      body: JSON.stringify({ type, data: type === "sales_case" ? { ...data, expectedStage: (data as SalesCase).stage } : data }),
     })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBへの保存に失敗しました。")
+    if (result.stageEvent) setEvents((current) => [result.stageEvent, ...current.filter((item) => item.id !== result.stageEvent.id)])
+    if (result.warning) alert(result.warning)
     return result
   }
 
@@ -1418,6 +1421,9 @@ export default function SalesKanbanPage() {
     return { rows: compatible, total, excluded: rows.length - compatible.length }
   }, [editingProduct, productCosts])
 
+  const persistedEditingCase = editingSalesCase?.id ? salesCases.find((item) => item.id === editingSalesCase.id) : undefined
+  const editingCaseDuration = persistedEditingCase ? stageDurations([persistedEditingCase], events, new Date().toISOString())[0] : undefined
+
   const activeCount = work.filter((item) => !["hold", "done"].includes(item.status)).length
   const waitingCount = work.filter((item) => ["external_wait", "internal_wait"].includes(item.status)).length
   const decisionCount = work.filter((item) => item.status === "decision").length
@@ -1829,15 +1835,17 @@ export default function SalesKanbanPage() {
       const response = await workboardFetch("/api/workboard/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "sales_case", data: item }),
+        body: JSON.stringify({ type: "sales_case", data: { ...item, expectedStage: original?.stage } }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "案件の保存に失敗しました。")
-      const saved = { ...item, id: result.id || item.id }
+      const saved = { ...item, id: result.id || item.id, wonAt: result.wonAt ?? item.wonAt, closedAt: result.closedAt ?? item.closedAt }
       setSalesCases((current) => {
         const exists = current.some((row) => row.id === saved.id)
         return exists ? current.map((row) => row.id === saved.id ? saved : row) : [saved, ...current]
       })
+      if (result.stageEvent) setEvents((current) => [result.stageEvent, ...current.filter((event) => event.id !== result.stageEvent.id)])
+      if (result.warning) alert(result.warning)
       setEditingSalesCase(null)
       if (becameWon) {
         setWonCreateOrder(true)
@@ -2423,8 +2431,9 @@ export default function SalesKanbanPage() {
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/50">
-                案件・営業KPIは全期間の累計、段階別は現在の状態、受注推移は直近12か月です。案件ページの絞り込みとは連動しません。
+                滞在日数は記録開始後の期間、月次推移は直近12か月です。累計KPI・現在の件数も補助として表示します。案件ページの絞り込みとは連動しません。
               </div>
+              <StageTimeAnalysis cases={salesCases} events={events} labels={SALES_STAGE_LABELS} now={new Date().toISOString()} onOpen={(id) => { const item = salesCases.find((row) => row.id === id); if (item) setEditingSalesCase({ ...item }) }} />
               <AnalysisOverview
                 stages={Object.entries(SALES_STAGE_LABELS).map(([id, label]) => ({ id, label, count: salesCases.filter((item) => item.stage === id).length }))}
                 months={monthlyOrderRows(orders, todayInTokyo())}
@@ -2463,6 +2472,7 @@ export default function SalesKanbanPage() {
                   <p id="media-kpi-description" className="mb-3 text-xs leading-5 text-white/45">
                     案件の{salesKpiGroupLabel}ごとの累計です。返信・反応率は、こちらから連絡した案件のうち、同じ連絡媒体で返信・反応の記録がある案件の割合です。複数回の連絡は1案件として集計し、初回受信のみは分母に含めません。成約率は新規営業の成約・失注が対象です。未登録は未設定に表示し、案件の絞り込みとは連動しません。
                   </p>
+                  <MonthlySalesChart cases={salesCases} events={events} groupBy={salesKpiGroupBy} groups={salesKpiGroups} today={todayInTokyo()} />
                   <ComparisonChart rows={comparisonKpiRows} />
                   <div className="overflow-x-auto rounded-xl border border-white/10">
                     <table aria-describedby="media-kpi-description" className="w-full min-w-[520px] text-left text-xs">
@@ -2806,7 +2816,7 @@ export default function SalesKanbanPage() {
                             </div>
                             <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedWork?.title || "相手先未設定"}</h2>
                             {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
-                            {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{event.note}</p>}
+                            {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{displayActivityNote(event.note, SALES_STAGE_LABELS)}</p>}
                           </div>
                           <div className="shrink-0 space-y-2 text-xs text-white/35 md:max-w-64">
                             <div>{linkedCase ? "案件: " + (linkedCase.title || linkedCase.theme) : "案件なし"}</div>
@@ -3981,6 +3991,12 @@ export default function SalesKanbanPage() {
           <form onSubmit={saveSalesCase}>
             <fieldset disabled={mutationBusy || salesEventBusy} className="min-w-0">
             <ModalTitle eyebrow="案件" title={editingSalesCase.title || "新しい案件"} onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} />
+            {persistedEditingCase && editingCaseDuration && (
+              <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-white/60">
+                保存済みの段階：{SALES_STAGE_LABELS[persistedEditingCase.stage]} ／ 滞在：{editingCaseDuration.days === null ? "開始日不明" : Math.round(editingCaseDuration.days * 10) / 10 + "日"}
+                <div className="mt-1 text-[10px] text-white/40">{editingCaseDuration.enteredAt ? "開始：" + new Date(editingCaseDuration.enteredAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "過去の開始日は推測しません。次の段階変更から記録します。"} 段階を変更して保存すると、新しい段階の測定が始まります。</div>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="取引先">
@@ -4207,7 +4223,7 @@ export default function SalesKanbanPage() {
                             <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
                             {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                           </div>
-                          {event.note && <div className="mt-2 text-xs leading-5 text-white/60">{event.note}</div>}
+                          {event.note && <div className="mt-2 text-xs leading-5 text-white/60">{displayActivityNote(event.note, SALES_STAGE_LABELS)}</div>}
                         </div>
                       ))
                   )}
@@ -4284,7 +4300,7 @@ export default function SalesKanbanPage() {
                               {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                               {event.counterpartyName && <Tag>{event.counterpartyName}</Tag>}
                             </div>
-                            {event.note && <div className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-white/60">{event.note}</div>}
+                            {event.note && <div className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-white/60">{displayActivityNote(event.note, SALES_STAGE_LABELS)}</div>}
                           </div>
                         )
                       })
