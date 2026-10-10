@@ -30,7 +30,9 @@ type Status =
   | "hold"
   | "done"
 
-type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai"
+type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai" | "trash"
+type TrashItem = { type: "work" | "customer" | "product" | "sales_case" | "order"; id: string; title: string; deletedAt: string }
+const TRASH_LABELS = { work: "業務", customer: "取引先", product: "商品", sales_case: "営業案件", order: "受注" }
 // Orders are kept as confirmed business history, separate from sales opportunities.
 
 type AuthState = {
@@ -368,6 +370,8 @@ export default function SalesKanbanPage() {
   const [productQuery, setProductQuery] = useState("")
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
   const [eventSalesLinksConfigured, setEventSalesLinksConfigured] = useState(false)
+  const [trash, setTrash] = useState<TrashItem[]>([])
+  const [trashConfigured, setTrashConfigured] = useState(false)
   const [editingEventLink, setEditingEventLink] = useState<WorkEvent | null>(null)
   const [eventLinkCaseId, setEventLinkCaseId] = useState("")
   const [eventLinkBusy, setEventLinkBusy] = useState(false)
@@ -448,6 +452,8 @@ export default function SalesKanbanPage() {
           setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
           setSalesAttributionConfigured(data.salesAttributionConfigured === true)
           setEventSalesLinksConfigured(data.eventSalesLinksConfigured === true)
+          setTrashConfigured(data.trashConfigured === true)
+          setTrash(Array.isArray(data.trash) ? data.trash : [])
           setOrders(Array.isArray(data.orders) ? data.orders : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
@@ -570,6 +576,27 @@ export default function SalesKanbanPage() {
     )
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBからの削除に失敗しました。")
+    if (result.trashed) setTrash((current) => [result.trashed, ...current.filter((item) => item.type !== type || item.id !== id)])
+  }
+
+  async function restoreRecord(item: TrashItem) {
+    if (mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
+    try {
+      const response = await fetch("/api/workboard/data", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore", type: item.type, id: item.id }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "復元できませんでした。")
+      setSharedDataAttempt((current) => current + 1)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "復元できませんでした。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
+    }
   }
 
 
@@ -1243,7 +1270,7 @@ export default function SalesKanbanPage() {
     }
   }
 
-  async function deleteRecord(type: "work" | "customer" | "product", id: string) {
+  async function deleteRecord(type: "work" | "customer" | "product" | "sales_case", id: string) {
     if (mutationLock.current || productSaveBusy || docUploadBusy) return
     mutationLock.current = true
     setMutationBusy(true)
@@ -1255,9 +1282,12 @@ export default function SalesKanbanPage() {
       } else if (type === "customer") {
         setCustomers((current) => current.filter((item) => item.id !== id))
         setEditingCustomer(null)
-      } else {
+      } else if (type === "product") {
         setProducts((current) => current.filter((item) => item.id !== id))
         setEditingProduct(null)
+      } else {
+        setSalesCases((current) => current.filter((item) => item.id !== id))
+        setEditingSalesCase(null)
       }
     } catch (error) {
       console.error(error)
@@ -1498,7 +1528,7 @@ export default function SalesKanbanPage() {
 
   function blankCustomer(): Customer {
     return {
-      id: nextId(customers, "C"),
+      id: nextId([...customers, ...trash.filter((item) => item.type === "customer")], "C"),
       name: "",
       country: "",
       category: "",
@@ -1511,7 +1541,7 @@ export default function SalesKanbanPage() {
 
   function blankProduct(): Product {
     return {
-      id: nextId(products, "M"),
+      id: nextId([...products, ...trash.filter((item) => item.type === "product")], "M"),
       name: "",
       producer: "",
       origin: "",
@@ -1758,7 +1788,7 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "sales" ? "営業案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
+                {tab === "trash" ? "ゴミ箱" : tab === "sales" ? "営業案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "sales" &&
@@ -1775,6 +1805,7 @@ export default function SalesKanbanPage() {
                   "商品ID・特徴・原価・卸価格・証明書を一元管理。"}
                 {tab === "shipping" &&
                   "配送先・重量・配送方法ごとの概算、提示済み送料、実績を分けて管理。"}
+                {tab === "trash" && "ゴミ箱へ移動したデータを確認し、元の一覧に戻せます。"}
                 {tab === "ai" &&
                   "ChatGPT・Claudeの会話から抽出した候補を確認し、正式データにする前に承認・却下。"}
               </p>
@@ -1786,7 +1817,7 @@ export default function SalesKanbanPage() {
                   ログアウト
                 </button>
               )}
-            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && (
+            {tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "trash" && (
               <button
                 onClick={() => {
                   if (tab === "sales") setEditingSalesCase(blankSalesCase())
@@ -1813,6 +1844,7 @@ export default function SalesKanbanPage() {
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
             <TabButton active={tab === "shipping"} onClick={() => setTab("shipping")} icon={<Truck className="size-4" />} label={"送料マスタ" + (shippingRates.length ? " (" + shippingRates.length + ")" : "")} />
             <TabButton active={tab === "ai"} onClick={() => setTab("ai")} icon={<Bot className="size-4" />} label={`AI取込候補${pendingAiCount ? ` (${pendingAiCount})` : ""}`} />
+            <TabButton active={tab === "trash"} onClick={() => setTab("trash")} icon={<Trash2 className="size-4" />} label={`ゴミ箱 (${trash.length})`} />
           </nav>
 
 
@@ -1917,7 +1949,30 @@ export default function SalesKanbanPage() {
           </section>
         )}
 
-{tab === "sales" && (
+{tab === "trash" && (
+          <section className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-3">
+              <p className="text-sm leading-6 text-white/55">履歴・価格・商品との紐づけ・添付ファイルは保持されています。復元すると同じIDで戻ります。関連する別のデータもゴミ箱にある場合は、それぞれ復元してください。</p>
+              {!trashConfigured ? (
+                <p role="status" className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-100">ゴミ箱用のDB更新が必要です。更新が済むまで削除はできません。</p>
+              ) : trash.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-white/10 p-6 text-sm text-white/40">ゴミ箱は空です。</p>
+              ) : trash.map((item) => (
+                <article key={`${item.type}:${item.id}`} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2"><Tag>{TRASH_LABELS[item.type]}</Tag><span className="text-xs text-white/35">{item.id}</span></div>
+                    <h2 className="mt-2 break-words text-sm font-semibold">{item.title}</h2>
+                    <p className="mt-1 text-xs text-white/40">移動日時：{new Date(item.deletedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}</p>
+                  </div>
+                  <button type="button" disabled={mutationBusy || (["sales_case", "order"].includes(item.type) && !["owner", "admin"].includes(auth.user?.role || ""))} onClick={() => restoreRecord(item)} className="rounded-full bg-[#eef3ea] px-4 py-2 text-sm font-semibold text-[#11150f] disabled:opacity-40">{mutationBusy ? "処理中..." : "復元"}</button>
+                </article>
+              ))}
+              <p className="text-xs leading-5 text-white/35">営業案件・受注の復元は管理者が行います。この機能を導入する前に完全削除したデータは表示されません。</p>
+            </div>
+          </section>
+        )}
+
+        {tab === "sales" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -3631,20 +3686,11 @@ export default function SalesKanbanPage() {
             )}
 
             <ModalActions
+              busy={mutationBusy}
+              deleteDisabled={!trashConfigured}
               existing={Boolean(editingSalesCase.id) && ["owner", "admin"].includes(auth.user?.role || "")}
-              onDelete={async () => {
-                if (!editingSalesCase.id) return
-                const id = editingSalesCase.id
-                setEditingSalesCase(null)
-                try {
-                  await deleteShared("sales_case", id)
-                  setSalesCases((current) => current.filter((item) => item.id !== id))
-                } catch (error) {
-                  console.error(error)
-                  alert(error instanceof Error ? error.message : "営業案件の削除に失敗しました。")
-                }
-              }}
-              onCancel={() => setEditingSalesCase(null)}
+              onDelete={() => { if (editingSalesCase.id) deleteRecord("sales_case", editingSalesCase.id) }}
+              onCancel={() => { if (!mutationBusy) setEditingSalesCase(null) }}
             />
           </form>
         </Modal>
@@ -3674,7 +3720,7 @@ export default function SalesKanbanPage() {
 
             <div className="mt-4"><Field label="メモ"><textarea rows={4} className={`${inputClass} min-h-28 resize-y py-3`} value={editingWork.memo || ""} onChange={(e) => setEditingWork({ ...editingWork, memo: e.target.value })} /></Field></div>
 
-            <ModalActions busy={mutationBusy} existing={work.some((item) => item.id === editingWork.id)} onDelete={() => deleteRecord("work", editingWork.id)} onCancel={() => { if (!(mutationBusy)) setEditingWork(null) }} />
+            <ModalActions deleteDisabled={!trashConfigured} busy={mutationBusy} existing={work.some((item) => item.id === editingWork.id)} onDelete={() => deleteRecord("work", editingWork.id)} onCancel={() => { if (!(mutationBusy)) setEditingWork(null) }} />
           </fieldset>
           </form>
         </Modal>
@@ -3728,7 +3774,7 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions busy={mutationBusy} existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => deleteRecord("customer", editingCustomer.id)} onCancel={() => { if (!(mutationBusy)) setEditingCustomer(null) }} />
+            <ModalActions deleteDisabled={!trashConfigured} busy={mutationBusy} existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => deleteRecord("customer", editingCustomer.id)} onCancel={() => { if (!(mutationBusy)) setEditingCustomer(null) }} />
           </fieldset>
           </form>
         </Modal>
@@ -3880,7 +3926,7 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions busy={mutationBusy || productSaveBusy || docUploadBusy} existing={products.some((item) => item.id === editingProduct.id)} onDelete={() => deleteRecord("product", editingProduct.id)} onCancel={() => { if (!(mutationBusy || productSaveBusy || docUploadBusy)) setEditingProduct(null) }} />
+            <ModalActions deleteDisabled={!trashConfigured} busy={mutationBusy || productSaveBusy || docUploadBusy} existing={products.some((item) => item.id === editingProduct.id)} onDelete={() => deleteRecord("product", editingProduct.id)} onCancel={() => { if (!(mutationBusy || productSaveBusy || docUploadBusy)) setEditingProduct(null) }} />
           </fieldset>
           </form>
         </Modal>
@@ -3964,8 +4010,8 @@ function ModalTitle({ eyebrow, title, onClose }: { eyebrow: string; title: strin
   return <div className="mb-5 flex items-center justify-between gap-4"><div><div className="text-xs font-semibold tracking-[0.16em] text-white/35">{eyebrow}</div><h2 className="mt-1 text-xl font-semibold">{title}</h2></div><button type="button" onClick={onClose} className="rounded-full p-2 text-white/50 hover:bg-white/10"><X className="size-5" /></button></div>
 }
 
-function ModalActions({ existing, onDelete, onCancel, busy = false }: { existing: boolean; onDelete: () => void; onCancel: () => void; busy?: boolean }) {
-  return <div className="mt-6 flex items-center justify-between gap-3">{existing ? <button type="button" disabled={busy} onClick={onDelete} className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-400/10"><Trash2 className="size-4" />削除</button> : <span />}<div className="flex gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm">キャンセル</button><button type="submit" disabled={busy} className="disabled:opacity-40 rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]">{busy ? "処理中..." : "保存"}</button></div></div>
+function ModalActions({ existing, onDelete, onCancel, busy = false, deleteDisabled = false }: { existing: boolean; onDelete: () => void; onCancel: () => void; busy?: boolean; deleteDisabled?: boolean }) {
+  return <div className="mt-6 flex items-center justify-between gap-3">{existing ? <button type="button" disabled={busy || deleteDisabled} title={deleteDisabled ? "ゴミ箱用のDB更新が必要です" : "ゴミ箱へ移動"} onClick={() => { if (window.confirm("ゴミ箱へ移動しますか？あとから復元できます。")) onDelete() }} className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-400/10"><Trash2 className="size-4" />ゴミ箱へ</button> : <span />}<div className="flex gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm">キャンセル</button><button type="submit" disabled={busy} className="disabled:opacity-40 rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]">{busy ? "処理中..." : "保存"}</button></div></div>
 }
 
 function priorityClass(priority?: WorkItem["priority"]) {

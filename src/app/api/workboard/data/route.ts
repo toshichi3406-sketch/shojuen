@@ -53,6 +53,23 @@ async function loadEventSalesLinks(token: string) {
   }
 }
 
+const trashTables: Record<string, string> = {
+  work: "work_items", customer: "customers", product: "products",
+  sales_case: "sales_cases", order: "orders",
+}
+
+async function hasTrashColumns(token: string) {
+  try {
+    await sb("work_items?select=deleted_at&limit=1", token)
+    return true
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42703" || code === "PGRST204") return false
+    throw error
+  }
+}
+
 function workToDb(item: any) {
   return {
     id: item.id,
@@ -131,6 +148,7 @@ export async function GET() {
     ])
 
     const salesAttributionConfigured = await hasSalesAttributionColumns(token)
+    const trashConfigured = await hasTrashColumns(token)
     const eventSalesLinks = await loadEventSalesLinks(token)
     const eventCaseOverrides = new Map<string, string | null>(eventSalesLinks.rows.map((row: any) => [row.event_id, row.sales_case_id]))
 
@@ -305,17 +323,35 @@ export async function GET() {
         .map((l: any) => l.product_id),
     }))
 
+    const collections = [
+      { type: "work", rows: workItems, mapped: mappedWork },
+      { type: "customer", rows: customers, mapped: mappedCustomers },
+      { type: "product", rows: products, mapped: mappedProducts },
+      { type: "sales_case", rows: salesCases, mapped: mappedSalesCases },
+      { type: "order", rows: orders, mapped: mappedOrders },
+    ]
+    const trash = collections.flatMap(({ type, rows }) => (rows || [])
+      .filter((row: any) => row.deleted_at)
+      .map((row: any) => ({ type, id: row.id, title: row.title || row.name || row.external_order_ref || `受注 ${row.order_date || row.id}`, deletedAt: row.deleted_at })))
+      .sort((a: any, b: any) => b.deletedAt.localeCompare(a.deletedAt))
+    const active = (type: string) => {
+      const collection = collections.find((item) => item.type === type)!
+      const removed = new Set((collection.rows || []).filter((row: any) => row.deleted_at).map((row: any) => row.id))
+      return collection.mapped.filter((row: any) => !removed.has(row.id))
+    }
     return NextResponse.json({
-      work: mappedWork,
-      customers: mappedCustomers,
-      products: mappedProducts,
+      work: active("work"),
+      customers: active("customer"),
+      products: active("product"),
       events: mappedEvents,
       shippingRates: mappedShippingRates,
       productCosts: mappedProductCosts,
-      salesCases: mappedSalesCases,
+      salesCases: active("sales_case"),
       salesAttributionConfigured,
       eventSalesLinksConfigured: eventSalesLinks.configured,
-      orders: mappedOrders,
+      orders: active("order"),
+      trash,
+      trashConfigured,
     })
   } catch (error) {
     return NextResponse.json(
@@ -684,26 +720,45 @@ export async function DELETE(request: NextRequest) {
   if (!type || !id) return NextResponse.json({ error: "Missing type or id" }, { status: 400 })
 
   try {
-    const table =
-      type === "work" ? "work_items" :
-      type === "customer" ? "customers" :
-      type === "product" ? "products" :
-      type === "sales_case" ? "sales_cases" :
-      type === "order" ? "orders" :
-      null
+    const table = Object.hasOwn(trashTables, type) ? trashTables[type] : null
 
     if (!table) return NextResponse.json({ error: "Unsupported entity type" }, { status: 400 })
 
-    await sb(`${table}?id=eq.${encodeURIComponent(id)}`, token, {
-      method: "DELETE",
-      headers: { Prefer: "return=minimal" },
+    if (!await hasTrashColumns(token)) return NextResponse.json({ error: "ゴミ箱用のDB更新を先に適用してください。削除は行っていません。" }, { status: 409 })
+    const rows = await sb(`${table}?id=eq.${encodeURIComponent(id)}&deleted_at=is.null`, token, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() }),
     })
+    if (!rows?.length) return NextResponse.json({ error: "対象が見つからないか、操作する権限がありません。再読み込みしてください。" }, { status: 404 })
 
-    return NextResponse.json({ ok: true })
+    const row = rows[0]
+    return NextResponse.json({ ok: true, trashed: { type, id: row.id, title: row.title || row.name || row.external_order_ref || `受注 ${row.order_date || row.id}`, deletedAt: row.deleted_at } })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to delete WORKBOARD data" },
       { status: 500 }
     )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const token = await getToken()
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  try {
+    const body = await request.json()
+    const type = body?.type
+    const id = body?.id
+    const table = typeof type === "string" && Object.hasOwn(trashTables, type) ? trashTables[type] : null
+    if (!table || typeof id !== "string" || !id || body?.action !== "restore") return NextResponse.json({ error: "復元対象を確認してください。" }, { status: 400 })
+    if (!await hasTrashColumns(token)) return NextResponse.json({ error: "ゴミ箱用のDB更新が必要です。" }, { status: 409 })
+    const rows = await sb(`${table}?id=eq.${encodeURIComponent(id)}&deleted_at=not.is.null`, token, {
+      method: "PATCH", headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ deleted_at: null }),
+    })
+    if (!rows?.length) return NextResponse.json({ error: "対象が見つからないか、復元する権限がありません。再読み込みしてください。" }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "復元できませんでした。" }, { status: 500 })
   }
 }
