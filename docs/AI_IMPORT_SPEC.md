@@ -42,6 +42,31 @@ Allowed source values:
 
 source_session_id should be stable and unique when available. It is used to prevent duplicate imports.
 
+## Production additions (2026-10-11)
+
+The Japanese daily-report contract and copyable prompt in `docs/DAILY_JSON_PROMPT.md` are the current operational reference. The historical extraction prompt below predates case creation/update; use the current prompt for daily operation. Human review remains required. Actual receipt/order creation is not a supported candidate type.
+
+### new_sales_case
+Creates a project BOX, not a W-number work card. Candidate `title` becomes the case title. Payload: `customer_id`, `theme`, `assignee`, `case_type` (`new_business` or `existing_followup`), `stage`, `heat`, optional `next_follow_up_date`, `next_action`, `origin_type`, `channel`, `product_ids`. Known customer and assignee must be confirmed in the inbox before apply. No invented IDs.
+
+### sales_case_update
+Updates an existing project BOX. Payload `sales_case_id` is the known UUID; if unknown omit it and select the BOX in the inbox. Include only changed fields: `title`, `theme`, `stage`, `heat`, `assignee`, `next_follow_up_date`, `next_action`, `close_reason`, `close_note`, `case_type`, `origin_type`, `channel`. Do not include `customer_id`, `product_ids`, work IDs or explicit win/close timestamps; these are not supported changes. Stage residence starts at formal apply, not the historical event date.
+
+### Current linking and commercial-term behavior
+
+- `work_update`: existing W ID goes in payload `work_item_id` (and envelope target_id when known); only changed fields. Customer/product/BOX relinking is a manual card edit.
+- `new_work`: does not apply a BOX link from JSON. Put known intended BOX in memo, then link through card editing after creation.
+- `work_event`: payload `sales_case_id` and/or `work_item_id`, `event_type`, `event_date`, `channel`, `direction`, `counterparty_name`, `counterparty_email`, `note`. An unknown event date is recorded at apply time by the current implementation; say original date unknown in note. Recipient is not inferred from the linked BOX's customer.
+- `customer_update`: existing ID in payload `customer_id`; `product_update`: payload `product_id`. With ID unknown, select existing master before applying; do not accidentally create a duplicate master.
+- `product_update` does not apply incoming cost/standard wholesale price. Commercial terms belong in price candidates; general product metadata/documents go in product_update.
+- `price_candidate`: `price_classification` values `supplier_cost`, `standard_wholesale`, `customer_quoted`, `proposed`, `shipping_rate`, `other`. Only supplier_cost, customer_quoted, shipping_rate currently have direct formal apply. Others need manual review. Classification alone does not write any master.
+- supplier_cost: `product_id`, `amount`, `currency`, `unit`, `cost_type` (base_purchase/processing/packaging/labeling/inspection/domestic_freight/other), optional supplier_or_vendor, effective_from, note.
+- customer_quoted: `customer_id`, `product_id`, `amount` or price, currency, unit, moq, shipping_terms, payment_terms, effective_from, note. Preserve scope: a special quote is not a universal wholesale price.
+- shipping_rate: shipping_stage estimate/quoted/actual, destination, origin, carrier, service, weight_kg, amount, currency and evidence note. Unknown amounts/weights are not zero.
+
+Case stages: uncontacted, initial_sent, replied, qualifying, quoted, sample_requested, sample_sent, considering, won, lost, hold.
+Work statuses: todo, prep, doing, external_wait, internal_wait, decision, hold, done.
+
 ## Candidate types
 
 ### new_work
@@ -246,3 +271,4 @@ Use this prompt with 3-5 representative conversations first:
 3. Adjust rules if misclassification is found.
 4. Import historical backlog in small batches.
 5. Only after quality is stable, consider semi-automation.
+
