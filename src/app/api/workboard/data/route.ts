@@ -1,5 +1,6 @@
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
+import { CASE_STAGES, parseStageRecord, stageRecordNote } from "../../../../lib/workboard-time-analysis"
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -398,8 +399,9 @@ export async function POST(request: NextRequest) {
         !(data.salesCaseId === null || (typeof data.salesCaseId === "string" && uuid.test(data.salesCaseId)))) {
         return NextResponse.json({ error: "履歴と営業案件を選択してください。" }, { status: 400 })
       }
-      const event = await sb(`work_events?select=id,work_item_id&id=eq.${encodeURIComponent(data.id)}`, token)
+      const event = await sb(`work_events?select=id,work_item_id,note,source&id=eq.${encodeURIComponent(data.id)}`, token)
       if (!event?.length) return NextResponse.json({ error: "活動履歴が見つかりません。" }, { status: 404 })
+      if (parseStageRecord(event[0].note)) return NextResponse.json({ error: "段階変更の記録は紐づけを変更できません。" }, { status: 400 })
       if (data.salesCaseId) {
         const target = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(data.salesCaseId)}`, token)
         if (!target?.length) return NextResponse.json({ error: "営業案件が見つかりません。" }, { status: 404 })
@@ -449,9 +451,13 @@ export async function POST(request: NextRequest) {
       }
 
       const productIds = await validateProductIds(data.productIds, token)
+      if (!CASE_STAGES.includes(data.stage)) return NextResponse.json({ error: "案件の段階を確認してください。" }, { status: 400 })
+      let previousCase: any = null
       if (data.id) {
-        const current = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(data.id)}`, token)
+        const current = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(data.id)}&deleted_at=is.null`, token)
         if (!current?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
+        previousCase = current[0]
+        if (data.expectedStage != null && data.expectedStage !== previousCase.stage) return NextResponse.json({ error: "案件の段階が別の操作で変更されています。再読み込みして確認してください。" }, { status: 409 })
         if (current[0].customer_id !== data.customerId) {
           const linked = await Promise.all([
             sb(`work_items?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
@@ -475,6 +481,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "接点区分・媒体の保存にはDB更新が必要です。画面を再読み込みしてください。" }, { status: 409 })
       }
 
+      const changedStage = previousCase && previousCase.stage !== data.stage
+      const savedAt = new Date().toISOString()
       const payload = {
         ...(hasOrigin ? { origin_type: data.originType || null } : {}),
         ...(hasChannel ? { channel: data.channel || null } : {}),
@@ -490,18 +498,40 @@ export async function POST(request: NextRequest) {
         last_contact_at: data.lastContactAt || null,
         close_reason: data.closeReason || null,
         close_note: data.closeNote || null,
-        won_at: data.wonAt || null,
-        closed_at: data.closedAt || null,
-        updated_at: new Date().toISOString(),
+        won_at: data.stage === "won" && (!previousCase || changedStage) ? savedAt : previousCase?.won_at || data.wonAt || null,
+        closed_at: ["won","lost"].includes(data.stage) && (!previousCase || changedStage) ? savedAt : previousCase?.closed_at || data.closedAt || null,
+        updated_at: savedAt,
       }
 
       let salesCaseId = data.id
-      if (salesCaseId) {
-        await sb(`sales_cases?id=eq.${encodeURIComponent(salesCaseId)}`, token, {
-          method: "PATCH",
-          headers: { Prefer: "return=minimal" },
-          body: JSON.stringify(payload),
+      let stageEvent: any = null
+      let warning = ""
+      const priorDecision = previousCase && ["won","lost"].includes(previousCase.stage) && (previousCase.closed_at || previousCase.won_at)
+        ? { date: previousCase.closed_at || previousCase.won_at, outcome: previousCase.stage, channel: previousCase.channel || "", originType: previousCase.origin_type || "", caseType: previousCase.case_type } : undefined
+      const changeNote = (phase: "pending" | "committed" | "aborted") => stageRecordNote(previousCase?.stage || null, data.stage, { ...data, channel: hasChannel ? data.channel : previousCase?.channel, originType: hasOrigin ? data.originType : previousCase?.origin_type, priorDecision }, phase)
+      if (changedStage) {
+        const inserted = await sb("work_events", token, {
+          method: "POST", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: changeNote("pending") }),
         })
+        stageEvent = inserted?.[0]
+        if (!stageEvent?.id) throw new Error("段階変更の記録を準備できませんでした。案件は変更していません。")
+      }
+      if (salesCaseId) {
+        try {
+          const saved = await sb(`sales_cases?id=eq.${encodeURIComponent(salesCaseId)}&deleted_at=is.null&${previousCase.updated_at ? "updated_at=eq." + encodeURIComponent(previousCase.updated_at) : "updated_at=is.null"}`, token, {
+            method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(payload),
+          })
+          if (!saved?.length) throw new RelationError("案件が別の操作で変更されています。再読み込みして確認してください。")
+        } catch (error) {
+          if (stageEvent) {
+            // Keep an uncertain network result pending; do not invent a successful transition.
+            if (error instanceof RelationError) try {
+              await sb(`work_events?id=eq.${encodeURIComponent(stageEvent.id)}`, token, { method: "PATCH", body: JSON.stringify({ note: changeNote("aborted") }) })
+            } catch { /* A pending record conservatively leaves the duration unknown. */ }
+          }
+          throw error
+        }
       } else {
         const inserted = await sb("sales_cases", token, {
           method: "POST",
@@ -514,7 +544,25 @@ export async function POST(request: NextRequest) {
       if (!salesCaseId) {
         return NextResponse.json({ error: "営業案件IDを取得できませんでした。" }, { status: 500 })
       }
+      if (changedStage || !previousCase) {
+        try {
+          if (stageEvent) {
+            await sb(`work_events?id=eq.${encodeURIComponent(stageEvent.id)}`, token, {
+              method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ note: changeNote("committed") }),
+            })
+            stageEvent.note = changeNote("committed")
+          } else {
+            const inserted = await sb("work_events", token, {
+              method: "POST", headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: changeNote("committed") }),
+            })
+            stageEvent = inserted?.[0]
+            if (!stageEvent?.id) throw new Error("Missing stage record")
+          }
+        } catch { warning = "案件は保存済みですが、段階の記録を確定できませんでした。滞在日数は不明として表示します。再読み込みして確認してください。" }
+      }
 
+      try {
       await sb(`sales_case_products?sales_case_id=eq.${encodeURIComponent(salesCaseId)}`, token, {
         method: "DELETE",
         headers: { Prefer: "return=minimal" },
@@ -532,8 +580,10 @@ export async function POST(request: NextRequest) {
           ),
         })
       }
+      } catch { warning = [warning, "案件は保存済みですが、関連商品の更新に失敗しました。案件を開いて確認してください。"].filter(Boolean).join(" ") }
 
-      return NextResponse.json({ ok: true, id: salesCaseId })
+      return NextResponse.json({ ok: true, id: salesCaseId, warning, wonAt: payload.won_at, closedAt: payload.closed_at,
+        stageEvent: stageEvent ? { id: stageEvent.id, salesCaseId, eventType: "note", eventDate: savedAt, source: "workboard_auto", note: stageEvent.note } : null })
     } else if (type === "order") {
       if (!data.customerId || !data.orderDate || !data.orderType || !data.orderStatus || !data.currency) {
         return NextResponse.json({ error: "受注履歴の必須項目を確認してください。" }, { status: 400 })
@@ -622,6 +672,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ ok: true, id: orderId, totalAmount: payload.total_amount })
     } else if (type === "work_event") {
+      if (parseStageRecord(data.note)) return NextResponse.json({ error: "段階の記録は案件の保存から登録してください。" }, { status: 400 })
       let customerId: string | undefined
       if (data.workItemId) {
         const rows = await sb(`work_items?select=id,customer_id&id=eq.${encodeURIComponent(data.workItemId)}`, token)
