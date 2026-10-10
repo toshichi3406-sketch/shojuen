@@ -2885,7 +2885,8 @@ export default function SalesKanbanPage() {
                               <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
                             {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                             </div>
-                            <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedCustomer?.name || "相手先未設定"}</h2>
+                            <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || (linkedCustomer ? "関連取引先：" + linkedCustomer.name : "相手先未設定")}</h2>
+                            {!event.counterpartyName && linkedCustomer && <p className="mt-1 text-xs text-white/35">活動の相手名は未記録です。紐づく案件・業務の取引先を表示しています。</p>}
                             {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
                             {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{displayActivityNote(event.note, SALES_STAGE_LABELS)}</p>}
                           </div>
