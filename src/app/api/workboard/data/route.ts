@@ -138,7 +138,7 @@ export async function GET() {
       memo: p.memo || "",
       docs: (docs || [])
         .filter((d: any) => d.product_id === p.id)
-        .map((d: any) => ({ id: d.id, title: d.title, url: d.storage_path })),
+        .map((d: any) => ({ id: d.id, title: d.title, url: d.storage_path, mimeType: d.mime_type || "", isPrivate: String(d.storage_path || "").startsWith("products/") })),
     }))
 
     const mappedCustomers = (customers || []).map((c: any) => ({
@@ -603,7 +603,7 @@ export async function POST(request: NextRequest) {
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify(productToDb(data)),
       })
-      await sb(`product_documents?product_id=eq.${encodeURIComponent(data.id)}`, token, {
+      await sb(`product_documents?product_id=eq.${encodeURIComponent(data.id)}&storage_path=not.like.products/*`, token, {
         method: "DELETE",
         headers: { Prefer: "return=minimal" },
       })
@@ -613,7 +613,7 @@ export async function POST(request: NextRequest) {
           headers: { Prefer: "return=minimal" },
           body: JSON.stringify(
             data.docs
-              .filter((doc: any) => doc.title && doc.url)
+              .filter((doc: any) => doc.title && typeof doc.url === "string" && doc.url && !doc.url.startsWith("products/"))
               .map((doc: any) => ({
                 product_id: data.id,
                 title: doc.title,
