@@ -1041,6 +1041,16 @@ export default function SalesKanbanPage() {
     : "—"
 
 
+  const salesCaseIds = new Set(salesCases.map((item) => item.id))
+  const countSalesCasesWithEvent = (eventType: string) =>
+    new Set(
+      events
+        .filter((event) => event.eventType === eventType && event.salesCaseId && salesCaseIds.has(event.salesCaseId))
+        .map((event) => event.salesCaseId)
+    ).size
+  const quotedSalesCaseCount = countSalesCasesWithEvent("quote_sent")
+  const sampleSentSalesCaseCount = countSalesCasesWithEvent("sample_sent")
+
   const isSystemEvent = (event: WorkEvent) =>
     event.source === "workboard_auto" ||
     ["work_updated", "work_created", "status_changed"].includes(event.eventType)
@@ -1732,6 +1742,23 @@ export default function SalesKanbanPage() {
                 <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setShowOverdueSalesOnly((current) => !current)} active={showOverdueSalesOnly} />
                 <Kpi label="Aランク案件" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
               </div>
+
+              <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
+                <summary className="flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+                  <BarChart3 className="size-4 text-white/45" />
+                  詳細KPI（見積・サンプル）
+                  <ChevronDown className="ml-auto size-4 text-white/45" />
+                </summary>
+                <div className="px-4 pb-4">
+                  <p className="mb-3 text-xs leading-5 text-white/45">
+                    全営業案件の累計です。成約・失注・保留、既存顧客対応も含みます。フォロー遅延の絞り込みとは連動しません。履歴が未登録の案件は含まれません。
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Kpi label="見積提示案件" value={`${quotedSalesCaseCount}件`} detail="見積提示の履歴がある案件" description="同じ案件で複数回提示しても1件として集計。" />
+                    <Kpi label="サンプル送付案件" value={`${sampleSentSalesCaseCount}件`} detail="サンプル送付の履歴がある案件" description="同じ案件で複数回送付しても1件として集計。要求のみの案件は除外。" />
+                  </div>
+                </div>
+              </details>
 
               {showOverdueSalesOnly && (
                 <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3">
