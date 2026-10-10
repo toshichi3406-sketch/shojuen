@@ -720,31 +720,66 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ ok: true, applied: "shipping_rate", rateStage })
     }
 
+
     if (candidateType === "work_event") {
-      await sb("work_events", token, {
-        method: "POST",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          work_item_id: payload.work_item_id || null,
-          event_type: payload.event_type || "note",
-          event_date: payload.event_date || payload.occurred_at || now,
-          channel: payload.channel || null,
-          note: payload.note || payload.memo || null,
-          counterparty_name: payload.counterparty_name || null,
-          counterparty_email: payload.counterparty_email || null,
-          direction: payload.direction || null,
-          source: "ai_import",
-          source_candidate_id: id,
-        }),
-      })
-
-      await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "approved", reviewed_at: now, decision_note: "業務履歴へ反映" }),
-      })
-
-      return NextResponse.json({ ok: true })
+      const candidateRows = await sb(`ai_import_candidates?select=id,candidate_type&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      if (!candidateRows?.length || candidateRows[0].candidate_type !== "work_event") {
+        return NextResponse.json({ error: "活動履歴候補が見つからないか、分類が変わっています。再読み込みしてください。" }, { status: 409 })
+      }
+      const existingEvents = await sb(`work_events?select=id,work_item_id,sales_case_id&source_candidate_id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      const existingEvent = existingEvents?.[0]
+      let workId = existingEvent ? existingEvent.work_item_id : payload.work_item_id || null
+      let salesCaseId = existingEvent ? existingEvent.sales_case_id : payload.sales_case_id || null
+      let eventId = existingEvent?.id
+      if (!existingEvent) {
+        if ((workId && typeof workId !== "string") || (salesCaseId && typeof salesCaseId !== "string")) {
+          return NextResponse.json({ error: "活動履歴の紐づけ先を確認してください。" }, { status: 400 })
+        }
+        let workCustomerId: string | null = null
+        if (workId) {
+          const rows = await sb(`work_items?select=id,customer_id,sales_case_id&id=eq.${encodeURIComponent(workId)}&deleted_at=is.null&limit=1`, token)
+          if (!rows?.length) return NextResponse.json({ error: "関連業務が見つかりません。ゴミ箱内の場合は先に復元してください。" }, { status: 404 })
+          workCustomerId = rows[0].customer_id || null
+          if (!salesCaseId) salesCaseId = rows[0].sales_case_id || null
+        }
+        if (salesCaseId) {
+          const rows = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(salesCaseId)}&deleted_at=is.null&limit=1`, token)
+          if (!rows?.length) return NextResponse.json({ error: "営業案件が見つかりません。ゴミ箱内の場合は先に復元してください。" }, { status: 404 })
+          if ((workCustomerId && rows[0].customer_id !== workCustomerId) || (payload.customer_id && rows[0].customer_id !== payload.customer_id)) {
+            return NextResponse.json({ error: "取引先と営業案件が一致していません。紐づけ先を選び直してください。" }, { status: 400 })
+          }
+        }
+        const inserted = await sb("work_events", token, {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            work_item_id: workId,
+            sales_case_id: salesCaseId,
+            event_type: payload.event_type || "note",
+            event_date: payload.event_date || payload.occurred_at || now,
+            channel: payload.channel || null,
+            note: payload.note || payload.memo || body.title || null,
+            counterparty_name: payload.counterparty_name || null,
+            counterparty_email: payload.counterparty_email || null,
+            direction: payload.direction || null,
+            source: "ai_import",
+            source_candidate_id: id,
+          }),
+        })
+        if (!inserted?.[0]?.id) throw new Error("活動履歴の保存結果を確認できませんでした。再読み込みしてください。")
+        eventId = inserted[0].id
+      }
+      const decisionNote = salesCaseId ? `業務履歴へ反映（営業案件 ${salesCaseId}）` : workId ? `業務履歴へ反映（業務 ${workId}）` : "業務履歴へ反映（単独）"
+      try {
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "approved", reviewed_at: now, decision_note: decisionNote }),
+        })
+      } catch {
+        return NextResponse.json({ ok: true, eventId, workId, salesCaseId, decisionNote, warning: "活動履歴は保存済みですが、候補の反映済み記録に失敗しました。活動履歴を確認し、同じ候補を再取込しないでください。" })
+      }
+      return NextResponse.json({ ok: true, eventId, workId, salesCaseId, decisionNote, alreadyApplied: Boolean(existingEvent) })
     }
 
     return NextResponse.json(
