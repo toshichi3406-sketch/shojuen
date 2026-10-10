@@ -37,7 +37,7 @@ type Status =
 
 type Tab = "sales" | "orders" | "work" | "activity" | "customers" | "products" | "shipping" | "ai" | "trash"
 type TrashItem = { type: "work" | "customer" | "product" | "sales_case" | "order"; id: string; title: string; deletedAt: string }
-const TRASH_LABELS = { work: "業務", customer: "取引先", product: "商品", sales_case: "営業案件", order: "受注" }
+const TRASH_LABELS = { work: "業務", customer: "取引先", product: "商品", sales_case: "案件", order: "受注" }
 // Orders are kept as confirmed business history, separate from sales opportunities.
 
 type AuthState = {
@@ -889,7 +889,7 @@ export default function SalesKanbanPage() {
     const payload = { ...candidate.payload, work_item_id: null as string | null, sales_case_id: null as string | null }
     if (target.startsWith("sales:")) {
       const id = target.slice(6)
-      if (!salesCases.some((item) => item.id === id)) { setAiReviewError("営業案件を選び直してください。"); return }
+      if (!salesCases.some((item) => item.id === id)) { setAiReviewError("案件を選び直してください。"); return }
       payload.sales_case_id = id
     } else if (target.startsWith("work:")) {
       const id = target.slice(5)
@@ -909,7 +909,7 @@ export default function SalesKanbanPage() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "活動履歴を反映できませんでした。")
       setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", decision_note: result.decisionNote || "業務履歴へ反映" } : item))
-      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の活動履歴は保存済みです。紐づけを変える場合は活動履歴の「案件の紐づけを変更」を使ってください。" : result.salesCaseId ? "営業案件に紐づけて活動履歴を保存しました。" : result.workId ? "業務に紐づけて活動履歴を保存しました。" : "単独の活動履歴として保存しました。"))
+      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の活動履歴は保存済みです。紐づけを変える場合は活動履歴の「案件の紐づけを変更」を使ってください。" : result.salesCaseId ? "案件に紐づけて活動履歴を保存しました。" : result.workId ? "業務に紐づけて活動履歴を保存しました。" : "単独の活動履歴として保存しました。"))
       await refreshSharedAfterWrite()
     } catch (error) {
       setAiReviewError(error instanceof Error ? error.message : "活動履歴を反映できませんでした。")
@@ -1831,7 +1831,7 @@ export default function SalesKanbanPage() {
         body: JSON.stringify({ type: "sales_case", data: item }),
       })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error || "営業案件の保存に失敗しました。")
+      if (!response.ok) throw new Error(result.error || "案件の保存に失敗しました。")
       const saved = { ...item, id: result.id || item.id }
       setSalesCases((current) => {
         const exists = current.some((row) => row.id === saved.id)
@@ -1845,7 +1845,7 @@ export default function SalesKanbanPage() {
       }
     } catch (error) {
       console.error(error)
-      alert(error instanceof Error ? error.message : "営業案件の保存に失敗しました。")
+      alert(error instanceof Error ? error.message : "案件の保存に失敗しました。")
     } finally {
       mutationLock.current = false
       setMutationBusy(false)
@@ -2232,7 +2232,7 @@ export default function SalesKanbanPage() {
                 SHOJUEN WORKBOARD
               </div>
               <h1 className="text-2xl font-semibold tracking-[-0.04em] md:text-3xl">
-                {tab === "trash" ? "ゴミ箱" : tab === "sales" ? "営業案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
+                {tab === "trash" ? "ゴミ箱" : tab === "sales" ? "案件" : tab === "orders" ? "受注履歴" : tab === "work" ? "業務管理" : tab === "activity" ? "活動履歴" : tab === "customers" ? "取引先マスタ" : tab === "products" ? "商品マスタ" : tab === "shipping" ? "送料マスタ" : "AI取込候補"}
               </h1>
               <p className="mt-1 text-sm text-white/50">
                 {tab === "sales" &&
@@ -2280,9 +2280,9 @@ export default function SalesKanbanPage() {
           </div>
 
           <nav className="mt-5 flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1">
-            <TabButton active={tab === "sales"} onClick={() => setTab("sales")} icon={<Building2 className="size-4" />} label={"営業案件" + (salesCases.length ? " (" + salesCases.length + ")" : "")} />
-            <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<FileText className="size-4" />} label={"受注履歴" + (orders.length ? " (" + orders.length + ")" : "")} />
+            <TabButton active={tab === "sales"} onClick={() => setTab("sales")} icon={<Building2 className="size-4" />} label={"案件" + (salesCases.length ? " (" + salesCases.length + ")" : "")} />
             <TabButton active={tab === "work"} onClick={() => setTab("work")} icon={<BarChart3 className="size-4" />} label="業務管理" />
+            <TabButton active={tab === "orders"} onClick={() => setTab("orders")} icon={<FileText className="size-4" />} label={"受注履歴" + (orders.length ? " (" + orders.length + ")" : "")} />
             <TabButton active={tab === "activity"} onClick={() => setTab("activity")} icon={<Activity className="size-4" />} label={"活動履歴" + (events.length ? " (" + events.length + ")" : "")} />
             <TabButton active={tab === "customers"} onClick={() => setTab("customers")} icon={<Users className="size-4" />} label="取引先マスタ" />
             <TabButton active={tab === "products"} onClick={() => setTab("products")} icon={<Package className="size-4" />} label="商品マスタ" />
@@ -2411,7 +2411,7 @@ export default function SalesKanbanPage() {
                   <button type="button" disabled={mutationBusy || (["sales_case", "order"].includes(item.type) && !["owner", "admin"].includes(auth.user?.role || ""))} onClick={() => restoreRecord(item)} className="rounded-full bg-[#eef3ea] px-4 py-2 text-sm font-semibold text-[#11150f] disabled:opacity-40">{mutationBusy ? "処理中..." : "復元"}</button>
                 </article>
               ))}
-              <p className="text-xs leading-5 text-white/35">営業案件・受注の復元は管理者が行います。この機能を導入する前に完全削除したデータは表示されません。</p>
+              <p className="text-xs leading-5 text-white/35">案件・受注の復元は管理者が行います。この機能を導入する前に完全削除したデータは表示されません。</p>
             </div>
           </section>
         )}
@@ -2434,7 +2434,7 @@ export default function SalesKanbanPage() {
                 </summary>
                 <div className="px-4 pb-4">
                   <p className="mb-3 text-xs leading-5 text-white/45">
-                    全営業案件の累計です。成約・失注・保留、既存顧客対応も含みます。フォロー遅延の絞り込みとは連動しません。履歴が未登録の案件は含まれません。
+                    全案件の累計です。成約・失注・保留、既存顧客対応も含みます。フォロー遅延の絞り込みとは連動しません。履歴が未登録の案件は含まれません。
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Kpi label="見積提示案件" value={`${quotedSalesCaseCount}件`} detail="見積提示の履歴がある案件" description="同じ案件で複数回提示しても1件として集計。" />
@@ -2512,7 +2512,7 @@ export default function SalesKanbanPage() {
               ) : salesCases.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
                   <Building2 className="mx-auto size-7 text-white/30" />
-                  <h2 className="mt-3 text-base font-semibold">営業案件はまだありません</h2>
+                  <h2 className="mt-3 text-base font-semibold">案件はまだありません</h2>
                   <p className="mt-2 text-sm leading-6 text-white/45">取引先ごとの商談をここで管理します。</p>
                   <button type="button" data-operation-sound="click" onClick={() => setEditingSalesCase(blankSalesCase())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
                     <Plus className="size-4" /> 最初の案件を作る
@@ -2791,7 +2791,7 @@ export default function SalesKanbanPage() {
                             {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{event.note}</p>}
                           </div>
                           <div className="shrink-0 space-y-2 text-xs text-white/35 md:max-w-64">
-                            <div>{linkedCase ? "営業案件: " + (linkedCase.title || linkedCase.theme) : "営業案件なし"}</div>
+                            <div>{linkedCase ? "案件: " + (linkedCase.title || linkedCase.theme) : "案件なし"}</div>
                             <div>{linkedWork ? "業務: " + linkedWork.id : "単独履歴"}</div>
                             {!isSystemEvent(event) && (
                               <button type="button" disabled={!eventSalesLinksConfigured} title={!eventSalesLinksConfigured ? "紐づけ機能の準備が完了していません" : undefined}
@@ -3582,7 +3582,7 @@ export default function SalesKanbanPage() {
                                       <option value="">更新する既存業務を選択</option>
                                       {work.map((item) => <option key={item.id} value={item.id}>{item.id} {item.title}</option>)}
                                     </select>
-                                    <p className="text-[10px] leading-4 text-white/45">チェックした項目だけ更新します。取引先・営業案件・商品・履歴・添付はそのまま残ります。</p>
+                                    <p className="text-[10px] leading-4 text-white/45">チェックした項目だけ更新します。取引先・案件・商品・履歴・添付はそのまま残ります。</p>
                                     {workUpdatePreview(candidate).error ? <p className="text-xs leading-5 text-amber-100">{workUpdatePreview(candidate).error}</p> : <div className="overflow-x-auto"><table className="w-full text-left text-[10px]"><thead><tr className="text-white/40"><th className="pb-2">項目</th><th className="pb-2">変更前</th><th className="pb-2">変更後</th></tr></thead><tbody>{workUpdatePreview(candidate).rows.map((row) => <tr key={row.key} className="border-t border-white/10"><td className="py-2 pr-2">{row.label}</td><td className="break-all py-2 pr-2 text-white/45">{row.key === "status" ? STATUSES.find((s) => s.id === row.before)?.label || row.before : row.before || "未設定"}</td><td className="break-all py-2 text-emerald-100">{row.key === "status" ? STATUSES.find((s) => s.id === row.after)?.label || row.after : row.after || "未設定にする"}</td></tr>)}</tbody></table></div>}
                                   </div>
                                 )}
@@ -3596,15 +3596,15 @@ export default function SalesKanbanPage() {
                                       className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
                                       <option value="">単独の活動履歴として保存</option>
-                                      <optgroup label="営業案件へ紐づけ">
-                                        {salesCases.map((item) => <option key={item.id} value={`sales:${item.id}`}>営業案件：{customers.find((customer) => customer.id === item.customerId)?.name || "取引先未設定"} / {item.title}</option>)}
+                                      <optgroup label="案件へ紐づけ">
+                                        {salesCases.map((item) => <option key={item.id} value={`sales:${item.id}`}>案件：{customers.find((customer) => customer.id === item.customerId)?.name || "取引先未設定"} / {item.title}</option>)}
                                       </optgroup>
                                       <optgroup label="業務管理の業務へ紐づけ">
                                         {work.map((item) => <option key={item.id} value={`work:${item.id}`}>業務：{item.id} {item.title}</option>)}
                                       </optgroup>
                                     </select>
                                     <p className="text-[10px] leading-4 text-white/35">
-                                      提案・メール送信・返答などの商談履歴は営業案件へ紐づけます。W番号は業務管理の別の業務です。未選択なら単独履歴として保存します。
+                                      提案・メール送信・返答などの商談履歴は案件へ紐づけます。W番号は業務管理の別の業務です。未選択なら単独履歴として保存します。
                                     </p>
                                   </>
                                 )}
@@ -3641,7 +3641,7 @@ export default function SalesKanbanPage() {
                                   {candidate.candidate_type === "work_event" && !aiEventTarget[candidate.id]
                                     ? "単独履歴として反映"
                                     : candidate.candidate_type === "work_event" && (aiEventTarget[candidate.id] || "").startsWith("sales:")
-                                      ? "営業案件へ履歴を反映"
+                                      ? "案件へ履歴を反映"
                                       : candidate.candidate_type === "customer_update" && !aiMatchCustomer[candidate.id]
                                       ? "新規取引先として反映"
                                       : candidate.candidate_type === "product_update" && !(aiMatchProducts[candidate.id] || []).length
@@ -3691,14 +3691,14 @@ export default function SalesKanbanPage() {
 
       {editingEventLink && (
         <Modal onClose={() => { if (!eventLinkBusy) setEditingEventLink(null) }}>
-          <ModalTitle eyebrow="活動履歴" title="営業案件の紐づけ" onClose={() => { if (!eventLinkBusy) setEditingEventLink(null) }} />
+          <ModalTitle eyebrow="活動履歴" title="案件の紐づけ" onClose={() => { if (!eventLinkBusy) setEditingEventLink(null) }} />
           <div className="space-y-4 p-5">
             <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
               <p className="text-sm font-semibold">{editingEventLink.counterpartyName || "相手先未設定"}</p>
               {editingEventLink.counterpartyEmail && <p className="mt-1 text-xs text-white/45">{editingEventLink.counterpartyEmail}</p>}
               <p className="mt-2 text-xs leading-5 text-white/60">{editingEventLink.note}</p>
             </div>
-            <Field label="紐づけ先の営業案件">
+            <Field label="紐づけ先の案件">
               <select className={inputClass} value={eventLinkCaseId} disabled={eventLinkBusy} onChange={(event) => setEventLinkCaseId(event.target.value)}>
                 <option value="">紐づけなし</option>
                 {salesCases.filter((item) => {
@@ -3707,7 +3707,7 @@ export default function SalesKanbanPage() {
                 }).map((item) => <option key={item.id} value={item.id}>{customers.find((customer) => customer.id === item.customerId)?.name || item.customerId} / {item.title || item.theme} / {item.id.slice(0, 8)}</option>)}
               </select>
             </Field>
-            <p className="text-xs leading-5 text-white/45">保存すると、この履歴が選択した営業案件とKPIに反映されます。履歴の日時・本文・出典はそのまま残ります。「紐づけなし」で解除できます。</p>
+            <p className="text-xs leading-5 text-white/45">保存すると、この履歴が選択した案件とKPIに反映されます。履歴の日時・本文・出典はそのまま残ります。「紐づけなし」で解除できます。</p>
             {eventLinkError && <p role="alert" className="text-sm text-red-300">{eventLinkError}</p>}
             <div className="flex justify-end gap-2">
               <button type="button" disabled={eventLinkBusy} className="rounded-xl border border-white/15 px-4 py-2 text-sm" onClick={() => setEditingEventLink(null)}>キャンセル</button>
@@ -3737,7 +3737,7 @@ export default function SalesKanbanPage() {
                 </select>
               </Field>
 
-              <Field label="関連営業案件">
+              <Field label="関連案件">
                 <select
                   className={inputClass}
                   value={editingOrder.salesCaseId || ""}
@@ -3962,7 +3962,7 @@ export default function SalesKanbanPage() {
         <Modal onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} wide>
           <form onSubmit={saveSalesCase}>
             <fieldset disabled={mutationBusy || salesEventBusy} className="min-w-0">
-            <ModalTitle eyebrow="営業案件" title={editingSalesCase.title || "新しい営業案件"} onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} />
+            <ModalTitle eyebrow="案件" title={editingSalesCase.title || "新しい案件"} onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} />
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="取引先">
@@ -4058,7 +4058,7 @@ export default function SalesKanbanPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">関連業務</h3>
-                    <p className="mt-1 text-xs text-white/40">この営業案件に紐づく業務カード。</p>
+                    <p className="mt-1 text-xs text-white/40">この案件に紐づく業務カード。</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
@@ -4115,7 +4115,7 @@ export default function SalesKanbanPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">最近の活動履歴</h3>
-                    <p className="mt-1 text-xs text-white/40">この営業案件に直接紐づく活動。</p>
+                    <p className="mt-1 text-xs text-white/40">この案件に直接紐づく活動。</p>
                   </div>
                   <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
                     {events.filter((event) => event.salesCaseId === editingSalesCase.id).length}
@@ -4218,7 +4218,7 @@ export default function SalesKanbanPage() {
               <Field label="件名"><input autoFocus className={inputClass} value={editingWork.title} onChange={(e) => setEditingWork({ ...editingWork, title: e.target.value })} /></Field>
               <Field label="状態"><select className={inputClass} value={editingWork.status} onChange={(e) => setEditingWork({ ...editingWork, status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></Field>
               <Field label="取引先"><select className={inputClass} value={editingWork.customerId || ""} onChange={(e) => setEditingWork({ ...editingWork, customerId: e.target.value || undefined, salesCaseId: "" })}><option value="">なし</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.id} {c.name}</option>)}</select></Field>
-              <Field label="営業案件"><select className={inputClass} value={editingWork.salesCaseId || ""} onChange={(e) => setEditingWork({ ...editingWork, salesCaseId: e.target.value || undefined, customerId: e.target.value ? salesCases.find((item) => item.id === e.target.value)?.customerId || editingWork.customerId : editingWork.customerId })}><option value="">なし</option>{salesCases.filter((salesCase) => !editingWork.customerId || salesCase.customerId === editingWork.customerId).map((salesCase) => <option key={salesCase.id} value={salesCase.id}>{salesCase.title || salesCase.theme}</option>)}</select></Field>
+              <Field label="案件"><select className={inputClass} value={editingWork.salesCaseId || ""} onChange={(e) => setEditingWork({ ...editingWork, salesCaseId: e.target.value || undefined, customerId: e.target.value ? salesCases.find((item) => item.id === e.target.value)?.customerId || editingWork.customerId : editingWork.customerId })}><option value="">なし</option>{salesCases.filter((salesCase) => !editingWork.customerId || salesCase.customerId === editingWork.customerId).map((salesCase) => <option key={salesCase.id} value={salesCase.id}>{salesCase.title || salesCase.theme}</option>)}</select></Field>
               <Field label="業務種別"><select className={inputClass} value={editingWork.workType || ""} onChange={(e) => setEditingWork({ ...editingWork, workType: e.target.value })}>{WORK_TYPES.map((v) => <option key={v}>{v}</option>)}</select></Field>
               <Field label="担当"><input className={inputClass} value={editingWork.assignee || ""} onChange={(e) => setEditingWork({ ...editingWork, assignee: e.target.value })} /></Field>
               <Field label="優先度"><select className={inputClass} value={editingWork.priority || "中"} onChange={(e) => setEditingWork({ ...editingWork, priority: e.target.value as WorkItem["priority"] })}>{["低","中","高","緊急"].map((v) => <option key={v}>{v}</option>)}</select></Field>
