@@ -367,6 +367,11 @@ export default function SalesKanbanPage() {
   const [customerQuery, setCustomerQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
+  const [eventSalesLinksConfigured, setEventSalesLinksConfigured] = useState(false)
+  const [editingEventLink, setEditingEventLink] = useState<WorkEvent | null>(null)
+  const [eventLinkCaseId, setEventLinkCaseId] = useState("")
+  const [eventLinkBusy, setEventLinkBusy] = useState(false)
+  const [eventLinkError, setEventLinkError] = useState("")
   const [salesEventNote, setSalesEventNote] = useState("")
   const [salesEventChannel, setSalesEventChannel] = useState("")
   const [salesEventBusy, setSalesEventBusy] = useState(false)
@@ -440,6 +445,7 @@ export default function SalesKanbanPage() {
           setWork(Array.isArray(data.work) ? data.work : [])
           setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
           setSalesAttributionConfigured(data.salesAttributionConfigured === true)
+          setEventSalesLinksConfigured(data.eventSalesLinksConfigured === true)
           setOrders(Array.isArray(data.orders) ? data.orders : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
@@ -487,6 +493,27 @@ export default function SalesKanbanPage() {
     })
     const result = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(result.error || "共有DBへの保存に失敗しました。")
+  }
+
+  async function saveEventLink() {
+    if (!editingEventLink || eventLinkBusy) return
+    setEventLinkBusy(true)
+    setEventLinkError("")
+    try {
+      const response = await fetch("/api/workboard/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "work_event_link", data: { id: editingEventLink.id, salesCaseId: eventLinkCaseId || null } }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "紐づけを保存できませんでした。")
+      setEvents((current) => current.map((event) => event.id === editingEventLink.id ? { ...event, salesCaseId: result.salesCaseId || undefined } : event))
+      setEditingEventLink(null)
+    } catch (error) {
+      setEventLinkError(error instanceof Error ? error.message : "紐づけを保存できませんでした。")
+    } finally {
+      setEventLinkBusy(false)
+    }
   }
 
   async function appendWorkEvent(workItemId: string, eventType: string, note: string) {
@@ -2186,6 +2213,7 @@ export default function SalesKanbanPage() {
                   )}
                   {visibleActivityEvents.map((event) => {
                     const linkedWork = work.find((item) => item.id === event.workItemId)
+                    const linkedCase = salesCases.find((item) => item.id === event.salesCaseId)
                     const date = event.eventDate ? new Date(event.eventDate) : null
                     const dateLabel = date && !Number.isNaN(date.getTime())
                       ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
@@ -2212,8 +2240,16 @@ export default function SalesKanbanPage() {
                             {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
                             {event.note && <p className="mt-3 text-sm leading-6 text-white/60">{event.note}</p>}
                           </div>
-                          <div className="shrink-0 text-xs text-white/35">
-                            {linkedWork ? "紐付け: " + linkedWork.id : "単独履歴"}
+                          <div className="shrink-0 space-y-2 text-xs text-white/35 md:max-w-64">
+                            <div>{linkedCase ? "営業案件: " + (linkedCase.title || linkedCase.theme) : "営業案件なし"}</div>
+                            <div>{linkedWork ? "業務: " + linkedWork.id : "単独履歴"}</div>
+                            {!isSystemEvent(event) && (
+                              <button type="button" disabled={!eventSalesLinksConfigured} title={!eventSalesLinksConfigured ? "紐づけ機能の準備が完了していません" : undefined}
+                                className="rounded-lg border border-white/15 px-3 py-2 text-white/70 hover:bg-white/5 disabled:opacity-40"
+                                onClick={() => { setEditingEventLink(event); setEventLinkCaseId(event.salesCaseId || ""); setEventLinkError("") }}>
+                                案件の紐づけを変更
+                              </button>
+                            )}
                           </div>
                         </div>
                       </article>
@@ -3045,6 +3081,34 @@ export default function SalesKanbanPage() {
         )}
       </div>
 
+      {editingEventLink && (
+        <Modal onClose={() => { if (!eventLinkBusy) setEditingEventLink(null) }}>
+          <ModalTitle eyebrow="活動履歴" title="営業案件の紐づけ" onClose={() => { if (!eventLinkBusy) setEditingEventLink(null) }} />
+          <div className="space-y-4 p-5">
+            <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+              <p className="text-sm font-semibold">{editingEventLink.counterpartyName || "相手先未設定"}</p>
+              {editingEventLink.counterpartyEmail && <p className="mt-1 text-xs text-white/45">{editingEventLink.counterpartyEmail}</p>}
+              <p className="mt-2 text-xs leading-5 text-white/60">{editingEventLink.note}</p>
+            </div>
+            <Field label="紐づけ先の営業案件">
+              <select className={inputClass} value={eventLinkCaseId} disabled={eventLinkBusy} onChange={(event) => setEventLinkCaseId(event.target.value)}>
+                <option value="">紐づけなし</option>
+                {salesCases.filter((item) => {
+                  const linkedCustomerId = work.find((task) => task.id === editingEventLink.workItemId)?.customerId
+                  return !linkedCustomerId || linkedCustomerId === item.customerId
+                }).map((item) => <option key={item.id} value={item.id}>{customers.find((customer) => customer.id === item.customerId)?.name || item.customerId} / {item.title || item.theme} / {item.id.slice(0, 8)}</option>)}
+              </select>
+            </Field>
+            <p className="text-xs leading-5 text-white/45">保存すると、この履歴が選択した営業案件とKPIに反映されます。履歴の日時・本文・出典はそのまま残ります。「紐づけなし」で解除できます。</p>
+            {eventLinkError && <p role="alert" className="text-sm text-red-300">{eventLinkError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={eventLinkBusy} className="rounded-xl border border-white/15 px-4 py-2 text-sm" onClick={() => setEditingEventLink(null)}>キャンセル</button>
+              <button type="button" disabled={eventLinkBusy || !eventSalesLinksConfigured} className="rounded-xl bg-[#eef3ea] px-4 py-2 text-sm font-semibold text-[#11150f] disabled:opacity-40" onClick={saveEventLink}>{eventLinkBusy ? "保存中..." : "紐づけを保存"}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {editingOrder && (
         <Modal onClose={() => setEditingOrder(null)} wide>
           <form onSubmit={saveOrder}>
@@ -3867,3 +3931,4 @@ function statusDot(status: Status) {
     case "done": return "bg-emerald-500"
   }
 }
+
