@@ -1292,7 +1292,7 @@ export default function SalesKanbanPage() {
       original?.stage !== "won"
     const wonTimestamp = becameWon ? new Date().toISOString() : editingSalesCase.wonAt
     const autoTitle = [customer?.name || editingSalesCase.customerId, editingSalesCase.theme.trim()].filter(Boolean).join("｜")
-    const item = {
+    const item: SalesCase = {
       ...editingSalesCase,
       ...(salesAttributionConfigured ? { originType: editingSalesCase.originType || "", channel: editingSalesCase.channel || "" } : {}),
       title: editingSalesCase.title.trim() || autoTitle,
