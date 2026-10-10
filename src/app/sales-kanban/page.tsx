@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
+import { useOperationSounds } from "./operation-sounds"
 import {
   Activity,
   BarChart3,
@@ -17,6 +18,8 @@ import {
   ShieldCheck,
   Trash2,
   Users,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react"
 
@@ -333,6 +336,8 @@ const starterWork: WorkItem[] = [
 ]
 
 export default function SalesKanbanPage() {
+  const { soundEnabled, toggleSound, playOperationSound } = useOperationSounds()
+  const suppressClickSoundUntil = useRef(0)
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
@@ -1219,6 +1224,7 @@ export default function SalesKanbanPage() {
     try {
       await saveShared("work", updated)
       setWork((current) => current.map((item) => (item.id === id ? updated : item)))
+      playOperationSound("drop")
       const beforeLabel = STATUSES.find((item) => item.id === currentItem.status)?.label || currentItem.status
       const afterLabel = STATUSES.find((item) => item.id === status)?.label || status
       await recordWorkChange(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
@@ -1873,7 +1879,14 @@ export default function SalesKanbanPage() {
   }
 
   return (
-    <main className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
+    <main
+      onClickCapture={(event) => {
+        if (performance.now() < suppressClickSoundUntil.current || !(event.target instanceof Element)) return
+        const target = event.target.closest("button, a, summary, [role='button'], [data-operation-sound]")
+        if (!target || target.hasAttribute("data-sound-toggle") || target.matches(":disabled, [aria-disabled='true']")) return
+        playOperationSound("click")
+      }}
+      className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
       <div className="flex h-full flex-col">
         <header className="border-b border-white/10 bg-[#090a09]/95 px-5 py-4 backdrop-blur md:px-7">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1907,6 +1920,10 @@ export default function SalesKanbanPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <button type="button" data-sound-toggle aria-pressed={soundEnabled} onClick={toggleSound} title="クリックとドラッグ＆ドロップの操作音を切り替え" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
+                {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                操作音 {soundEnabled ? "ON" : "OFF"}
+              </button>
               {auth.configured && auth.authenticated && (
                 <button disabled={logoutBusy || mutationBusy || salesEventBusy || docUploadBusy || productSaveBusy || aiImportBusy || aiReviewBusy} onClick={logout} className="rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
                   {logoutBusy ? "ログアウト中..." : "ログアウト"}
@@ -1985,7 +2002,7 @@ export default function SalesKanbanPage() {
                   <p className="mt-2 text-sm leading-6 text-white/45">
                     本発注・リピート発注をここに蓄積して、継続率や累計売上のKPIにつなげます。
                   </p>
-                  <button type="button" onClick={() => setEditingOrder(blankOrder())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
+                  <button type="button" data-operation-sound="click" onClick={() => setEditingOrder(blankOrder())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
                     <Plus className="size-4" /> 最初の受注を追加
                   </button>
                 </div>
@@ -2165,7 +2182,7 @@ export default function SalesKanbanPage() {
                   <Building2 className="mx-auto size-7 text-white/30" />
                   <h2 className="mt-3 text-base font-semibold">営業案件はまだありません</h2>
                   <p className="mt-2 text-sm leading-6 text-white/45">取引先ごとの商談をここで管理します。</p>
-                  <button type="button" onClick={() => setEditingSalesCase(blankSalesCase())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
+                  <button type="button" data-operation-sound="click" onClick={() => setEditingSalesCase(blankSalesCase())} className="mt-5 inline-flex items-center gap-2 rounded-full bg-[#eef3ea] px-4 py-2.5 text-sm font-medium text-[#11150f]">
                     <Plus className="size-4" /> 最初の案件を作る
                   </button>
                 </div>
@@ -2187,6 +2204,7 @@ export default function SalesKanbanPage() {
                       return (
                         <article
                           key={item.id}
+                          data-operation-sound="click"
                           onClick={() => setEditingSalesCase(item)}
                           className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
                         >
@@ -2247,6 +2265,7 @@ export default function SalesKanbanPage() {
                         return (
                           <article
                             key={item.id}
+                            data-operation-sound="click"
                             onClick={() => setEditingSalesCase(item)}
                             className="cursor-pointer rounded-[20px] border border-white/10 bg-white/[0.02] p-5 opacity-80 transition hover:border-white/20 hover:opacity-100"
                           >
@@ -2289,7 +2308,8 @@ export default function SalesKanbanPage() {
                   <section
                     key={status.id}
                     onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => {
+                    onDrop={(event) => {
+                      event.preventDefault()
                       if (draggingId) moveWork(draggingId, status.id)
                       setDraggingId(null)
                     }}
@@ -2310,8 +2330,16 @@ export default function SalesKanbanPage() {
                           <article
                             key={item.id}
                             draggable={!mutationBusy}
-                            onDragStart={() => setDraggingId(item.id)}
-                            onDragEnd={() => setDraggingId(null)}
+                            onDragStart={() => {
+                              suppressClickSoundUntil.current = Infinity
+                              setDraggingId(item.id)
+                              playOperationSound("drag")
+                            }}
+                            onDragEnd={() => {
+                              suppressClickSoundUntil.current = performance.now() + 150
+                              setDraggingId(null)
+                            }}
+                            data-operation-sound="click"
                             onClick={() => setEditingWork(item)}
                             className="cursor-grab rounded-2xl border border-white/10 bg-[#111311] p-4 transition hover:-translate-y-0.5 hover:border-white/20"
                           >
@@ -2355,6 +2383,7 @@ export default function SalesKanbanPage() {
                       })}
 
                       <button
+                        data-operation-sound="click"
                         onClick={() => setEditingWork(blankWork(status.id))}
                         className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 py-3 text-xs font-medium text-white/35 transition hover:border-white/25 hover:bg-white/5 hover:text-white/70"
                       >
@@ -2475,6 +2504,7 @@ export default function SalesKanbanPage() {
               {filteredCustomers.map((customer) => (
                 <article
                   key={customer.id}
+                  data-operation-sound="click"
                   onClick={() => setEditingCustomer(customer)}
                   className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
                 >
@@ -2509,6 +2539,7 @@ export default function SalesKanbanPage() {
               {filteredProducts.map((product) => (
                 <article
                   key={product.id}
+                  data-operation-sound="click"
                   onClick={() => setEditingProduct(product)}
                   className="cursor-pointer rounded-[20px] border border-white/10 bg-[#111311] p-5 transition hover:-translate-y-0.5 hover:border-white/20"
                 >
@@ -3385,6 +3416,7 @@ export default function SalesKanbanPage() {
                 </div>
                 <button
                   type="button"
+                  data-operation-sound="click"
                   onClick={() => setEditingOrder({
                     ...editingOrder,
                     items: [...editingOrder.items, { id: uid(), productId: "", quantity: "", unit: "kg", unitPrice: "", lineAmount: "" }],
@@ -3429,6 +3461,7 @@ export default function SalesKanbanPage() {
                     <button
                       type="button"
                       disabled={editingOrder.items.length === 1}
+                      data-operation-sound="click"
                       onClick={() => setEditingOrder({ ...editingOrder, items: editingOrder.items.filter((row) => row.id !== item.id) })}
                       className="rounded-xl border border-white/10 px-3 text-xs text-white/45 disabled:opacity-20"
                     >
@@ -3693,6 +3726,7 @@ export default function SalesKanbanPage() {
                         <button
                           key={item.id}
                           type="button"
+                          data-operation-sound="click"
                           onClick={() => setEditingWork(item)}
                           className="w-full rounded-xl border border-white/10 bg-[#0d0f0d] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
                         >
@@ -4032,7 +4066,7 @@ export default function SalesKanbanPage() {
                   <div key={doc.id} className="grid gap-2 md:grid-cols-[1fr_1.5fr_auto]">
                     <input className={inputClass} placeholder="資料名" value={doc.title} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, title: e.target.value } : d) })} />
                     <input className={inputClass} placeholder="URL" value={doc.url} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, url: e.target.value } : d) })} />
-                    <button type="button" onClick={() => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).filter((d) => d.id !== doc.id) })} className="rounded-xl px-3 text-red-400"><Trash2 className="size-4" /></button>
+                    <button type="button" data-operation-sound="click" onClick={() => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).filter((d) => d.id !== doc.id) })} className="rounded-xl px-3 text-red-400"><Trash2 className="size-4" /></button>
                   </div>
                 ))}
               </div>
