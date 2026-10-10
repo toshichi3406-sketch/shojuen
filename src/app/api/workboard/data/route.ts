@@ -30,6 +30,18 @@ async function sb(path: string, token: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : null
 }
 
+async function hasSalesAttributionColumns(token: string) {
+  try {
+    await sb("sales_cases?select=origin_type,channel&limit=1", token)
+    return true
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42703" || code === "PGRST204") return false
+    throw error
+  }
+}
+
 function workToDb(item: any) {
   return {
     id: item.id,
@@ -106,6 +118,8 @@ export async function GET() {
       sb("orders?select=*&order=order_date.desc,created_at.desc", token),
       sb("order_items?select=*&order=created_at.asc", token),
     ])
+
+    const salesAttributionConfigured = await hasSalesAttributionColumns(token)
 
     const mappedProducts = (products || []).map((p: any) => ({
       id: p.id,
@@ -214,6 +228,7 @@ export async function GET() {
       title: row.title,
       theme: row.theme,
       caseType: row.case_type,
+      ...(salesAttributionConfigured ? { originType: row.origin_type || "", channel: row.channel || "" } : {}),
       stage: row.stage,
       heat: row.heat,
       nextFollowUpDate: row.next_follow_up_date || "",
@@ -285,6 +300,7 @@ export async function GET() {
       shippingRates: mappedShippingRates,
       productCosts: mappedProductCosts,
       salesCases: mappedSalesCases,
+      salesAttributionConfigured,
       orders: mappedOrders,
     })
   } catch (error) {
@@ -333,7 +349,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "営業案件の必須項目を確認してください。" }, { status: 400 })
       }
 
+      const hasOrigin = Object.prototype.hasOwnProperty.call(data, "originType")
+      const hasChannel = Object.prototype.hasOwnProperty.call(data, "channel")
+      const allowedOrigins = ["Outbound", "Inbound", "Referral", "Existing"]
+      const allowedChannels = ["Email", "Instagram DM", "Threads", "LinkedIn", "Web", "電話", "展示会", "紹介", "その他"]
+      if ((hasOrigin && data.originType != null && data.originType !== "" && !allowedOrigins.includes(data.originType)) ||
+          (hasChannel && data.channel != null && data.channel !== "" && !allowedChannels.includes(data.channel))) {
+        return NextResponse.json({ error: "接点区分・媒体の選択肢を確認してください。" }, { status: 400 })
+      }
+      if ((hasOrigin || hasChannel) && !(await hasSalesAttributionColumns(token))) {
+        return NextResponse.json({ error: "接点区分・媒体の保存にはDB更新が必要です。画面を再読み込みしてください。" }, { status: 409 })
+      }
+
       const payload = {
+        ...(hasOrigin ? { origin_type: data.originType || null } : {}),
+        ...(hasChannel ? { channel: data.channel || null } : {}),
         customer_id: data.customerId,
         title: data.title,
         theme: data.theme,
