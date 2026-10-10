@@ -1,4 +1,6 @@
 import { buildWorkUpdatePatch, workUpdateValue } from "../../../sales-kanban/work-update"
+import { POST as saveCaseData } from "../data/route"
+import { buildSalesCaseUpdatePatch, SALES_CASE_UPDATE_FIELDS, salesCaseUpdateValue } from "../../../../lib/sales-case-update"
 import { stageRecordNote } from "../../../../lib/workboard-time-analysis"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
@@ -34,10 +36,10 @@ async function sb(path: string, token: string, init: RequestInit = {}) {
 
 
 function decodedCandidate(candidate: any) {
-  if (candidate?.candidate_type === "decision" && candidate?.payload?._workboard_candidate_type === "new_sales_case") {
+  if (candidate?.candidate_type === "decision" && ["new_sales_case","sales_case_update"].includes(candidate?.payload?._workboard_candidate_type)) {
     const payload = { ...candidate.payload }
     delete payload._workboard_candidate_type
-    return { ...candidate, candidate_type: "new_sales_case", payload }
+    return { ...candidate, candidate_type: candidate.payload._workboard_candidate_type, payload }
   }
   return candidate
 }
@@ -45,8 +47,8 @@ function decodedCandidate(candidate: any) {
 function encodedCandidate(type: string, payload: Record<string, unknown>) {
   const clean = { ...payload }
   delete clean._workboard_candidate_type
-  return type === "new_sales_case"
-    ? { candidate_type: "decision", payload: { ...clean, _workboard_candidate_type: "new_sales_case" } }
+  return ["new_sales_case","sales_case_update"].includes(type)
+    ? { candidate_type: "decision", payload: { ...clean, _workboard_candidate_type: type } }
     : { candidate_type: type, payload: clean }
 }
 
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
 
     const allowedTypes = new Set([
       "new_sales_case",
+      "sales_case_update",
       "new_work",
       "work_update",
       "work_event",
@@ -187,14 +190,14 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const id = body?.id
     if (body?.action === "edit") {
-      const types = ["new_sales_case", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"]
+      const types = ["sales_case_update", "new_sales_case", "new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"]
       if (typeof id !== "string" || !id.trim() || typeof body.title !== "string" || !body.title.trim() || !types.includes(body.candidateType) || !body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
         return NextResponse.json({ error: "件名・分類・詳細JSONを確認してください。" }, { status: 400 })
       }
       const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
       const candidate = Array.isArray(rows) ? decodedCandidate(rows[0]) : null
       if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
-      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成/
+      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
       if (applied.test(candidate.decision_note || "")) {
         return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
       }
@@ -270,6 +273,7 @@ export async function PUT(request: NextRequest) {
 
     const allowedTypes = new Set([
       "new_sales_case",
+      "sales_case_update",
       "new_work",
       "work_update",
       "work_event",
@@ -285,6 +289,51 @@ export async function PUT(request: NextRequest) {
 
     const now = new Date().toISOString()
 
+    if (candidateType === "sales_case_update") {
+      const candidates = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      const candidate = candidates?.[0] && decodedCandidate(candidates[0])
+      if (!candidate || candidate.candidate_type !== "sales_case_update") return NextResponse.json({ error: "案件BOX更新候補が見つからないか、分類が変更されています。再読み込みしてください。" }, { status: 409 })
+      if (/既存案件BOX .* を更新/.test(candidate.decision_note || "")) return NextResponse.json({ ok: true, salesCaseId: candidate.target_id, decisionNote: candidate.decision_note, alreadyApplied: true })
+      let patch: Record<string, string | null>
+      try {
+        patch = buildSalesCaseUpdatePatch(payload)
+        if (JSON.stringify(patch) !== JSON.stringify(buildSalesCaseUpdatePatch(candidate.payload || {}))) return NextResponse.json({ error: "候補の変更内容が変わっています。候補を保存して再確認してください。" }, { status: 409 })
+      } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "変更内容を確認してください。" }, { status: 400 }) }
+      const salesCaseId = String(payload.sales_case_id || "").trim()
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(salesCaseId)) return NextResponse.json({ error: "更新する既存案件BOXを選択してください。" }, { status: 400 })
+      const rows = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(salesCaseId)}&deleted_at=is.null&limit=1`, token)
+      const current = rows?.[0]
+      if (!current) return NextResponse.json({ error: "更新先の案件BOXが見つかりません。ゴミ箱・紐づけ先を確認してください。" }, { status: 404 })
+      const expected = body.expectedCase
+      if (!expected || typeof expected !== "object" || Array.isArray(expected) || Object.keys(patch).some((key) => !Object.prototype.hasOwnProperty.call(expected, key))) return NextResponse.json({ error: "変更前の内容を確認できません。再読み込みしてください。" }, { status: 409 })
+      const noChange = Object.keys(patch).every((key) => salesCaseUpdateValue(current[key]) === salesCaseUpdateValue(patch[key]))
+      if (!noChange && Object.keys(patch).some((key) => salesCaseUpdateValue(current[key]) !== salesCaseUpdateValue(expected[key]))) return NextResponse.json({ error: "案件の内容が別の操作で変更されています。再読み込みして変更前後を確認してください。" }, { status: 409 })
+      let warning = ""
+      if (!noChange) {
+        const merged = { ...current, ...patch }
+        const links = await sb(`sales_case_products?select=product_id&sales_case_id=eq.${encodeURIComponent(salesCaseId)}`, token)
+        const data = {
+          ...Object.fromEntries(SALES_CASE_UPDATE_FIELDS.map((field) => [field.uiKey, merged[field.key] || ""])),
+          id: salesCaseId, customerId: current.customer_id, productIds: (links || []).map((link: any) => link.product_id),
+          lastContactAt: current.last_contact_at || "", wonAt: current.won_at || "", closedAt: current.closed_at || "",
+          expectedStage: current.stage, expectedUpdatedAt: current.updated_at,
+        }
+        const savedResponse = await saveCaseData(new NextRequest("http://workboard.local/api/workboard/data", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "sales_case", data }),
+        }))
+        const saved = await savedResponse.json()
+        if (!savedResponse.ok) return NextResponse.json(saved, { status: savedResponse.status })
+        warning = saved.warning || ""
+      }
+      const decisionNote = `既存案件BOX ${salesCaseId} を更新`
+      try {
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH", headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "approved", target_id: salesCaseId, reviewed_at: now, decision_note: decisionNote }),
+        })
+      } catch { warning = [warning, "案件BOXは保存済みですが、候補の反映済み記録に失敗しました。再取込せず、案件BOXを確認してください。"].filter(Boolean).join(" ") }
+      return NextResponse.json({ ok: true, salesCaseId, decisionNote, noChange, warning })
+    }
 
 
     if (candidateType === "new_sales_case") {
