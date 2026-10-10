@@ -52,6 +52,9 @@ function encodedCandidate(type: string, payload: Record<string, unknown>) {
     : { candidate_type: type, payload: clean }
 }
 
+const APPLIED_NOTE = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
+const APPLYING_NOTE = "正式反映処理中:"
+
 export async function GET() {
   const token = await getToken()
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -198,7 +201,7 @@ export async function PATCH(request: NextRequest) {
       const candidate = Array.isArray(rows) ? decodedCandidate(rows[0]) : null
       if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
       const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
-      if (applied.test(candidate.decision_note || "")) {
+      if (applied.test(candidate.decision_note || "") || String(candidate.decision_note || "").startsWith(APPLYING_NOTE)) {
         return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
       }
       const updated = await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
@@ -217,11 +220,18 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ ok: true, candidate: decodedCandidate(updated[0]) })
     }
     const status = body?.status
-    const decisionNote = body?.decisionNote ?? null
+    const decisionNote = body?.decisionNote ?? (body?.status === "approved" ? "候補だけ承認（正式反映なし）" : null)
     const payloadPatch = body?.payloadPatch && typeof body.payloadPatch === "object" ? body.payloadPatch : null
 
     if (!id || !["approved", "rejected", "needs_edit", "pending"].includes(status)) {
       return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    }
+
+    const reviewRows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+    const reviewCandidate = reviewRows?.[0]
+    if (!reviewCandidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
+    if (APPLIED_NOTE.test(reviewCandidate.decision_note || "") || String(reviewCandidate.decision_note || "").startsWith(APPLYING_NOTE)) {
+      return NextResponse.json({ error: "反映済み・処理中の候補の判定や内容は変更できません。反映先で確認してください。" }, { status: 409 })
     }
 
     let nextPayload: Record<string, unknown> | undefined
@@ -247,7 +257,7 @@ export async function PATCH(request: NextRequest) {
       }),
     })
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, decisionNote })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update AI import" },
@@ -288,6 +298,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const now = new Date().toISOString()
+    const needsClaim = ["new_work", "customer_update", "product_update", "price_candidate"].includes(candidateType)
+    let applyCandidate: any = null
+    if (needsClaim) {
+      const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      applyCandidate = rows?.[0] && decodedCandidate(rows[0])
+      if (!applyCandidate || applyCandidate.candidate_type !== candidateType) return NextResponse.json({ error: "候補が見つからないか分類が変更されています。" }, { status: 409 })
+      if (APPLIED_NOTE.test(applyCandidate.decision_note || "")) return NextResponse.json({ ok: true, alreadyApplied: true, decisionNote: applyCandidate.decision_note })
+      if (String(applyCandidate.decision_note || "").startsWith(APPLYING_NOTE)) return NextResponse.json({ error: "この候補は処理中、または保存結果の確認が必要です。反映先を確認し、重ねて反映しないでください。" }, { status: 409 })
+    }
+    async function claimCandidate() {
+      const noteFilter = applyCandidate.decision_note == null ? "decision_note=is.null" : "decision_note=eq." + encodeURIComponent(applyCandidate.decision_note)
+      const claimed = await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(applyCandidate.status)}&${noteFilter}`, token!, {
+        method: "PATCH", headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ decision_note: APPLYING_NOTE + now }),
+      })
+      if (!claimed?.length) throw new Error("別の操作がこの候補を変更・反映しています。再読み込みしてください。")
+    }
 
     if (candidateType === "sales_case_update") {
       const candidates = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
@@ -491,6 +518,7 @@ export async function PUT(request: NextRequest) {
       }
       const status = allowedStatuses.has(rawStatus) ? rawStatus : (statusMap[rawStatus] || "todo")
 
+      await claimCandidate()
       await sb("work_items", token, {
         method: "POST",
         headers: { Prefer: "return=minimal" },
@@ -532,7 +560,7 @@ export async function PUT(request: NextRequest) {
         body: JSON.stringify({ status: "approved", reviewed_at: now, decision_note: `正式業務 ${idValue} として反映` }),
       })
 
-      return NextResponse.json({ ok: true, createdId: idValue })
+      return NextResponse.json({ ok: true, createdId: idValue, decisionNote: `正式業務 ${idValue} として反映` })
     }
 
 
@@ -563,6 +591,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "取引先名がないため正式反映できません。" }, { status: 400 })
       }
 
+      await claimCandidate()
       await sb("customers?on_conflict=id", token, {
         method: "POST",
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -597,6 +626,7 @@ export async function PUT(request: NextRequest) {
         ok: true,
         customerId,
         mode: existingCustomer ? "updated" : "created",
+        decisionNote: existingCustomer ? `既存取引先 ${customerId} を更新` : `新規取引先 ${customerId} として登録`,
       })
     }
 
@@ -647,6 +677,7 @@ export async function PUT(request: NextRequest) {
         .join("\n\n")
       const mergedMemo = [existingProduct?.memo, incomingMemo].filter(Boolean).join("\n\n")
 
+      await claimCandidate()
       await sb("products?on_conflict=id", token, {
         method: "POST",
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
@@ -685,6 +716,7 @@ export async function PUT(request: NextRequest) {
         ok: true,
         productId,
         mode: existingProduct ? "updated" : "created",
+        decisionNote: existingProduct ? `既存商品 ${productId} を更新（価格・原価は未変更）` : `新規商品 ${productId} として登録（価格・原価は未登録）`,
       })
     }
 
@@ -712,24 +744,21 @@ export async function PUT(request: NextRequest) {
           return NextResponse.json({ error: "原価区分が不正です。" }, { status: 400 })
         }
 
-        await sb("product_costs", token, {
-          method: "POST",
-          headers: { Prefer: "return=minimal" },
-          body: JSON.stringify({
-            product_id: productId,
-            cost_type: costType,
-            label: payload.label || body.title || "AI取込原価",
-            amount,
-            currency: payload.currency || "JPY",
-            unit: payload.unit || "kg",
-            quantity_basis: payload.quantity_basis ? Number(payload.quantity_basis) : null,
-            effective_from: payload.effective_from || new Date().toISOString().slice(0, 10),
-            supplier_or_vendor: payload.supplier_or_vendor || payload.supplier || null,
-            note: payload.note || payload.memo || null,
-            ai_locked: true,
-            approved_at: now,
-          }),
-        })
+        const components = Array.isArray(payload.cost_rows) ? payload.cost_rows : [payload]
+        if (!components.length || components.length > 100) return NextResponse.json({ error: "原価内訳は1～100件で指定してください。" }, { status: 400 })
+        const costRows = []
+        for (const row of components) {
+          const raw = row.amount ?? row.price ?? row.cost
+          const value = Number(String(raw ?? "").replace(/[,\s¥￥]/g, ""))
+          const kind = row.cost_type || costType
+          if (raw == null || raw === "" || !Number.isFinite(value) || value < 0 || !allowedCostTypes.has(kind)) return NextResponse.json({ error: "原価内訳の区分と金額を確認してください。" }, { status: 400 })
+          costRows.push({ product_id: productId, cost_type: kind, label: row.label || body.title || "AI取込原価",
+            amount: value, currency: row.currency || "JPY", unit: row.unit || "kg", quantity_basis: row.quantity_basis ? Number(row.quantity_basis) : null,
+            effective_from: row.effective_from || now.slice(0, 10), supplier_or_vendor: row.supplier_or_vendor || row.supplier || null,
+            note: row.note || row.memo || null, ai_locked: true, approved_at: now })
+        }
+        await claimCandidate()
+        await sb("product_costs", token, { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(costRows) })
 
         await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
           method: "PATCH",
@@ -741,7 +770,7 @@ export async function PUT(request: NextRequest) {
           }),
         })
 
-        return NextResponse.json({ ok: true, applied: "product_cost", productId, costType })
+        return NextResponse.json({ ok: true, applied: "product_cost", productId, costType, decisionNote: `原価履歴へ反映（${productId} / ${costType}）` })
       }
 
       if (classification === "customer_quoted") {
@@ -757,6 +786,7 @@ export async function PUT(request: NextRequest) {
           return NextResponse.json({ error: "提示価格を数値として確認できません。" }, { status: 400 })
         }
 
+        await claimCandidate()
         await sb("customer_prices", token, {
           method: "POST",
           headers: { Prefer: "return=minimal" },
@@ -787,7 +817,7 @@ export async function PUT(request: NextRequest) {
           }),
         })
 
-        return NextResponse.json({ ok: true, applied: "customer_price", customerId, productId })
+        return NextResponse.json({ ok: true, applied: "customer_price", customerId, productId, decisionNote: `取引先価格履歴へ反映（${customerId} / ${productId}）` })
       }
 
       if (classification !== "shipping_rate") {
@@ -832,6 +862,7 @@ export async function PUT(request: NextRequest) {
       const weightFrom = parseWeight(payload.weight_from_kg) ?? weightSingle
       const weightTo = parseWeight(payload.weight_to_kg) ?? weightSingle
 
+      await claimCandidate()
       await sb("shipping_rates", token, {
         method: "POST",
         headers: { Prefer: "return=representation" },
@@ -869,7 +900,7 @@ export async function PUT(request: NextRequest) {
         }),
       })
 
-      return NextResponse.json({ ok: true, applied: "shipping_rate", rateStage })
+      return NextResponse.json({ ok: true, applied: "shipping_rate", rateStage, decisionNote: `送料マスタへ反映（${rateStage}）` })
     }
 
 
