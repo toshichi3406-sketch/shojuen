@@ -365,6 +365,8 @@ export default function SalesKanbanPage() {
   const [productQuery, setProductQuery] = useState("")
   const [activityFilter, setActivityFilter] = useState<"sales" | "system" | "all">("sales")
   const [salesEventNote, setSalesEventNote] = useState("")
+  const [salesEventChannel, setSalesEventChannel] = useState("")
+  const [salesEventBusy, setSalesEventBusy] = useState(false)
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
   const [wonFollowupSource, setWonFollowupSource] = useState<SalesCase | null>(null)
@@ -381,6 +383,10 @@ export default function SalesKanbanPage() {
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
   const [loginBusy, setLoginBusy] = useState(false)
+
+  useEffect(() => {
+    setSalesEventChannel(CHANNELS.includes(editingSalesCase?.channel || "") ? editingSalesCase?.channel || "" : "")
+  }, [editingSalesCase?.id, editingSalesCase?.channel])
 
   useEffect(() => {
     fetch("/api/workboard/auth/session", { cache: "no-store" })
@@ -496,13 +502,14 @@ export default function SalesKanbanPage() {
       eventType,
       eventDate,
       channel,
+      direction: ["email_sent", "contact_sent"].includes(eventType) ? "outbound" : ["reply_received", "contact_received"].includes(eventType) ? "inbound" : undefined,
       note: note.trim(),
       source: "manual",
     }
     await saveShared("work_event", event)
     setEvents((current) => [event, ...current])
 
-    if (["email_sent", "reply_received", "quote_sent", "sample_sent"].includes(eventType)) {
+    if (["email_sent", "contact_sent", "reply_received", "contact_received", "quote_sent", "sample_sent"].includes(eventType)) {
       const currentCase = salesCases.find((item) => item.id === salesCaseId)
       if (currentCase) {
         const updatedCase = { ...currentCase, lastContactAt: eventDate }
@@ -1025,19 +1032,22 @@ export default function SalesKanbanPage() {
     ? overdueSalesCases
     : salesFilter === "a_rank" ? aRankSalesCases : activeSalesCases
   const salesFilterLabel = salesFilter === "a_rank" ? "Aランク案件" : "フォロー遅延"
-  const emailedCaseIds = new Set(
-    events
-      .filter((event) => event.salesCaseId && event.eventType === "email_sent")
-      .map((event) => event.salesCaseId as string)
+  const salesCaseIds = new Set(salesCases.map((item) => item.id))
+  const contactEvents = events.filter((event) =>
+    event.salesCaseId && salesCaseIds.has(event.salesCaseId) &&
+    ["email_sent", "contact_sent"].includes(event.eventType)
   )
-  const repliedCaseIds = new Set(
-    events
-      .filter((event) => event.salesCaseId && event.eventType === "reply_received")
-      .map((event) => event.salesCaseId as string)
-  )
-  const repliedEmailedCaseCount = Array.from(emailedCaseIds).filter((id) => repliedCaseIds.has(id)).length
-  const salesReplyRate = emailedCaseIds.size
-    ? `${Math.round((repliedEmailedCaseCount / emailedCaseIds.size) * 100)}%`
+  const contactCaseIds = new Set(contactEvents.map((event) => event.salesCaseId as string))
+  const contactKeys = new Set(contactEvents
+    .filter((event) => salesEventMedia(event))
+    .map((event) => `${event.salesCaseId}:${salesEventMedia(event)}`))
+  const repliedContactCaseIds = new Set(events
+    .filter((event) => event.salesCaseId && event.eventType === "reply_received" &&
+      salesEventMedia(event) && contactKeys.has(`${event.salesCaseId}:${salesEventMedia(event)}`))
+    .map((event) => event.salesCaseId as string))
+  const repliedContactCaseCount = repliedContactCaseIds.size
+  const salesReplyRate = contactCaseIds.size
+    ? `${Math.round(repliedContactCaseCount / contactCaseIds.size * 100)}%`
     : "—"
 
   const closedNewBusinessCases = salesCases.filter(
@@ -1049,7 +1059,6 @@ export default function SalesKanbanPage() {
     : "—"
 
 
-  const salesCaseIds = new Set(salesCases.map((item) => item.id))
   const countSalesCasesWithEvent = (eventType: string) =>
     new Set(
       events
@@ -1063,8 +1072,8 @@ export default function SalesKanbanPage() {
     const cases = salesCases.filter((item) =>
       (CHANNELS.includes(item.channel || "") ? item.channel : "未設定") === channel
     )
-    const sentCases = cases.filter((item) => emailedCaseIds.has(item.id))
-    const repliedCount = sentCases.filter((item) => repliedCaseIds.has(item.id)).length
+    const sentCases = cases.filter((item) => contactCaseIds.has(item.id))
+    const repliedCount = sentCases.filter((item) => repliedContactCaseIds.has(item.id)).length
     const closedCases = cases.filter((item) => item.caseType === "new_business" && ["won", "lost"].includes(item.stage))
     const wonCount = closedCases.filter((item) => item.stage === "won").length
     return {
@@ -1490,7 +1499,7 @@ export default function SalesKanbanPage() {
   }
 
   function salesCaseLastContact(caseId: string, stored?: string) {
-    const contactTypes = new Set(["email_sent", "reply_received", "quote_sent", "sample_sent"])
+    const contactTypes = new Set(["email_sent", "contact_sent", "reply_received", "contact_received", "quote_sent", "sample_sent"])
     const latestEvent = events
       .filter((event) => event.salesCaseId === caseId && contactTypes.has(event.eventType) && event.eventDate)
       .map((event) => event.eventDate)
@@ -1766,7 +1775,7 @@ export default function SalesKanbanPage() {
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <Kpi label="返信率" value={salesReplyRate} detail={`返信 ${repliedEmailedCaseCount}件 ／ 送信 ${emailedCaseIds.size}件`} description="メール送信した案件が対象。同じ案件の複数送信は1件として集計。" />
+                <Kpi label="返信・反応率" value={salesReplyRate} detail={`反応 ${repliedContactCaseCount}件 ／ 連絡 ${contactCaseIds.size}件`} description="こちらから連絡した案件が対象。同じ媒体で返信・反応を記録した案件を1件として集計。" />
                 <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
                 <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setSalesFilter((current) => current === "overdue" ? "all" : "overdue")} active={salesFilter === "overdue"} />
                 <Kpi label="Aランク案件" value={aRankSalesCases.length} detail="押すとAランク案件を表示" onClick={() => setSalesFilter((current) => current === "a_rank" ? "all" : "a_rank")} active={salesFilter === "a_rank"} />
@@ -1797,16 +1806,16 @@ export default function SalesKanbanPage() {
                 </summary>
                 <div className="px-4 pb-4">
                   <p id="media-kpi-description" className="mb-3 text-xs leading-5 text-white/45">
-                    案件が生まれた媒体ごとの累計です。案件数は既存顧客対応も含み、成約率は新規営業の成約・失注が対象です。メール返信率は各媒体の案件のうちメール送信記録がある案件で集計します。DMの送信・返信率は未集計です。未登録の媒体は未設定に表示し、フォロー遅延・Aランクの絞り込みとは連動しません。
+                    案件が生まれた媒体ごとの累計です。返信・反応率は、こちらから連絡した案件のうち、同じ連絡媒体で返信・反応の記録がある案件の割合です。複数回の連絡は1案件として集計し、初回受信のみは分母に含めません。成約率は新規営業の成約・失注が対象です。媒体未登録は未設定に表示し、案件の絞り込みとは連動しません。
                   </p>
                   <div className="overflow-x-auto rounded-xl border border-white/10">
                     <table aria-describedby="media-kpi-description" className="w-full min-w-[520px] text-left text-xs">
-                      <caption className="sr-only">案件の起点媒体ごとの案件数・メール返信率・新規営業成約率</caption>
+                      <caption className="sr-only">案件の起点媒体ごとの案件数・返信反応率・新規営業成約率</caption>
                       <thead className="bg-white/[0.045] text-white/50">
                         <tr>
                           <th scope="col" className="px-4 py-3 font-medium">媒体</th>
                           <th scope="col" className="px-4 py-3 text-right font-medium">案件数</th>
-                          <th scope="col" className="px-4 py-3 text-right font-medium">メール返信率</th>
+                          <th scope="col" className="px-4 py-3 text-right font-medium">返信・反応率</th>
                           <th scope="col" className="px-4 py-3 text-right font-medium">新規営業成約率</th>
                         </tr>
                       </thead>
@@ -1817,7 +1826,7 @@ export default function SalesKanbanPage() {
                             <td className="px-4 py-3 text-right text-white/75">{row.caseCount}件</td>
                             <td className="px-4 py-3 text-right">
                               <div className="font-medium text-white/75">{row.replyRate}</div>
-                              <div className="mt-1 text-[10px] text-white/40">返信 {row.repliedCount} ／ 送信 {row.sentCount}</div>
+                              <div className="mt-1 text-[10px] text-white/40">反応 {row.repliedCount} ／ 連絡 {row.sentCount}</div>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="font-medium text-white/75">{row.winRate}</div>
@@ -2120,7 +2129,8 @@ export default function SalesKanbanPage() {
                               <span>{dateLabel}</span>
                               {event.channel && <Tag>{event.channel}</Tag>}
                               {event.direction && <Tag>{event.direction}</Tag>}
-                              <Tag>{event.eventType}</Tag>
+                              <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
+                            {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                             </div>
                             <h2 className="mt-3 text-base font-semibold">{event.counterpartyName || linkedWork?.title || "相手先未設定"}</h2>
                             {event.counterpartyEmail && <p className="mt-1 text-xs text-white/35">{event.counterpartyEmail}</p>}
@@ -3358,6 +3368,14 @@ export default function SalesKanbanPage() {
                 </div>
 
                 <div className="mt-3">
+                  <label className="mb-3 block text-xs text-white/60">
+                    今回の連絡媒体
+                    <select className={inputClass + " mt-2"} value={salesEventChannel} onChange={(e) => setSalesEventChannel(e.target.value)}>
+                      <option value="">選択してください</option>
+                      {CHANNELS.map((channel) => <option key={channel} value={channel}>{channel}</option>)}
+                    </select>
+                  </label>
+                  <p className="mb-3 text-xs leading-5 text-white/40">電話・展示会も「連絡した／返信・反応あり」で記録できます。Web問い合わせなど相手からの初回連絡は「問い合わせ・初回受信」を使います。案件の起点媒体は変わりません。</p>
                   <input
                     value={salesEventNote}
                     onChange={(e) => setSalesEventNote(e.target.value)}
@@ -3366,25 +3384,31 @@ export default function SalesKanbanPage() {
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
                     {[
-                      ["email_sent", "メール送信", "Email"],
-                      ["reply_received", "返信あり", "Email"],
-                      ["quote_sent", "見積提示", "Email"],
-                      ["sample_sent", "サンプル送付", "その他"],
-                      ["note", "メモ", "その他"],
-                    ].map(([eventType, label, channel]) => (
+                      [salesEventChannel === "Email" ? "email_sent" : "contact_sent", "連絡した"],
+                      ["reply_received", "返信・反応あり"],
+                      ["contact_received", "問い合わせ・初回受信"],
+                      ["quote_sent", "見積提示"],
+                      ["sample_sent", "サンプル送付"],
+                      ["note", "メモ"],
+                    ].map(([eventType, label]) => (
                       <button
                         key={eventType}
                         type="button"
+                        disabled={salesEventBusy || (eventType !== "note" && !salesEventChannel)}
                         onClick={async () => {
+                          if (salesEventBusy || (eventType !== "note" && !salesEventChannel)) return
+                          setSalesEventBusy(true)
                           try {
-                            await appendSalesCaseEvent(editingSalesCase.id, eventType, salesEventNote, channel)
+                            await appendSalesCaseEvent(editingSalesCase.id, eventType, salesEventNote, salesEventChannel || undefined)
                             setSalesEventNote("")
                           } catch (error) {
                             console.error(error)
                             alert(error instanceof Error ? error.message : "活動履歴の保存に失敗しました。")
+                          } finally {
+                            setSalesEventBusy(false)
                           }
                         }}
-                        className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5"
+                        className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/65 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         ＋ {label}
                       </button>
@@ -3405,7 +3429,8 @@ export default function SalesKanbanPage() {
                         <div key={event.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
                           <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/35">
                             <span>{event.eventDate ? new Date(event.eventDate).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "日時不明"}</span>
-                            <Tag>{event.eventType}</Tag>
+                            <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
+                            {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
                           </div>
                           {event.note && <div className="mt-2 text-xs leading-5 text-white/60">{event.note}</div>}
                         </div>
@@ -3664,6 +3689,21 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
 
 function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
   return <button onClick={onClick} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-white text-[#11150f]" : "text-white/50 hover:bg-white/5 hover:text-white"}`}>{icon}{label}</button>
+}
+
+const SALES_EVENT_LABELS: Record<string, string> = {
+  email_sent: "メール送信",
+  contact_sent: "連絡実施",
+  reply_received: "返信・反応あり",
+  contact_received: "問い合わせ・初回受信",
+  quote_sent: "見積提示",
+  sample_sent: "サンプル送付",
+  note: "メモ",
+}
+
+function salesEventMedia(event: WorkEvent) {
+  if (event.channel) return CHANNELS.includes(event.channel) ? event.channel : ""
+  return ["email_sent", "reply_received"].includes(event.eventType) ? "Email" : ""
 }
 
 function Kpi({ label, value, detail, description, onClick, active = false }: { label: string; value: string | number; detail?: string; description?: string; onClick?: () => void; active?: boolean }) {
