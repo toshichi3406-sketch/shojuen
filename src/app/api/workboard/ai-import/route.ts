@@ -166,6 +166,34 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
     const id = body?.id
+    if (body?.action === "edit") {
+      const types = ["new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"]
+      if (typeof id !== "string" || !id.trim() || typeof body.title !== "string" || !body.title.trim() || !types.includes(body.candidateType) || !body.payload || typeof body.payload !== "object" || Array.isArray(body.payload)) {
+        return NextResponse.json({ error: "件名・分類・詳細JSONを確認してください。" }, { status: 400 })
+      }
+      const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      const candidate = Array.isArray(rows) ? rows[0] : null
+      if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
+      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映/
+      if (applied.test(candidate.decision_note || "")) {
+        return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
+      }
+      const updated = await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          title: body.title.trim(),
+          candidate_type: body.candidateType,
+          payload: body.payload,
+          target_id: candidate.candidate_type === body.candidateType ? candidate.target_id : null,
+          status: "pending",
+          decision_note: "候補を編集。正式反映前の再確認が必要です。",
+          reviewed_at: null,
+        }),
+      })
+      if (!Array.isArray(updated) || !updated[0]) throw new Error("保存結果を確認できませんでした。")
+      return NextResponse.json({ ok: true, candidate: updated[0] })
+    }
     const status = body?.status
     const decisionNote = body?.decisionNote ?? null
     const payloadPatch = body?.payloadPatch && typeof body.payloadPatch === "object" ? body.payloadPatch : null
