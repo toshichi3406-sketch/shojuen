@@ -86,6 +86,8 @@ type SalesCase = {
   title: string
   theme: string
   caseType: "new_business" | "existing_followup"
+  originType?: "Outbound" | "Inbound" | "Referral" | "Existing" | ""
+  channel?: string
   stage: "uncontacted" | "initial_sent" | "replied" | "qualifying" | "quoted" | "sample_requested" | "sample_sent" | "considering" | "won" | "lost" | "hold"
   heat: "A" | "B" | "C"
   nextFollowUpDate?: string
@@ -330,6 +332,7 @@ export default function SalesKanbanPage() {
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
+  const [salesAttributionConfigured, setSalesAttributionConfigured] = useState(false)
   const [salesFilter, setSalesFilter] = useState<"all" | "overdue" | "a_rank">("all")
   const [orders, setOrders] = useState<Order[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
@@ -418,6 +421,7 @@ export default function SalesKanbanPage() {
           if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
           setWork(Array.isArray(data.work) ? data.work : [])
           setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
+          setSalesAttributionConfigured(data.salesAttributionConfigured === true)
           setOrders(Array.isArray(data.orders) ? data.orders : [])
           setCustomers(Array.isArray(data.customers) ? data.customers : [])
           setProducts(Array.isArray(data.products) ? data.products : [])
@@ -1290,6 +1294,7 @@ export default function SalesKanbanPage() {
     const autoTitle = [customer?.name || editingSalesCase.customerId, editingSalesCase.theme.trim()].filter(Boolean).join("｜")
     const item = {
       ...editingSalesCase,
+      ...(salesAttributionConfigured ? { originType: editingSalesCase.originType || "", channel: editingSalesCase.channel || "" } : {}),
       title: editingSalesCase.title.trim() || autoTitle,
       wonAt: wonTimestamp,
       closedAt: becameWon ? wonTimestamp : editingSalesCase.closedAt,
@@ -3146,6 +3151,22 @@ export default function SalesKanbanPage() {
                   {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>)}
                 </select>
               </Field>
+
+              <Field label="接点区分">
+                <select disabled={!salesAttributionConfigured} className={inputClass + " disabled:opacity-40"} value={editingSalesCase.originType || ""} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, originType: e.target.value as SalesCase["originType"] })}>
+                  <option value="">未設定</option>
+                  {ORIGINS.map((origin) => <option key={origin} value={origin}>{origin}</option>)}
+                </select>
+              </Field>
+              <Field label="媒体">
+                <select disabled={!salesAttributionConfigured} className={inputClass + " disabled:opacity-40"} value={editingSalesCase.channel || ""} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, channel: e.target.value })}>
+                  <option value="">未設定</option>
+                  {CHANNELS.map((channel) => <option key={channel} value={channel}>{channel}</option>)}
+                </select>
+              </Field>
+              <p className="md:col-span-2 text-xs leading-5 text-white/45">
+                {salesAttributionConfigured ? "案件が生まれた接点区分と媒体を登録してください。不明な場合は未設定のままにします。" : "接点区分・媒体の入力はDB更新後に利用できます。現在の項目はそのまま保存できます。"}
+              </p>
 
               <Field label="案件種別">
                 <select className={inputClass} value={editingSalesCase.caseType} onChange={(e) => setEditingSalesCase({ ...editingSalesCase, caseType: e.target.value as SalesCase["caseType"] })}>
