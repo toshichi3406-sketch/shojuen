@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
 import { useWorkDrag } from "./work-drag"
+import { workboardFetch } from "./workboard-request"
 import { OperationSoundDiagnostics } from "./sound-diagnostics"
 import { WORK_UPDATE_FIELDS, buildWorkUpdatePatch, workUpdateValue } from "./work-update"
 import {
@@ -444,6 +445,16 @@ export default function SalesKanbanPage() {
   }, [editingSalesCase?.id, editingSalesCase?.channel])
 
   useEffect(() => {
+    const expired = () => {
+      setAuth({ loading: false, configured: true, authenticated: false })
+      setLoginError("ログインの有効期限が切れました。もう一度ログインしてください。")
+      setHydrated(false)
+    }
+    window.addEventListener("workboard-session-expired", expired)
+    return () => window.removeEventListener("workboard-session-expired", expired)
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     setAuthError("")
     setAuth((current) => ({ ...current, loading: true }))
@@ -552,7 +563,7 @@ export default function SalesKanbanPage() {
 
   async function saveShared(type: "work" | "customer" | "product" | "product_cost" | "work_event" | "sales_case", data: WorkItem | Customer | Product | ProductCost | WorkEvent | SalesCase) {
     if (!(auth.configured && auth.authenticated)) return
-    const response = await fetch("/api/workboard/data", {
+    const response = await workboardFetch("/api/workboard/data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, data }),
@@ -567,7 +578,7 @@ export default function SalesKanbanPage() {
     setEventLinkBusy(true)
     setEventLinkError("")
     try {
-      const response = await fetch("/api/workboard/data", {
+      const response = await workboardFetch("/api/workboard/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "work_event_link", data: { id: editingEventLink.id, salesCaseId: eventLinkCaseId || null } }),
@@ -633,7 +644,7 @@ export default function SalesKanbanPage() {
 
   async function deleteShared(type: "work" | "customer" | "product" | "sales_case", id: string) {
     if (!(auth.configured && auth.authenticated)) return
-    const response = await fetch(
+    const response = await workboardFetch(
       `/api/workboard/data?type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`,
       { method: "DELETE" }
     )
@@ -647,7 +658,7 @@ export default function SalesKanbanPage() {
     mutationLock.current = true
     setMutationBusy(true)
     try {
-      const response = await fetch("/api/workboard/data", {
+      const response = await workboardFetch("/api/workboard/data", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "restore", type: item.type, id: item.id }),
       })
@@ -676,7 +687,7 @@ export default function SalesKanbanPage() {
         .replace(/\\@/g, "@")
         .replace(/\\_/g, "_")
       const payload = JSON.parse(normalizedJson)
-      const response = await fetch("/api/workboard/ai-import", {
+      const response = await workboardFetch("/api/workboard/ai-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -780,7 +791,7 @@ export default function SalesKanbanPage() {
     setAiReviewError("")
     setAiEditMessage("")
     try {
-      const response = await fetch("/api/workboard/ai-import", {
+      const response = await workboardFetch("/api/workboard/ai-import", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: candidate.id, candidate_type: "work_update", payload: { ...candidate.payload, work_item_id: workUpdateTarget(candidate) }, expectedWork: preview.expected }),
@@ -839,7 +850,7 @@ export default function SalesKanbanPage() {
     aiReviewLock.current = true
     setAiReviewBusy(true)
     try {
-      const response = await fetch("/api/workboard/ai-import", {
+      const response = await workboardFetch("/api/workboard/ai-import", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "edit", id: aiEdit.id, title: aiEdit.title.trim(), candidateType: aiEdit.candidateType, payload }),
@@ -890,7 +901,7 @@ export default function SalesKanbanPage() {
     setAiReviewError("")
     setAiEditMessage("")
     try {
-      const response = await fetch("/api/workboard/ai-import", {
+      const response = await workboardFetch("/api/workboard/ai-import", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: candidate.id, candidate_type: "work_event", title: candidate.title, payload }),
@@ -943,7 +954,7 @@ export default function SalesKanbanPage() {
     setAiEditMessage("")
     setAiCreatedBoxId("")
     try {
-      const response = await fetch("/api/workboard/ai-import", {
+      const response = await workboardFetch("/api/workboard/ai-import", {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: candidate.id, candidate_type: "new_sales_case", title: candidate.title, payload: { ...candidate.payload, customer_id: details.customerId, theme: details.theme, assignee: details.assignee } }),
       })
@@ -1039,7 +1050,7 @@ export default function SalesKanbanPage() {
       if (selectedProduct) payload.product_id = selectedProduct
     }
 
-    const response = await fetch("/api/workboard/ai-import", {
+    const response = await workboardFetch("/api/workboard/ai-import", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1167,7 +1178,7 @@ export default function SalesKanbanPage() {
       throw new Error("送料の状態を選んでください。")
     }
 
-    const response = await fetch("/api/workboard/ai-import", {
+    const response = await workboardFetch("/api/workboard/ai-import", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1200,7 +1211,7 @@ export default function SalesKanbanPage() {
   }
 
   async function updateAiCandidate(id: string, status: AiImportCandidate["status"]) {
-    const response = await fetch("/api/workboard/ai-import", {
+    const response = await workboardFetch("/api/workboard/ai-import", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
@@ -1287,7 +1298,7 @@ export default function SalesKanbanPage() {
     setAiBulkCostBusy((current) => ({ ...current, [groupKey]: true }))
     try {
       for (const item of prepared) {
-        const response = await fetch("/api/workboard/ai-import", {
+        const response = await workboardFetch("/api/workboard/ai-import", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1499,15 +1510,15 @@ export default function SalesKanbanPage() {
     mutationLock.current = true
     setMutationBusy(true)
     const updated = { ...currentItem, status }
+    setWork((current) => current.map((item) => (item.id === id ? updated : item)))
     try {
       await saveShared("work", updated)
-      playOperationSound("saved")
-      setWork((current) => current.map((item) => (item.id === id ? updated : item)))
       const beforeLabel = STATUSES.find((item) => item.id === currentItem.status)?.label || currentItem.status
       const afterLabel = STATUSES.find((item) => item.id === status)?.label || status
       await recordWorkChange(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
     } catch (error) {
       console.error(error)
+      setWork((current) => current.map((item) => (item.id === id ? currentItem : item)))
       alert(error instanceof Error ? error.message : "業務の状態を保存できませんでした。")
     } finally {
       mutationLock.current = false
@@ -1654,7 +1665,7 @@ export default function SalesKanbanPage() {
       const form = new FormData()
       form.set("productId", productId)
       form.set("file", file)
-      const response = await fetch("/api/workboard/documents", { method: "POST", body: form })
+      const response = await workboardFetch("/api/workboard/documents", { method: "POST", body: form })
       const result = await response.json().catch(() => ({}))
       if (!response.ok || !result.doc) throw new Error(result.error || "資料を保存できませんでした。")
       const doc: ProductDoc = result.doc
@@ -1734,7 +1745,7 @@ export default function SalesKanbanPage() {
     setMutationBusy(true)
 
     try {
-      const response = await fetch("/api/workboard/data", {
+      const response = await workboardFetch("/api/workboard/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "order", data: editingOrder }),
@@ -1814,7 +1825,7 @@ export default function SalesKanbanPage() {
     }
 
     try {
-      const response = await fetch("/api/workboard/data", {
+      const response = await workboardFetch("/api/workboard/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "sales_case", data: item }),
@@ -4488,7 +4499,7 @@ const inputClass =
   "h-11 w-full rounded-xl border border-white/10 bg-[#0d0f0d] px-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/25 focus:ring-2 focus:ring-white/5"
 
 async function readAiImportData(signal?: AbortSignal): Promise<{ batches: AiImportBatch[]; candidates: AiImportCandidate[] }> {
-  const response = await fetch("/api/workboard/ai-import", { cache: "no-store", signal })
+  const response = await workboardFetch("/api/workboard/ai-import", { cache: "no-store", signal })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || "AI取込候補を読み込めませんでした。")
   if (!Array.isArray(data.batches) || !Array.isArray(data.candidates)) throw new Error("AI取込候補の応答を確認できませんでした。再読み込みしてください。")
@@ -4498,12 +4509,12 @@ async function readAiImportData(signal?: AbortSignal): Promise<{ batches: AiImpo
 async function readWorkboardSession(): Promise<{ configured: boolean; authenticated: boolean; user?: AuthState["user"] }> {
   const response = await fetch("/api/workboard/auth/session", { cache: "no-store" })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok || typeof data.configured !== "boolean" || typeof data.authenticated !== "boolean") throw new Error("ログイン状態を確認できませんでした。")
+  if ((!response.ok && response.status !== 401 && response.status !== 403) || typeof data.configured !== "boolean" || typeof data.authenticated !== "boolean") throw new Error("ログイン状態を確認できませんでした。")
   return data
 }
 
 async function readSharedWorkboardData(): Promise<Record<string, any>> {
-  const response = await fetch("/api/workboard/data", { cache: "no-store" })
+  const response = await workboardFetch("/api/workboard/data", { cache: "no-store" })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
   if (["work", "salesCases", "orders", "customers", "products", "productCosts", "events", "shippingRates", "trash"].some((key) => !Array.isArray(data[key]))) throw new Error("共有データの応答を確認できませんでした。")
