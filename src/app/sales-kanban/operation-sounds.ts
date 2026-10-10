@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
 
 type OperationSound = "click" | "drag" | "drop" | "saved"
 const SOUND_TONES = {
-  click: [{ frequency: 720, end: 420, delay: 0, duration: 0.065 }],
+  click: [{ frequency: 600, end: 820, delay: 0, duration: 0.065 }],
   drag: [{ frequency: 480, end: 720, delay: 0, duration: 0.12 }],
   drop: [{ frequency: 560, end: 320, delay: 0, duration: 0.105 }],
   saved: [{ frequency: 1320, end: 1568, delay: 0, duration: 0.065 }],
