@@ -330,7 +330,7 @@ export default function SalesKanbanPage() {
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
   const [salesCases, setSalesCases] = useState<SalesCase[]>([])
-  const [showOverdueSalesOnly, setShowOverdueSalesOnly] = useState(false)
+  const [salesFilter, setSalesFilter] = useState<"all" | "overdue" | "a_rank">("all")
   const [orders, setOrders] = useState<Order[]>([])
   const [events, setEvents] = useState<WorkEvent[]>([])
   const [customers, setCustomers] = useState<Customer[]>(starterCustomers)
@@ -1016,7 +1016,11 @@ export default function SalesKanbanPage() {
   const overdueSalesCases = activeSalesCases.filter(
     (item) => item.nextFollowUpDate && item.nextFollowUpDate < todayInTokyo()
   )
-  const visibleSalesCases = showOverdueSalesOnly ? overdueSalesCases : activeSalesCases
+  const aRankSalesCases = activeSalesCases.filter((item) => item.heat === "A")
+  const visibleSalesCases = salesFilter === "overdue"
+    ? overdueSalesCases
+    : salesFilter === "a_rank" ? aRankSalesCases : activeSalesCases
+  const salesFilterLabel = salesFilter === "a_rank" ? "Aランク案件" : "フォロー遅延"
   const emailedCaseIds = new Set(
     events
       .filter((event) => event.salesCaseId && event.eventType === "email_sent")
@@ -1739,8 +1743,8 @@ export default function SalesKanbanPage() {
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="返信率" value={salesReplyRate} detail={`返信 ${repliedEmailedCaseCount}件 ／ 送信 ${emailedCaseIds.size}件`} description="メール送信した案件が対象。同じ案件の複数送信は1件として集計。" />
                 <Kpi label="成約率" value={salesWinRate} detail={`成約 ${wonNewBusinessCases.length}件 ／ 決着 ${closedNewBusinessCases.length}件`} description="新規営業の成約・失注が対象。進行中・保留・既存顧客対応は除外。" />
-                <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setShowOverdueSalesOnly((current) => !current)} active={showOverdueSalesOnly} />
-                <Kpi label="Aランク案件" value={salesCases.filter((item) => item.heat === "A" && !["won", "lost", "hold"].includes(item.stage)).length} />
+                <Kpi label="フォロー遅延" value={overdueSalesCases.length} detail="押すと遅延案件を表示" onClick={() => setSalesFilter((current) => current === "overdue" ? "all" : "overdue")} active={salesFilter === "overdue"} />
+                <Kpi label="Aランク案件" value={aRankSalesCases.length} detail="押すとAランク案件を表示" onClick={() => setSalesFilter((current) => current === "a_rank" ? "all" : "a_rank")} active={salesFilter === "a_rank"} />
               </div>
 
               <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
@@ -1760,20 +1764,22 @@ export default function SalesKanbanPage() {
                 </div>
               </details>
 
-              {showOverdueSalesOnly && (
+              {salesFilter !== "all" && (
                 <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/5 px-4 py-3">
-                  <p className="text-sm text-amber-100">フォロー遅延のみ表示中：{overdueSalesCases.length}件</p>
-                  <button type="button" onClick={() => setShowOverdueSalesOnly(false)} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+                  <p className="text-sm text-amber-100">{salesFilterLabel}のみ表示中：{visibleSalesCases.length}件</p>
+                  <button type="button" onClick={() => setSalesFilter("all")} className="rounded-lg border border-white/15 px-3 py-2 text-xs text-white/75 transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
                     すべて表示
                   </button>
                 </div>
               )}
 
-              {showOverdueSalesOnly && visibleSalesCases.length === 0 ? (
+              {salesFilter !== "all" && visibleSalesCases.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
                   <CalendarClock className="mx-auto size-7 text-white/30" />
-                  <h2 className="mt-3 text-base font-semibold">フォロー遅延の案件はありません</h2>
-                  <p className="mt-2 text-sm leading-6 text-white/45">次回フォロー日が今日より前の進行中案件を表示します。</p>
+                  <h2 className="mt-3 text-base font-semibold">{salesFilterLabel}の案件はありません</h2>
+                  <p className="mt-2 text-sm leading-6 text-white/45">
+                    {salesFilter === "a_rank" ? "成約・失注・保留を除く、進行中のAランク案件を表示します。" : "次回フォロー日が今日より前の進行中案件を表示します。"}
+                  </p>
                 </div>
               ) : salesCases.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-10 text-center">
@@ -1841,7 +1847,7 @@ export default function SalesKanbanPage() {
                 </div>
               )}
 
-              {!showOverdueSalesOnly && salesCases.some((item) => ["won", "lost", "hold"].includes(item.stage)) && (
+              {salesFilter === "all" && salesCases.some((item) => ["won", "lost", "hold"].includes(item.stage)) && (
                 <section className="mt-8 border-t border-white/10 pt-6">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
