@@ -379,6 +379,8 @@ export default function SalesKanbanPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [sharedDataError, setSharedDataError] = useState("")
+  const [sharedDataAttempt, setSharedDataAttempt] = useState(0)
   const [auth, setAuth] = useState<AuthState>({ loading: true, configured: false, authenticated: false })
   const [loginEmail, setLoginEmail] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
@@ -422,10 +424,14 @@ export default function SalesKanbanPage() {
     if (auth.loading) return
 
     if (auth.configured && auth.authenticated) {
+      let cancelled = false
+      setHydrated(false)
+      setSharedDataError("")
       fetch("/api/workboard/data", { cache: "no-store" })
         .then(async (response) => {
           const data = await response.json().catch(() => ({}))
           if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
+          if (cancelled) return
           setWork(Array.isArray(data.work) ? data.work : [])
           setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
           setSalesAttributionConfigured(data.salesAttributionConfigured === true)
@@ -438,10 +444,11 @@ export default function SalesKanbanPage() {
           setHydrated(true)
         })
         .catch((error) => {
+          if (cancelled) return
           console.error(error)
-          setHydrated(true)
+          setSharedDataError("共有データを読み込めませんでした。通信状態を確認し、もう一度お試しください。")
         })
-      return
+      return () => { cancelled = true }
     }
 
     try {
@@ -457,7 +464,7 @@ export default function SalesKanbanPage() {
       setProducts(starterProducts)
     }
     setHydrated(true)
-  }, [auth.loading, auth.configured, auth.authenticated])
+  }, [auth.loading, auth.configured, auth.authenticated, sharedDataAttempt])
 
   useEffect(() => {
     if (!hydrated || (auth.configured && auth.authenticated)) return
@@ -1603,6 +1610,24 @@ export default function SalesKanbanPage() {
             {loginBusy ? "確認中..." : "ログイン"}
           </button>
         </form>
+      </main>
+    )
+  }
+
+  if (auth.configured && auth.authenticated && (sharedDataError || !hydrated)) {
+    return (
+      <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] px-5 text-[#f4f5f2]">
+        {sharedDataError ? (
+          <div role="alert" className="w-full max-w-md rounded-[24px] border border-amber-300/20 bg-[#111311] p-6">
+            <h1 className="text-lg font-semibold">共有データを読み込めませんでした</h1>
+            <p className="mt-3 text-sm leading-6 text-white/55">{sharedDataError}</p>
+            <button type="button" onClick={() => setSharedDataAttempt((attempt) => attempt + 1)} className="mt-5 rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+              再読み込み
+            </button>
+          </div>
+        ) : (
+          <div role="status" className="text-sm text-white/45">共有データを読み込み中...</div>
+        )}
       </main>
     )
   }
