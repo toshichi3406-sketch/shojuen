@@ -373,6 +373,7 @@ export default function SalesKanbanPage() {
   const [aiMatchCustomer, setAiMatchCustomer] = useState<Record<string, string>>({})
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
   const [aiEventTarget, setAiEventTarget] = useState<Record<string, string>>({})
+  const [aiNewWorkStatus, setAiNewWorkStatus] = useState<Record<string, Status>>({})
   const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
   const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
   const [aiShippingStage, setAiShippingStage] = useState<Record<string, string>>({})
@@ -851,6 +852,7 @@ export default function SalesKanbanPage() {
       setAiMatchCustomer((current) => ({ ...current, [saved.id]: "" }))
       setAiMatchWork((current) => ({ ...current, [saved.id]: "" }))
       setAiEventTarget((current) => ({ ...current, [saved.id]: "" }))
+      setAiNewWorkStatus((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiMatchProducts((current) => ({ ...current, [saved.id]: [] }))
       setAiPriceClass((current) => ({ ...current, [saved.id]: "" }))
       setAiShippingStage((current) => ({ ...current, [saved.id]: "" }))
@@ -960,10 +962,18 @@ export default function SalesKanbanPage() {
     }
   }
 
+  function newWorkCandidateStatus(candidate: AiImportCandidate): Status {
+    const selected = aiNewWorkStatus[candidate.id]
+    if (selected) return selected
+    const proposed = String(candidate.payload?.status || "todo")
+    return STATUSES.find((status) => status.id === proposed || status.label === proposed)?.id || "todo"
+  }
+
   async function applyAiCandidate(candidate: AiImportCandidate) {
     if (candidate.candidate_type === "new_sales_case") { await applyAiSalesBox(candidate); return }
     if (candidate.candidate_type === "work_event") { await applyAiWorkEvent(candidate); return }
     const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
+    if (candidate.candidate_type === "new_work") payload.status = newWorkCandidateStatus(candidate)
 
     if (aiMatchCustomer[candidate.id]) {
       payload.customer_id = aiMatchCustomer[candidate.id]
@@ -3498,16 +3508,25 @@ export default function SalesKanbanPage() {
                                 <div className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-white/35">紐付け確認</div>
 
                                 {candidate.candidate_type === "new_work" && (
-                                  <select
-                                    value={aiMatchCustomer[candidate.id] || ""}
-                                    onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
-                                    className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
-                                  >
-                                    <option value="">取引先なし / 未確定</option>
-                                    {customers.map((customer) => (
-                                      <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>
-                                    ))}
-                                  </select>
+                                  <div className="space-y-2">
+                                    <select
+                                      aria-label="新規業務カードの取引先"
+                                      value={aiMatchCustomer[candidate.id] || ""}
+                                      onChange={(e) => setAiMatchCustomer((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                      className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
+                                    >
+                                      <option value="">取引先なし / 未確定</option>
+                                      {customers.map((customer) => (
+                                        <option key={customer.id} value={customer.id}>{customer.id} {customer.name}</option>
+                                      ))}
+                                    </select>
+                                    <Field label="作成する列（状態）">
+                                      <select value={newWorkCandidateStatus(candidate)} onChange={(e) => setAiNewWorkStatus((current) => ({ ...current, [candidate.id]: e.target.value as Status }))} className="h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs">
+                                        {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+                                      </select>
+                                    </Field>
+                                    <p className="text-[10px] leading-4 text-white/45">業務管理の「{STATUSES.find((status) => status.id === newWorkCandidateStatus(candidate))?.label}」列に新しいカードを作成します。状態の変更は正式反映時に保存されます。</p>
+                                  </div>
                                 )}
 
                                 {candidate.candidate_type === "customer_update" && (
@@ -3616,7 +3635,9 @@ export default function SalesKanbanPage() {
                                       ? "新規取引先として反映"
                                       : candidate.candidate_type === "product_update" && !(aiMatchProducts[candidate.id] || []).length
                                         ? "新規商品として反映"
-                                        : "正式反映"}
+                                        : candidate.candidate_type === "new_work"
+                                          ? "業務カードを作成"
+                                          : "正式反映"}
                                 </button>
                               )}
                               <button
