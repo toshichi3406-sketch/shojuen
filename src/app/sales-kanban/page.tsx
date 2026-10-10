@@ -201,6 +201,8 @@ type ProductDoc = {
   id: string
   title: string
   url: string
+  mimeType?: string
+  isPrivate?: boolean
 }
 
 type ProductCost = {
@@ -377,6 +379,9 @@ export default function SalesKanbanPage() {
   const [editingWork, setEditingWork] = useState<WorkItem | null>(null)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [docUploadBusy, setDocUploadBusy] = useState(false)
+  const [docUploadMessage, setDocUploadMessage] = useState("")
+  const [productSaveBusy, setProductSaveBusy] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [sharedDataError, setSharedDataError] = useState("")
@@ -1188,19 +1193,52 @@ export default function SalesKanbanPage() {
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingProduct || !editingProduct.name.trim()) return
+    if (!editingProduct || !editingProduct.name.trim() || productSaveBusy || docUploadBusy) return
     const item = editingProduct
-    setProducts((current) => {
-      const exists = current.some((row) => row.id === item.id)
-      return exists
-        ? current.map((row) => (row.id === item.id ? item : row))
-        : [...current, item]
-    })
-    setEditingProduct(null)
+    setProductSaveBusy(true)
     try {
       await saveShared("product", item)
+      setProducts((current) => {
+        const exists = current.some((row) => row.id === item.id)
+        return exists ? current.map((row) => row.id === item.id ? item : row) : [...current, item]
+      })
+      setEditingProduct(null)
     } catch (error) {
       console.error(error)
+      alert(error instanceof Error ? error.message : "商品を保存できませんでした。")
+    } finally {
+      setProductSaveBusy(false)
+    }
+  }
+
+  async function uploadProductDoc(file: File) {
+    if (!editingProduct || docUploadBusy) return
+    const productId = editingProduct.id
+    if (!(auth.configured && auth.authenticated) || !products.some((item) => item.id === productId)) {
+      setDocUploadMessage("商品を共有DBに保存してから添付してください。")
+      return
+    }
+    if (!file.size || file.size > 3 * 1024 * 1024) {
+      setDocUploadMessage("空のファイルは添付できません。ファイルは3MB以下にしてください。")
+      return
+    }
+    setDocUploadBusy(true)
+    setDocUploadMessage("")
+    try {
+      const form = new FormData()
+      form.set("productId", productId)
+      form.set("file", file)
+      const response = await fetch("/api/workboard/documents", { method: "POST", body: form })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result.doc) throw new Error(result.error || "資料を保存できませんでした。")
+      const doc: ProductDoc = result.doc
+      setEditingProduct((current) => current?.id === productId ? { ...current, docs: [...(current.docs || []), doc] } : current)
+      setProducts((current) => current.map((product) => product.id === productId ? { ...product, docs: [...(product.docs || []), doc] } : product))
+      setDocUploadMessage("非公開の資料を保存しました。")
+    } catch (error) {
+      setDocUploadMessage(error instanceof Error ? error.message : "資料を保存できませんでした。")
+    } finally {
+      setDocUploadBusy(false)
     }
   }
 
@@ -3687,11 +3725,33 @@ export default function SalesKanbanPage() {
 
             <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
               <div className="flex items-center justify-between gap-3">
-                <div><h3 className="text-sm font-semibold">証明書・資料</h3><p className="mt-1 text-xs text-white/40">現段階はURL登録。公開GitHubにファイル本体は置きません。</p></div>
-                <button type="button" onClick={addDoc} className="rounded-full border border-white/10 px-3 py-2 text-xs">資料追加</button>
+                <div><h3 className="text-sm font-semibold">証明書・資料</h3><p className="mt-1 text-xs text-white/40">非公開ファイルの添付と、既存のURL資料を管理できます。</p></div>
+                <button type="button" onClick={addDoc} className="rounded-full border border-white/10 px-3 py-2 text-xs">URL資料追加</button>
+              </div>
+              <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                <label className="block text-xs font-medium text-white/65">
+                  非公開ファイルを添付
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.xlsx" disabled={docUploadBusy || productSaveBusy || !(auth.configured && auth.authenticated) || !products.some((item) => item.id === editingProduct.id)} onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ""
+                    if (file) void uploadProductDoc(file)
+                  }} className="mt-3 block w-full text-xs text-white/55 file:mr-3 file:rounded-full file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-white/75 disabled:opacity-40" />
+                </label>
+                <p className="mt-2 text-xs leading-5 text-white/40">PDF・画像・Word（DOCX）・Excel（XLSX）、1ファイル3MBまで。商品を保存した後に添付できます。添付はファイル選択後すぐ保存され、商品編集のキャンセルでも残ります。</p>
+                {docUploadBusy && <p role="status" className="mt-2 text-xs text-white/65">資料を保存中...</p>}
+                {docUploadMessage && <p role="status" className="mt-2 text-xs text-amber-100">{docUploadMessage}</p>}
+                {productSaveBusy && <p role="status" className="mt-2 text-xs text-white/65">商品を保存中...</p>}
               </div>
               <div className="mt-4 space-y-2">
-                {(editingProduct.docs || []).map((doc) => (
+                {(editingProduct.docs || []).map((doc) => doc.isPrivate || doc.url.startsWith("products/") ? (
+                  <div key={doc.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                    <div className="min-w-0">
+                      <div className="break-all text-sm text-white/75">{doc.title}</div>
+                      <div className="mt-1 text-[10px] text-white/40">非公開添付 · ログインと閲覧権限が必要</div>
+                    </div>
+                    <a href={`/api/workboard/documents?id=${encodeURIComponent(doc.id)}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-3 py-2 text-xs text-white/75 hover:bg-white/5">ダウンロード</a>
+                  </div>
+                ) : (
                   <div key={doc.id} className="grid gap-2 md:grid-cols-[1fr_1.5fr_auto]">
                     <input className={inputClass} placeholder="資料名" value={doc.title} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, title: e.target.value } : d) })} />
                     <input className={inputClass} placeholder="URL" value={doc.url} onChange={(e) => setEditingProduct({ ...editingProduct, docs: (editingProduct.docs || []).map((d) => d.id === doc.id ? { ...d, url: e.target.value } : d) })} />
