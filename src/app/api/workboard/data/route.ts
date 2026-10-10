@@ -457,6 +457,7 @@ export async function POST(request: NextRequest) {
         const current = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(data.id)}&deleted_at=is.null`, token)
         if (!current?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
         previousCase = current[0]
+        if (data.expectedUpdatedAt != null && data.expectedUpdatedAt !== previousCase.updated_at) return NextResponse.json({ error: "案件が別の操作で変更されています。再読み込みして確認してください。" }, { status: 409 })
         if (data.expectedStage != null && data.expectedStage !== previousCase.stage) return NextResponse.json({ error: "案件の段階が別の操作で変更されています。再読み込みして確認してください。" }, { status: 409 })
         if (current[0].customer_id !== data.customerId) {
           const linked = await Promise.all([
