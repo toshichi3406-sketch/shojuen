@@ -3,6 +3,7 @@ export type StageRecord = {
   kind: "sales_stage_v1"; phase: "pending" | "committed" | "aborted"; from: string | null; to: string;
   channel: string; originType: string; caseType: string
   priorDecision?: { date: string; outcome: string; channel: string; originType: string; caseType: string }
+  supersedes?: string
 }
 export type AnalysisEvent = { id: string; salesCaseId?: string; eventType: string; eventDate: string; channel?: string; note?: string; source?: string }
 export type AnalysisCase = { id: string; stage: string; title: string; caseType: string; channel?: string; originType?: string; closedAt?: string; wonAt?: string }
@@ -17,8 +18,25 @@ export function parseStageRecord(note?: string): StageRecord | null {
   } catch { return null }
 }
 
-export function stageRecordNote(from: string | null, to: string, data: { channel?: string; originType?: string; caseType?: string; priorDecision?: StageRecord["priorDecision"] }, phase: StageRecord["phase"] = "committed") {
-  return JSON.stringify({ kind: "sales_stage_v1", phase, from, to, channel: data.channel || "", originType: data.originType || "", caseType: data.caseType || "new_business", ...(data.priorDecision ? { priorDecision: data.priorDecision } : {}) })
+export function stageRecordNote(from: string | null, to: string, data: { channel?: string; originType?: string; caseType?: string; priorDecision?: StageRecord["priorDecision"]; supersedes?: string }, phase: StageRecord["phase"] = "committed") {
+  return JSON.stringify({ kind: "sales_stage_v1", phase, from, to, channel: data.channel || "", originType: data.originType || "", caseType: data.caseType || "new_business", ...(data.priorDecision ? { priorDecision: data.priorDecision } : {}), ...(data.supersedes ? { supersedes: data.supersedes } : {}) })
+}
+
+// Completion is a new event: original history remains immutable.
+export function resolvedStageEvents(events: AnalysisEvent[]) {
+  const byId = new Map(events.map(event => [event.id, event]))
+  const replaced = new Set<string>()
+  for (const event of events) {
+    const record = parseStageRecord(event.note)
+    const pending = record?.supersedes ? byId.get(record.supersedes) : undefined
+    const original = parseStageRecord(pending?.note)
+    if (event.source === "workboard_auto" && pending?.source === "workboard_auto" &&
+        event.salesCaseId === pending.salesCaseId && Date.parse(event.eventDate) === Date.parse(pending.eventDate) &&
+        original?.phase === "pending" && record?.phase !== "pending" && record?.from === original.from && record?.to === original.to) {
+      replaced.add(pending.id)
+    }
+  }
+  return events.filter(event => !replaced.has(event.id))
 }
 
 export function displayActivityNote(note: string, labels: Record<string, string>) {
@@ -39,7 +57,7 @@ export function median(values: number[]): number | null {
 export function stageDurations(cases: AnalysisCase[], events: AnalysisEvent[], now: string) {
   const end = time(now)
   return cases.map((item) => {
-    const history = events.filter((event) => event.salesCaseId === item.id && event.source === "workboard_auto")
+    const history = resolvedStageEvents(events).filter((event) => event.salesCaseId === item.id && event.source === "workboard_auto")
       .map((event) => ({ date: time(event.eventDate), record: parseStageRecord(event.note) }))
       .filter((row) => row.record && row.record.phase !== "aborted" && Number.isFinite(row.date) && row.date <= end)
       .sort((a, b) => a.date - b.date)
