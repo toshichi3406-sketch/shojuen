@@ -360,6 +360,9 @@ export default function SalesKanbanPage() {
   const aiReviewLock = useRef(false)
   const [aiReviewBusy, setAiReviewBusy] = useState(false)
   const [aiReviewError, setAiReviewError] = useState("")
+  const [aiEdit, setAiEdit] = useState<{ id: string; title: string; candidateType: string; payloadJson: string } | null>(null)
+  const [aiEditError, setAiEditError] = useState("")
+  const [aiEditMessage, setAiEditMessage] = useState("")
   const [aiImportJson, setAiImportJson] = useState("")
   const [aiImportMessage, setAiImportMessage] = useState("")
   const [aiImportBusy, setAiImportBusy] = useState(false)
@@ -708,6 +711,75 @@ export default function SalesKanbanPage() {
     }
   }
 
+
+
+  function openAiCandidateEditor(candidate: AiImportCandidate) {
+    if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
+    setAiEditError("")
+    setAiEditMessage("")
+    setAiEdit({ id: candidate.id, title: candidate.title || "", candidateType: candidate.candidate_type, payloadJson: JSON.stringify(candidate.payload || {}, null, 2) })
+  }
+
+  function readAiEditField(key: string) {
+    try { return String(JSON.parse(aiEdit?.payloadJson || "{}")[key] ?? "") } catch { return "" }
+  }
+
+  function changeAiEditField(key: string, value: string) {
+    if (!aiEdit) return
+    try {
+      const payload = JSON.parse(aiEdit.payloadJson)
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error()
+      setAiEdit({ ...aiEdit, payloadJson: JSON.stringify({ ...payload, [key]: value }, null, 2) })
+    } catch {
+      setAiEditError("詳細JSONの書式を直してから項目を編集してください。")
+    }
+  }
+
+  async function saveAiCandidateEdit(event: FormEvent) {
+    event.preventDefault()
+    if (!aiEdit || aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
+    setAiEditError("")
+    let payload: Record<string, unknown>
+    try {
+      payload = JSON.parse(aiEdit.payloadJson)
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("詳細JSONはオブジェクト形式で入力してください。")
+      if (!aiEdit.title.trim()) throw new Error("候補の件名を入力してください。")
+    } catch (error) {
+      setAiEditError(error instanceof SyntaxError ? "詳細JSONの書式が正しくありません。" : error instanceof Error ? error.message : "入力を確認してください。")
+      return
+    }
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
+    try {
+      const response = await fetch("/api/workboard/ai-import", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "edit", id: aiEdit.id, title: aiEdit.title.trim(), candidateType: aiEdit.candidateType, payload }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "候補の修正を保存できませんでした。")
+      const saved = result.candidate as AiImportCandidate | undefined
+      if (!saved || saved.id !== aiEdit.id || !saved.payload || !saved.candidate_type) throw new Error("保存結果を確認できませんでした。再読み込みして内容を確認してください。")
+      setAiCandidates((current) => current.map((item) => item.id === saved.id ? saved : item))
+      setAiMatchCustomer((current) => ({ ...current, [saved.id]: "" }))
+      setAiMatchWork((current) => ({ ...current, [saved.id]: "" }))
+      setAiMatchProducts((current) => ({ ...current, [saved.id]: [] }))
+      setAiPriceClass((current) => ({ ...current, [saved.id]: "" }))
+      setAiShippingStage((current) => ({ ...current, [saved.id]: "" }))
+      setAiShippingDraft((current) => ({ ...current, [saved.id]: {} }))
+      setAiPriceDraft((current) => ({ ...current, [saved.id]: {} }))
+      setAiCostRows((current) => { const next = { ...current }; delete next[saved.id]; return next })
+      setAiStatusFilter("pending")
+      setAiTypeFilter("all")
+      setAiEdit(null)
+      setAiEditMessage("候補の修正を保存しました。まだ正式データには反映されていません。内容と紐付けを確認して正式反映してください。")
+    } catch (error) {
+      setAiEditError(error instanceof Error ? error.message : "候補の修正を保存できませんでした。")
+    } finally {
+      aiReviewLock.current = false
+      setAiReviewBusy(false)
+    }
+  }
 
   async function applyAiCandidate(candidate: AiImportCandidate) {
     const payload = { ...(candidate.payload || {}) } as Record<string, unknown>
@@ -1902,6 +1974,30 @@ export default function SalesKanbanPage() {
       }}
       className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
       <OperationSoundDiagnostics read={readSoundDiagnostics} />
+      {aiEdit && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center bg-black/75 p-4">
+          <form role="dialog" aria-modal="true" aria-labelledby="ai-edit-title" onSubmit={saveAiCandidateEdit} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/15 bg-[#111311] p-5 shadow-2xl">
+            <h2 id="ai-edit-title" className="text-lg font-semibold">AI候補を編集</h2>
+            <p className="mt-2 text-xs leading-5 text-white/55">保存すると未判定へ戻ります。候補だけの修正で、正式データへの反映は別操作です。分類を変える場合は、その分類に合う内容へ修正してください。</p>
+            {aiEditError && <p role="alert" className="mt-3 text-sm text-red-300">{aiEditError}</p>}
+            <fieldset disabled={aiReviewBusy} className="mt-4 space-y-4">
+              <Field label="候補の件名"><input autoFocus value={aiEdit.title} onChange={(e) => setAiEdit({ ...aiEdit, title: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>
+              <Field label="候補の分類"><select value={aiEdit.candidateType} onChange={(e) => setAiEdit({ ...aiEdit, candidateType: e.target.value })} className="h-10 w-full rounded-lg border border-white/15 bg-[#111311] px-3 text-sm">
+                {["new_work", "work_update", "work_event", "customer_update", "product_update", "price_candidate", "decision"].map((type) => <option key={type} value={type}>{aiCandidateLabel(type)}</option>)}
+              </select></Field>
+              {aiEdit.candidateType === "customer_update" && <div className="grid gap-3 sm:grid-cols-2">
+                {[["company_name", "会社名"], ["country", "国"], ["contact_name", "担当者"], ["email", "メール"], ["phone", "電話"], ["memo", "メモ"]].map(([key, label]) => <Field key={key} label={label}><input value={readAiEditField(key)} onChange={(e) => changeAiEditField(key, e.target.value)} className="h-10 w-full rounded-lg border border-white/15 bg-black/20 px-3 text-sm" /></Field>)}
+              </div>}
+              <details open={aiEdit.candidateType !== "customer_update"} className="rounded-xl border border-white/10">
+                <summary className="cursor-pointer px-3 py-2 text-xs text-white/65">詳細JSONを編集</summary>
+                <p className="px-3 text-xs leading-5 text-white/45">通常の取引先修正は上の項目で入力できます。その他の分類や項目はここで修正します。確認できた内容だけを書き換えてください。</p>
+                <textarea aria-label="候補の詳細JSON" spellCheck={false} value={aiEdit.payloadJson} onChange={(e) => setAiEdit({ ...aiEdit, payloadJson: e.target.value })} className="mt-2 min-h-56 w-full rounded-b-xl bg-black/25 p-3 font-mono text-xs leading-5" />
+              </details>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => { setAiEdit(null); setAiEditError("") }} className="rounded-full border border-white/15 px-4 py-2 text-sm">キャンセル</button><button type="submit" className="rounded-full bg-[#eef3ea] px-4 py-2 text-sm font-semibold text-[#11150f]">{aiReviewBusy ? "保存中…" : "修正を保存"}</button></div>
+            </fieldset>
+          </form>
+        </div>
+      )}
       <div className="flex h-full flex-col">
         <header className="border-b border-white/10 bg-[#090a09]/95 px-5 py-4 backdrop-blur md:px-7">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -2808,6 +2904,7 @@ export default function SalesKanbanPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {aiEditMessage && <p role="status" className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100">{aiEditMessage}</p>}
                   {visibleAiCandidates.map((candidate) => {
                     const batch = aiBatches.find((item) => item.id === candidate.batch_id)
                     return (
@@ -3270,6 +3367,7 @@ export default function SalesKanbanPage() {
                             )}
 
                             <div className="flex flex-wrap gap-2">
+                              {!isAiCandidateApplied(candidate.decision_note) && <button type="button" disabled={aiReviewBusy} onClick={() => openAiCandidateEditor(candidate)} className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/80">候補を編集</button>}
                               {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                                 <button
                                   onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
@@ -4203,3 +4301,7 @@ function statusDot(status: Status) {
   }
 }
 
+
+function isAiCandidateApplied(note?: string | null) {
+  return /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映/.test(note || "")
+}
