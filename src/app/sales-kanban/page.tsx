@@ -18,8 +18,6 @@ import {
   ShieldCheck,
   Trash2,
   Users,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react"
 
@@ -336,7 +334,7 @@ const starterWork: WorkItem[] = [
 ]
 
 export default function SalesKanbanPage() {
-  const { soundEnabled, toggleSound, playOperationSound } = useOperationSounds()
+  const { prepareOperationSounds, playOperationSound } = useOperationSounds()
   const suppressClickSoundUntil = useRef(0)
   const [tab, setTab] = useState<Tab>("sales")
   const [work, setWork] = useState<WorkItem[]>(starterWork)
@@ -404,7 +402,7 @@ export default function SalesKanbanPage() {
   const [productSaveBusy, setProductSaveBusy] = useState(false)
   const mutationLock = useRef(false)
   const [mutationBusy, setMutationBusy] = useState(false)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const draggingWorkId = useRef<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [sharedDataError, setSharedDataError] = useState("")
   const [sharedDataAttempt, setSharedDataAttempt] = useState(0)
@@ -1223,8 +1221,8 @@ export default function SalesKanbanPage() {
     const updated = { ...currentItem, status }
     try {
       await saveShared("work", updated)
+      playOperationSound("saved")
       setWork((current) => current.map((item) => (item.id === id ? updated : item)))
-      playOperationSound("drop")
       const beforeLabel = STATUSES.find((item) => item.id === currentItem.status)?.label || currentItem.status
       const afterLabel = STATUSES.find((item) => item.id === status)?.label || status
       await recordWorkChange(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
@@ -1880,10 +1878,12 @@ export default function SalesKanbanPage() {
 
   return (
     <main
+      onPointerDownCapture={prepareOperationSounds}
+      onKeyDownCapture={prepareOperationSounds}
       onClickCapture={(event) => {
         if (performance.now() < suppressClickSoundUntil.current || !(event.target instanceof Element)) return
         const target = event.target.closest("button, a, summary, [role='button'], [data-operation-sound]")
-        if (!target || target.hasAttribute("data-sound-toggle") || target.matches(":disabled, [aria-disabled='true']")) return
+        if (!target || target.matches(":disabled, [aria-disabled='true']")) return
         playOperationSound("click")
       }}
       className="fixed inset-0 z-[200] overflow-hidden bg-[#090a09] text-[#f4f5f2]">
@@ -1920,10 +1920,6 @@ export default function SalesKanbanPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button type="button" data-sound-toggle aria-pressed={soundEnabled} onClick={toggleSound} title="クリックとドラッグ＆ドロップの操作音を切り替え" className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
-                {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
-                操作音 {soundEnabled ? "ON" : "OFF"}
-              </button>
               {auth.configured && auth.authenticated && (
                 <button disabled={logoutBusy || mutationBusy || salesEventBusy || docUploadBusy || productSaveBusy || aiImportBusy || aiReviewBusy} onClick={logout} className="rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
                   {logoutBusy ? "ログアウト中..." : "ログアウト"}
@@ -2310,8 +2306,12 @@ export default function SalesKanbanPage() {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault()
-                      if (draggingId) moveWork(draggingId, status.id)
-                      setDraggingId(null)
+                      const id = draggingWorkId.current
+                      draggingWorkId.current = null
+                      const item = work.find((row) => row.id === id)
+                      if (!item || mutationLock.current || item.status === status.id) return
+                      playOperationSound("drop")
+                      void moveWork(item.id, status.id)
                     }}
                     className="flex h-full w-[310px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3"
                   >
@@ -2332,12 +2332,12 @@ export default function SalesKanbanPage() {
                             draggable={!mutationBusy}
                             onDragStart={() => {
                               suppressClickSoundUntil.current = Infinity
-                              setDraggingId(item.id)
+                              draggingWorkId.current = item.id
                               playOperationSound("drag")
                             }}
                             onDragEnd={() => {
                               suppressClickSoundUntil.current = performance.now() + 150
-                              setDraggingId(null)
+                              draggingWorkId.current = null
                             }}
                             data-operation-sound="click"
                             onClick={() => setEditingWork(item)}

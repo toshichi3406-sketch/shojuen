@@ -1,14 +1,11 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 
-type OperationSound = "click" | "drag" | "drop"
-const SOUND_KEY = "shojuen-workboard-sound-v1"
+type OperationSound = "click" | "drag" | "drop" | "saved"
 
 export function createOperationSoundPlayer() {
   let context: AudioContext | null = null
-  let enabled = true
-  let revision = 0
   let lastClickAt = -Infinity
   const active = new Set<OscillatorNode>()
 
@@ -19,29 +16,35 @@ export function createOperationSoundPlayer() {
     active.clear()
   }
 
+  function prepare() {
+    if (typeof window === "undefined") return
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AudioContextClass) return
+      if (!context || context.state === "closed") context = new AudioContextClass({ latencyHint: "interactive" })
+      if (context.state !== "running") void context.resume().catch(() => {})
+    } catch {
+      // Audio availability must never interrupt editing or saving.
+    }
+  }
+
   return {
-    setEnabled(value: boolean) {
-      enabled = value
-      revision += 1
-      if (!value) stopActive()
-    },
-    async play(kind: OperationSound) {
-      if (!enabled || typeof window === "undefined") return
-      const requestedRevision = revision
+    prepare,
+    play(kind: OperationSound) {
       try {
-        const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-        if (!AudioContextClass) return
-        if (!context || context.state === "closed") context = new AudioContextClass()
+        prepare()
         const current = context
-        if (current.state === "suspended") await current.resume()
-        if (!enabled || requestedRevision !== revision || context !== current || current.state !== "running") return
+        // Prepare on pointer/key down. Never queue a late sound while audio wakes up.
+        if (!current || current.state !== "running") return
         if (kind === "click") {
           const now = performance.now()
           if (now - lastClickAt < 45) return
           lastClickAt = now
         }
         const tones = kind === "drop"
-          ? [{ frequency: 660, end: 660, delay: 0, duration: 0.075 }, { frequency: 990, end: 990, delay: 0.085, duration: 0.09 }]
+          ? [{ frequency: 660, end: 660, delay: 0, duration: 0.075 }, { frequency: 990, end: 990, delay: 0.045, duration: 0.09 }]
+          : kind === "saved"
+          ? [{ frequency: 880, end: 1175, delay: 0, duration: 0.07 }, { frequency: 1320, end: 1320, delay: 0.035, duration: 0.085 }]
           : [{ frequency: kind === "drag" ? 480 : 720, end: kind === "drag" ? 620 : 420, delay: 0, duration: kind === "drag" ? 0.065 : 0.04 }]
         for (const tone of tones) {
           const start = current.currentTime + tone.delay
@@ -51,7 +54,7 @@ export function createOperationSoundPlayer() {
           oscillator.frequency.setValueAtTime(tone.frequency, start)
           oscillator.frequency.exponentialRampToValueAtTime(tone.end, start + tone.duration)
           gain.gain.setValueAtTime(0, start)
-          gain.gain.linearRampToValueAtTime(0.035, start + 0.004)
+          gain.gain.linearRampToValueAtTime(0.12, start + 0.003)
           gain.gain.exponentialRampToValueAtTime(0.0001, start + tone.duration)
           oscillator.connect(gain)
           gain.connect(current.destination)
@@ -65,7 +68,6 @@ export function createOperationSoundPlayer() {
       }
     },
     dispose() {
-      revision += 1
       stopActive()
       const previous = context
       context = null
@@ -75,25 +77,13 @@ export function createOperationSoundPlayer() {
 }
 
 export function useOperationSounds() {
-  const [soundEnabled, setSoundEnabled] = useState(true)
   const player = useRef<ReturnType<typeof createOperationSoundPlayer> | null>(null)
-  const enabled = useRef(true)
   if (!player.current) player.current = createOperationSoundPlayer()
 
-  useEffect(() => {
-    try { enabled.current = window.localStorage.getItem(SOUND_KEY) !== "off" } catch { /* Use default. */ }
-    setSoundEnabled(enabled.current)
-    player.current?.setEnabled(enabled.current)
-    return () => { player.current?.dispose() }
-  }, [])
+  useEffect(() => () => { player.current?.dispose() }, [])
 
-  function toggleSound() {
-    enabled.current = !enabled.current
-    setSoundEnabled(enabled.current)
-    player.current?.setEnabled(enabled.current)
-    try { window.localStorage.setItem(SOUND_KEY, enabled.current ? "on" : "off") } catch { /* Session setting still works. */ }
-    if (enabled.current) void player.current?.play("click")
+  return {
+    prepareOperationSounds: () => { player.current?.prepare() },
+    playOperationSound: (kind: OperationSound) => { player.current?.play(kind) },
   }
-
-  return { soundEnabled, toggleSound, playOperationSound: (kind: OperationSound) => { void player.current?.play(kind) } }
 }
