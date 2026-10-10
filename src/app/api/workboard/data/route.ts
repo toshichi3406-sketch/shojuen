@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
-import { CASE_STAGES, parseStageRecord, stageRecordNote } from "../../../../lib/workboard-time-analysis"
+import { CASE_STAGES, parseStageRecord, stageRecordNote, resolvedStageEvents } from "../../../../lib/workboard-time-analysis"
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
@@ -205,6 +205,10 @@ export async function GET() {
       instagram: c.instagram || "",
       linkedin: c.linkedin || "",
       note: c.note || "",
+      priceHistory: (prices || []).filter((p: any) => p.customer_id === c.id).map((p: any) => ({
+        id: p.id, productId: p.product_id, price: String(p.price ?? ""), currency: p.currency, unit: p.unit,
+        effectiveFrom: p.effective_from || "", createdAt: p.created_at || "", current: Boolean(p.is_current), note: p.note || "",
+      })),
       prices: (prices || [])
         .filter((p: any) => p.customer_id === c.id && p.is_current)
         .map((p: any) => ({
@@ -365,7 +369,7 @@ export async function GET() {
       work: active("work"),
       customers: active("customer"),
       products: active("product"),
-      events: mappedEvents,
+      events: resolvedStageEvents(mappedEvents),
       shippingRates: mappedShippingRates,
       productCosts: mappedProductCosts,
       salesCases: active("sales_case"),
@@ -391,6 +395,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const type = body?.type
     const data = body?.data
+    if (type === "repair_case_stage") {
+      if (typeof data?.id !== "string" || !data.id) return NextResponse.json({ error: "案件を選択してください。" }, { status: 400 })
+      const cases = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(data.id)}&deleted_at=is.null&limit=1`, token)
+      const current = cases?.[0]
+      if (!current) return NextResponse.json({ error: "案件が見つかりません。" }, { status: 404 })
+      const rows = await sb(`work_events?select=*&sales_case_id=eq.${encodeURIComponent(data.id)}&source=eq.workboard_auto&order=event_date.asc`, token)
+      const events = (rows || []).map((e: any) => ({ id: e.id, salesCaseId: e.sales_case_id, source: e.source, eventType: e.event_type, eventDate: e.event_date, note: e.note }))
+      const pending = resolvedStageEvents(events).filter((e: any) => {
+        const r = parseStageRecord(e.note)
+        return r?.phase === "pending" && r.to === current.stage && r.from !== r.to &&
+          Number.isFinite(Date.parse(e.eventDate)) && Date.parse(e.eventDate) === Date.parse(current.updated_at)
+      })
+      if (pending.length !== 1) return NextResponse.json({ error: "保存日時と段階が一致する未確定記録を一意に確認できません。開始日は推測せず不明のままにします。" }, { status: 409 })
+      const event = pending[0], record = parseStageRecord(event.note)!
+      await sb("work_events", token, { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
+        sales_case_id: data.id, event_type: "note", event_date: event.eventDate, source: "workboard_auto",
+        note: JSON.stringify({ ...record, phase: "committed", supersedes: event.id }),
+      }) })
+      return NextResponse.json({ ok: true, repaired: true })
+    }
     if (!type || !data) return NextResponse.json({ error: "Invalid request" }, { status: 400 })
 
     if (type === "work_event_link") {
@@ -528,7 +552,7 @@ export async function POST(request: NextRequest) {
           if (stageEvent) {
             // Keep an uncertain network result pending; do not invent a successful transition.
             if (error instanceof RelationError) try {
-              await sb(`work_events?id=eq.${encodeURIComponent(stageEvent.id)}`, token, { method: "PATCH", body: JSON.stringify({ note: changeNote("aborted") }) })
+              await sb("work_events", token, { method: "POST", body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: JSON.stringify({ ...JSON.parse(changeNote("aborted")), supersedes: stageEvent.id }) }) })
             } catch { /* A pending record conservatively leaves the duration unknown. */ }
           }
           throw error
@@ -548,10 +572,12 @@ export async function POST(request: NextRequest) {
       if (changedStage || !previousCase) {
         try {
           if (stageEvent) {
-            await sb(`work_events?id=eq.${encodeURIComponent(stageEvent.id)}`, token, {
-              method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ note: changeNote("committed") }),
+            const inserted = await sb("work_events", token, {
+              method: "POST", headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: JSON.stringify({ ...JSON.parse(changeNote("committed")), supersedes: stageEvent.id }) }),
             })
-            stageEvent.note = changeNote("committed")
+            if (!inserted?.[0]?.id) throw new Error("Missing stage completion")
+            stageEvent = inserted[0]
           } else {
             const inserted = await sb("work_events", token, {
               method: "POST", headers: { Prefer: "return=representation" },
