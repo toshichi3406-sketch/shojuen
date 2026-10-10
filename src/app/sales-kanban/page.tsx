@@ -349,6 +349,12 @@ export default function SalesKanbanPage() {
   const [aiBatches, setAiBatches] = useState<AiImportBatch[]>([])
   const [aiCandidates, setAiCandidates] = useState<AiImportCandidate[]>([])
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiLoadError, setAiLoadError] = useState("")
+  const [aiLoadAttempt, setAiLoadAttempt] = useState(0)
+  const aiImportLock = useRef(false)
+  const aiReviewLock = useRef(false)
+  const [aiReviewBusy, setAiReviewBusy] = useState(false)
+  const [aiReviewError, setAiReviewError] = useState("")
   const [aiImportJson, setAiImportJson] = useState("")
   const [aiImportMessage, setAiImportMessage] = useState("")
   const [aiImportBusy, setAiImportBusy] = useState(false)
@@ -424,17 +430,23 @@ export default function SalesKanbanPage() {
 
   useEffect(() => {
     if (!(auth.configured && auth.authenticated)) return
+    let cancelled = false
+    const controller = new AbortController()
     setAiLoading(true)
-    fetch("/api/workboard/ai-import", { cache: "no-store" })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(data.error || "AI取込候補を読み込めませんでした。")
-        setAiBatches(Array.isArray(data.batches) ? data.batches : [])
-        setAiCandidates(Array.isArray(data.candidates) ? data.candidates : [])
+    setAiLoadError("")
+    readAiImportData(controller.signal)
+      .then((data) => {
+        if (cancelled) return
+        setAiBatches(data.batches)
+        setAiCandidates(data.candidates)
       })
-      .catch((error) => console.error(error))
-      .finally(() => setAiLoading(false))
-  }, [auth.configured, auth.authenticated])
+      .catch((error) => {
+        if (cancelled) return
+        setAiLoadError(error instanceof Error ? error.message : "AI取込候補を読み込めませんでした。")
+      })
+      .finally(() => { if (!cancelled) setAiLoading(false) })
+    return () => { cancelled = true; controller.abort() }
+  }, [auth.configured, auth.authenticated, aiLoadAttempt])
 
   useEffect(() => {
     if (auth.loading) return
@@ -602,6 +614,8 @@ export default function SalesKanbanPage() {
 
 
   async function importAiJson() {
+    if (aiImportLock.current || aiReviewLock.current || aiLoading || aiLoadError || !aiImportJson.trim()) return
+    aiImportLock.current = true
     setAiImportBusy(true)
     setAiImportMessage("")
     try {
@@ -620,16 +634,33 @@ export default function SalesKanbanPage() {
       if (!response.ok) throw new Error(result.error || "AI取込に失敗しました。")
       setAiImportMessage(`取込完了: ${result.candidateCount}件を候補として追加しました。`)
       setAiImportJson("")
-      const refreshed = await fetch("/api/workboard/ai-import", { cache: "no-store" })
-      const refreshedData = await refreshed.json().catch(() => ({}))
-      if (refreshed.ok) {
-        setAiBatches(Array.isArray(refreshedData.batches) ? refreshedData.batches : [])
-        setAiCandidates(Array.isArray(refreshedData.candidates) ? refreshedData.candidates : [])
+      try {
+        const refreshedData = await readAiImportData()
+        setAiBatches(refreshedData.batches)
+        setAiCandidates(refreshedData.candidates)
+      } catch {
+        setAiLoadError("取込は完了しましたが、候補一覧を更新できませんでした。再読み込みしてください。同じJSONを取り込み直す必要はありません。")
       }
     } catch (error) {
       setAiImportMessage(error instanceof Error ? error.message : "AI取込に失敗しました。")
     } finally {
+      aiImportLock.current = false
       setAiImportBusy(false)
+    }
+  }
+
+  async function reviewAiCandidate(id: string, status: AiImportCandidate["status"]) {
+    if (aiReviewLock.current || aiImportLock.current || aiLoading || aiLoadError) return
+    aiReviewLock.current = true
+    setAiReviewBusy(true)
+    setAiReviewError("")
+    try {
+      await updateAiCandidate(id, status)
+    } catch (error) {
+      setAiReviewError(error instanceof Error ? error.message : "候補の判定を保存できませんでした。")
+    } finally {
+      aiReviewLock.current = false
+      setAiReviewBusy(false)
     }
   }
 
@@ -2512,6 +2543,15 @@ export default function SalesKanbanPage() {
         {tab === "ai" && (
           <section className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-6xl">
+              {aiLoadError && (
+                <div role="alert" className="mb-4 rounded-2xl border border-red-300/20 bg-red-300/5 p-5">
+                  <p className="text-sm leading-6 text-red-100">{aiLoadError}</p>
+                  <button type="button" onClick={() => setAiLoadAttempt((current) => current + 1)} className="mt-3 rounded-full border border-white/15 px-4 py-2 text-sm">再読み込み</button>
+                </div>
+              )}
+              {aiLoading && <p role="status" className="p-8 text-center text-sm text-white/45">AI取込候補を読み込み中...</p>}
+              {aiReviewError && <p role="alert" className="mb-4 rounded-xl border border-red-300/20 p-4 text-sm text-red-100">{aiReviewError}</p>}
+              <fieldset hidden={aiLoading || Boolean(aiLoadError)} disabled={aiImportBusy || aiReviewBusy} className="min-w-0">
               <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -3160,19 +3200,19 @@ export default function SalesKanbanPage() {
                                 </button>
                               )}
                               <button
-                                onClick={() => updateAiCandidate(candidate.id, "approved").catch(console.error)}
+                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "approved")}
                                 className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/65"
                               >
                                 候補だけ承認
                               </button>
                               <button
-                                onClick={() => updateAiCandidate(candidate.id, "needs_edit").catch(console.error)}
+                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "needs_edit")}
                                 className="rounded-full border border-amber-300/20 bg-amber-300/5 px-4 py-2 text-xs text-amber-100"
                               >
                                 要修正
                               </button>
                               <button
-                                onClick={() => updateAiCandidate(candidate.id, "rejected").catch(console.error)}
+                                type="button" disabled={aiReviewBusy} onClick={() => reviewAiCandidate(candidate.id, "rejected")}
                                 className="rounded-full border border-red-300/15 px-4 py-2 text-xs text-red-300"
                               >
                                 却下
@@ -3191,6 +3231,7 @@ export default function SalesKanbanPage() {
                   })}
                 </div>
               )}
+              </fieldset>
             </div>
           </section>
         )}
@@ -3959,6 +4000,14 @@ export default function SalesKanbanPage() {
 
 const inputClass =
   "h-11 w-full rounded-xl border border-white/10 bg-[#0d0f0d] px-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-white/25 focus:ring-2 focus:ring-white/5"
+
+async function readAiImportData(signal?: AbortSignal): Promise<{ batches: AiImportBatch[]; candidates: AiImportCandidate[] }> {
+  const response = await fetch("/api/workboard/ai-import", { cache: "no-store", signal })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || "AI取込候補を読み込めませんでした。")
+  if (!Array.isArray(data.batches) || !Array.isArray(data.candidates)) throw new Error("AI取込候補の応答を確認できませんでした。再読み込みしてください。")
+  return { batches: data.batches, candidates: data.candidates }
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block"><span className="mb-1.5 block text-xs font-medium text-white/55">{label}</span>{children}</label>
