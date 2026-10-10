@@ -408,24 +408,31 @@ export default function SalesKanbanPage() {
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState("")
   const [loginBusy, setLoginBusy] = useState(false)
+  const [authError, setAuthError] = useState("")
+  const [authAttempt, setAuthAttempt] = useState(0)
+  const sessionLock = useRef(false)
+  const [logoutBusy, setLogoutBusy] = useState(false)
 
   useEffect(() => {
     setSalesEventChannel(CHANNELS.includes(editingSalesCase?.channel || "") ? editingSalesCase?.channel || "" : "")
   }, [editingSalesCase?.id, editingSalesCase?.channel])
 
   useEffect(() => {
-    fetch("/api/workboard/auth/session", { cache: "no-store" })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}))
-        setAuth({
-          loading: false,
-          configured: Boolean(data.configured),
-          authenticated: Boolean(data.authenticated),
-          user: data.user,
-        })
+    let cancelled = false
+    setAuthError("")
+    setAuth((current) => ({ ...current, loading: true }))
+    readWorkboardSession()
+      .then((data) => {
+        if (cancelled) return
+        setAuth({ loading: false, configured: data.configured, authenticated: data.authenticated, user: data.user })
       })
-      .catch(() => setAuth({ loading: false, configured: false, authenticated: false }))
-  }, [])
+      .catch(() => {
+        if (cancelled) return
+        setAuthError("ログイン状態を確認できませんでした。通信状態を確認し、再試行してください。")
+        setAuth({ loading: false, configured: true, authenticated: false })
+      })
+    return () => { cancelled = true }
+  }, [authAttempt])
 
 
   useEffect(() => {
@@ -449,29 +456,17 @@ export default function SalesKanbanPage() {
   }, [auth.configured, auth.authenticated, aiLoadAttempt])
 
   useEffect(() => {
-    if (auth.loading) return
+    if (auth.loading || authError) return
+    if (auth.configured && !auth.authenticated) { setHydrated(false); return }
 
     if (auth.configured && auth.authenticated) {
       let cancelled = false
       setHydrated(false)
       setSharedDataError("")
-      fetch("/api/workboard/data", { cache: "no-store" })
-        .then(async (response) => {
-          const data = await response.json().catch(() => ({}))
-          if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
+      readSharedWorkboardData()
+        .then((data) => {
           if (cancelled) return
-          setWork(Array.isArray(data.work) ? data.work : [])
-          setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
-          setSalesAttributionConfigured(data.salesAttributionConfigured === true)
-          setEventSalesLinksConfigured(data.eventSalesLinksConfigured === true)
-          setTrashConfigured(data.trashConfigured === true)
-          setTrash(Array.isArray(data.trash) ? data.trash : [])
-          setOrders(Array.isArray(data.orders) ? data.orders : [])
-          setCustomers(Array.isArray(data.customers) ? data.customers : [])
-          setProducts(Array.isArray(data.products) ? data.products : [])
-          setProductCosts(Array.isArray(data.productCosts) ? data.productCosts : [])
-          setEvents(Array.isArray(data.events) ? data.events : [])
-          setShippingRates(Array.isArray(data.shippingRates) ? data.shippingRates : [])
+          applySharedData(data)
           setHydrated(true)
         })
         .catch((error) => {
@@ -495,14 +490,39 @@ export default function SalesKanbanPage() {
       setProducts(starterProducts)
     }
     setHydrated(true)
-  }, [auth.loading, auth.configured, auth.authenticated, sharedDataAttempt])
+  }, [auth.loading, auth.configured, auth.authenticated, sharedDataAttempt, authError])
 
   useEffect(() => {
-    if (!hydrated || (auth.configured && auth.authenticated)) return
+    if (!hydrated || auth.configured || authError) return
     window.localStorage.setItem(WORK_KEY, JSON.stringify(work))
     window.localStorage.setItem(CUSTOMER_KEY, JSON.stringify(customers))
     window.localStorage.setItem(PRODUCT_KEY, JSON.stringify(products))
-  }, [work, customers, products, hydrated, auth.configured, auth.authenticated])
+  }, [work, customers, products, hydrated, auth.configured, auth.authenticated, authError])
+
+  function applySharedData(data: Record<string, any>) {
+    setWork(Array.isArray(data.work) ? data.work : [])
+    setSalesCases(Array.isArray(data.salesCases) ? data.salesCases : [])
+    setSalesAttributionConfigured(data.salesAttributionConfigured === true)
+    setEventSalesLinksConfigured(data.eventSalesLinksConfigured === true)
+    setTrashConfigured(data.trashConfigured === true)
+    setTrash(Array.isArray(data.trash) ? data.trash : [])
+    setOrders(Array.isArray(data.orders) ? data.orders : [])
+    setCustomers(Array.isArray(data.customers) ? data.customers : [])
+    setProducts(Array.isArray(data.products) ? data.products : [])
+    setProductCosts(Array.isArray(data.productCosts) ? data.productCosts : [])
+    setEvents(Array.isArray(data.events) ? data.events : [])
+    setShippingRates(Array.isArray(data.shippingRates) ? data.shippingRates : [])
+  }
+
+  async function refreshSharedAfterWrite() {
+    try {
+      const data = await readSharedWorkboardData()
+      applySharedData(data)
+    } catch {
+      setSharedDataError("保存は完了しましたが、共有データを更新できませんでした。再読み込みしてください。同じ操作を繰り返す必要はありません。")
+      setHydrated(false)
+    }
+  }
 
   async function saveShared(type: "work" | "customer" | "product" | "product_cost" | "work_event" | "sales_case", data: WorkItem | Customer | Product | ProductCost | WorkEvent | SalesCase) {
     if (!(auth.configured && auth.authenticated)) return
@@ -754,16 +774,7 @@ export default function SalesKanbanPage() {
       current.map((item) => (item.id === candidate.id ? { ...item, status: "approved" } : item))
     )
 
-    const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
-    const refreshedData = await refreshed.json().catch(() => ({}))
-    if (refreshed.ok) {
-      setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
-      setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
-      setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
-      setProductCosts(Array.isArray(refreshedData.productCosts) ? refreshedData.productCosts : [])
-      setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
-      setShippingRates(Array.isArray(refreshedData.shippingRates) ? refreshedData.shippingRates : [])
-    }
+    await refreshSharedAfterWrite()
   }
 
   function toggleAiProduct(candidateId: string, productId: string) {
@@ -860,11 +871,7 @@ export default function SalesKanbanPage() {
       }
       await updateAiCandidate(candidate.id, "approved")
 
-      const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
-      const refreshedData = await refreshed.json().catch(() => ({}))
-      if (refreshed.ok) {
-        setProductCosts(Array.isArray(refreshedData.productCosts) ? refreshedData.productCosts : [])
-      }
+      await refreshSharedAfterWrite()
     } finally {
       setAiBulkCostBusy((current) => ({ ...current, [candidate.id]: false }))
     }
@@ -1016,15 +1023,7 @@ export default function SalesKanbanPage() {
         current.map((item) => approvedIds.has(item.id) ? { ...item, status: "approved" } : item)
       )
 
-      const refreshed = await fetch("/api/workboard/data", { cache: "no-store" })
-      const refreshedData = await refreshed.json().catch(() => ({}))
-      if (refreshed.ok) {
-        setWork(Array.isArray(refreshedData.work) ? refreshedData.work : [])
-        setCustomers(Array.isArray(refreshedData.customers) ? refreshedData.customers : [])
-        setProducts(Array.isArray(refreshedData.products) ? refreshedData.products : [])
-        setEvents(Array.isArray(refreshedData.events) ? refreshedData.events : [])
-        setShippingRates(Array.isArray(refreshedData.shippingRates) ? refreshedData.shippingRates : [])
-      }
+      await refreshSharedAfterWrite()
     } finally {
       setAiBulkCostBusy((current) => ({ ...current, [groupKey]: false }))
     }
@@ -1666,6 +1665,8 @@ export default function SalesKanbanPage() {
 
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (sessionLock.current) return
+    sessionLock.current = true
     setLoginBusy(true)
     setLoginError("")
     try {
@@ -1679,12 +1680,12 @@ export default function SalesKanbanPage() {
         setLoginError(data.error || "ログインできませんでした。")
         return
       }
-      const session = await fetch("/api/workboard/auth/session", { cache: "no-store" })
-      const sessionData = await session.json()
+      const sessionData = await readWorkboardSession()
       if (!sessionData.authenticated) {
         setLoginError("このアカウントはWORKBOARDの利用許可がありません。")
         return
       }
+      setHydrated(false)
       setAuth({
         loading: false,
         configured: true,
@@ -1692,14 +1693,51 @@ export default function SalesKanbanPage() {
         user: sessionData.user,
       })
       setLoginPassword("")
+    } catch {
+      setLoginError("ログインの確認に失敗しました。通信状態を確認して再度お試しください。")
     } finally {
+      sessionLock.current = false
       setLoginBusy(false)
     }
   }
 
   async function logout() {
-    await fetch("/api/workboard/auth/logout", { method: "POST" })
-    setAuth({ loading: false, configured: true, authenticated: false })
+    if (sessionLock.current || mutationLock.current) return
+    sessionLock.current = true
+    setLogoutBusy(true)
+    try {
+      const response = await fetch("/api/workboard/auth/logout", { method: "POST" })
+      if (!response.ok) throw new Error("ログアウトできませんでした。再度お試しください。")
+      setHydrated(false)
+      setEditingWork(null)
+      setEditingCustomer(null)
+      setEditingProduct(null)
+      setEditingSalesCase(null)
+      setEditingOrder(null)
+      setEditingEventLink(null)
+      setWonFollowupSource(null)
+      setPostOrderFollowupSource(null)
+      setAiImportJson("")
+      setAiReviewError("")
+      setAiLoadError("")
+      setAiCandidates([])
+      setAiBatches([])
+      setWork([])
+      setCustomers([])
+      setProducts([])
+      setSalesCases([])
+      setOrders([])
+      setEvents([])
+      setTrash([])
+      setProductCosts([])
+      setShippingRates([])
+      setAuth({ loading: false, configured: true, authenticated: false })
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "ログアウトできませんでした。再度お試しください。")
+    } finally {
+      sessionLock.current = false
+      setLogoutBusy(false)
+    }
   }
 
   function salesCaseLastContact(caseId: string, stored?: string) {
@@ -1757,6 +1795,17 @@ export default function SalesKanbanPage() {
     }
 
     return { label: `${date} · 期限超過`, className: "bg-amber-400/10 text-amber-100" }
+  }
+
+  if (authError) {
+    return (
+      <main className="fixed inset-0 z-[200] grid place-items-center bg-[#090a09] px-5 text-[#f4f5f2]">
+        <div role="alert" className="max-w-md rounded-2xl border border-white/10 bg-[#111311] p-6">
+          <p className="text-sm leading-6">{authError}</p>
+          <button type="button" onClick={() => setAuthAttempt((current) => current + 1)} className="mt-4 rounded-full border border-white/15 px-4 py-2 text-sm">再試行</button>
+        </div>
+      </main>
+    )
   }
 
   if (auth.loading) {
@@ -1859,8 +1908,8 @@ export default function SalesKanbanPage() {
 
             <div className="flex items-center gap-2">
               {auth.configured && auth.authenticated && (
-                <button onClick={logout} className="rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
-                  ログアウト
+                <button disabled={logoutBusy || mutationBusy || salesEventBusy || docUploadBusy || productSaveBusy || aiImportBusy || aiReviewBusy} onClick={logout} className="rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/55 hover:bg-white/10">
+                  {logoutBusy ? "ログアウト中..." : "ログアウト"}
                 </button>
               )}
             {tab !== "ai" && tab !== "activity" && tab !== "shipping" && tab !== "trash" && (
@@ -4012,6 +4061,21 @@ async function readAiImportData(signal?: AbortSignal): Promise<{ batches: AiImpo
   if (!response.ok) throw new Error(data.error || "AI取込候補を読み込めませんでした。")
   if (!Array.isArray(data.batches) || !Array.isArray(data.candidates)) throw new Error("AI取込候補の応答を確認できませんでした。再読み込みしてください。")
   return { batches: data.batches, candidates: data.candidates }
+}
+
+async function readWorkboardSession(): Promise<{ configured: boolean; authenticated: boolean; user?: AuthState["user"] }> {
+  const response = await fetch("/api/workboard/auth/session", { cache: "no-store" })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || typeof data.configured !== "boolean" || typeof data.authenticated !== "boolean") throw new Error("ログイン状態を確認できませんでした。")
+  return data
+}
+
+async function readSharedWorkboardData(): Promise<Record<string, any>> {
+  const response = await fetch("/api/workboard/data", { cache: "no-store" })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(data.error || "共有DBを読み込めませんでした。")
+  if (["work", "salesCases", "orders", "customers", "products", "productCosts", "events", "shippingRates", "trash"].some((key) => !Array.isArray(data[key]))) throw new Error("共有データの応答を確認できませんでした。")
+  return data
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
