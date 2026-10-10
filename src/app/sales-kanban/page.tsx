@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import {
   Activity,
   BarChart3,
@@ -387,6 +387,8 @@ export default function SalesKanbanPage() {
   const [docUploadBusy, setDocUploadBusy] = useState(false)
   const [docUploadMessage, setDocUploadMessage] = useState("")
   const [productSaveBusy, setProductSaveBusy] = useState(false)
+  const mutationLock = useRef(false)
+  const [mutationBusy, setMutationBusy] = useState(false)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [sharedDataError, setSharedDataError] = useState("")
@@ -1148,36 +1150,51 @@ export default function SalesKanbanPage() {
 
   async function moveWork(id: string, status: Status) {
     const currentItem = work.find((item) => item.id === id)
-    if (!currentItem || currentItem.status === status) return
+    if (!currentItem || currentItem.status === status || mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
     const updated = { ...currentItem, status }
-    setWork((current) => current.map((item) => (item.id === id ? updated : item)))
     try {
       await saveShared("work", updated)
+      setWork((current) => current.map((item) => (item.id === id ? updated : item)))
       const beforeLabel = STATUSES.find((item) => item.id === currentItem.status)?.label || currentItem.status
       const afterLabel = STATUSES.find((item) => item.id === status)?.label || status
-      await appendWorkEvent(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
+      await recordWorkChange(id, "status_changed", `状態変更: ${beforeLabel} → ${afterLabel}`)
     } catch (error) {
       console.error(error)
+      alert(error instanceof Error ? error.message : "業務の状態を保存できませんでした。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
+    }
+  }
+
+  async function recordWorkChange(id: string, type: string, note: string) {
+    try {
+      await appendWorkEvent(id, type, note)
+    } catch (error) {
+      console.error(error)
+      alert("業務の変更は保存済みですが、活動履歴を記録できませんでした。再読み込みして確認してください。")
     }
   }
 
   async function saveWork(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingWork || !editingWork.title.trim()) return
+    if (!editingWork || !editingWork.title.trim() || mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
     const item = editingWork
     const previous = work.find((row) => row.id === item.id)
-    setWork((current) => {
-      const exists = current.some((row) => row.id === item.id)
-      return exists
-        ? current.map((row) => (row.id === item.id ? item : row))
-        : [...current, item]
-    })
-    setEditingWork(null)
     try {
       await saveShared("work", item)
+      setWork((current) => {
+        const exists = current.some((row) => row.id === item.id)
+        return exists ? current.map((row) => row.id === item.id ? item : row) : [...current, item]
+      })
+      setEditingWork(null)
 
       if (!previous) {
-        await appendWorkEvent(item.id, "work_created", "業務を作成")
+        await recordWorkChange(item.id, "work_created", "業務を作成")
         return
       }
 
@@ -1193,34 +1210,67 @@ export default function SalesKanbanPage() {
       if ((previous.nextAction || "") !== (item.nextAction || "")) changes.push(`次アクション: ${previous.nextAction || "未設定"} → ${item.nextAction || "未設定"}`)
 
       if (changes.length) {
-        await appendWorkEvent(item.id, "work_updated", changes.join(" / "))
+        await recordWorkChange(item.id, "work_updated", changes.join(" / "))
       }
     } catch (error) {
       console.error(error)
+      alert(error instanceof Error ? error.message : "業務を保存できませんでした。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
     }
   }
 
   async function saveCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingCustomer || !editingCustomer.name.trim()) return
+    if (!editingCustomer || !editingCustomer.name.trim() || mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
     const item = editingCustomer
-    setCustomers((current) => {
-      const exists = current.some((row) => row.id === item.id)
-      return exists
-        ? current.map((row) => (row.id === item.id ? item : row))
-        : [...current, item]
-    })
-    setEditingCustomer(null)
     try {
       await saveShared("customer", item)
+      setCustomers((current) => {
+        const exists = current.some((row) => row.id === item.id)
+        return exists ? current.map((row) => row.id === item.id ? item : row) : [...current, item]
+      })
+      setEditingCustomer(null)
     } catch (error) {
       console.error(error)
+      alert(error instanceof Error ? error.message : "取引先を保存できませんでした。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
+    }
+  }
+
+  async function deleteRecord(type: "work" | "customer" | "product", id: string) {
+    if (mutationLock.current || productSaveBusy || docUploadBusy) return
+    mutationLock.current = true
+    setMutationBusy(true)
+    try {
+      await deleteShared(type, id)
+      if (type === "work") {
+        setWork((current) => current.filter((item) => item.id !== id))
+        setEditingWork(null)
+      } else if (type === "customer") {
+        setCustomers((current) => current.filter((item) => item.id !== id))
+        setEditingCustomer(null)
+      } else {
+        setProducts((current) => current.filter((item) => item.id !== id))
+        setEditingProduct(null)
+      }
+    } catch (error) {
+      console.error(error)
+      alert(error instanceof Error ? error.message : "削除できませんでした。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
     }
   }
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingProduct || !editingProduct.name.trim() || productSaveBusy || docUploadBusy) return
+    if (!editingProduct || !editingProduct.name.trim() || productSaveBusy || docUploadBusy || mutationLock.current) return
     const item = editingProduct
     setProductSaveBusy(true)
     try {
@@ -2109,7 +2159,7 @@ export default function SalesKanbanPage() {
                         return (
                           <article
                             key={item.id}
-                            draggable
+                            draggable={!mutationBusy}
                             onDragStart={() => setDraggingId(item.id)}
                             onDragEnd={() => setDraggingId(null)}
                             onClick={() => setEditingWork(item)}
@@ -3601,9 +3651,10 @@ export default function SalesKanbanPage() {
       )}
 
       {editingWork && (
-        <Modal onClose={() => setEditingWork(null)} wide>
+        <Modal onClose={() => { if (!(mutationBusy)) setEditingWork(null) }} wide>
           <form onSubmit={saveWork}>
-            <ModalTitle eyebrow="業務詳細" title={editingWork.title || "新しい業務"} onClose={() => setEditingWork(null)} />
+            <fieldset disabled={mutationBusy} className="min-w-0">
+            <ModalTitle eyebrow="業務詳細" title={editingWork.title || "新しい業務"} onClose={() => { if (!(mutationBusy)) setEditingWork(null) }} />
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="件名"><input autoFocus className={inputClass} value={editingWork.title} onChange={(e) => setEditingWork({ ...editingWork, title: e.target.value })} /></Field>
               <Field label="状態"><select className={inputClass} value={editingWork.status} onChange={(e) => setEditingWork({ ...editingWork, status: e.target.value as Status })}>{STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}</select></Field>
@@ -3623,15 +3674,17 @@ export default function SalesKanbanPage() {
 
             <div className="mt-4"><Field label="メモ"><textarea rows={4} className={`${inputClass} min-h-28 resize-y py-3`} value={editingWork.memo || ""} onChange={(e) => setEditingWork({ ...editingWork, memo: e.target.value })} /></Field></div>
 
-            <ModalActions existing={work.some((item) => item.id === editingWork.id)} onDelete={async () => { const id = editingWork.id; setWork((current) => current.filter((item) => item.id !== id)); setEditingWork(null); try { await deleteShared("work", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingWork(null)} />
+            <ModalActions busy={mutationBusy} existing={work.some((item) => item.id === editingWork.id)} onDelete={() => deleteRecord("work", editingWork.id)} onCancel={() => { if (!(mutationBusy)) setEditingWork(null) }} />
+          </fieldset>
           </form>
         </Modal>
       )}
 
       {editingCustomer && (
-        <Modal onClose={() => setEditingCustomer(null)} wide>
+        <Modal onClose={() => { if (!(mutationBusy)) setEditingCustomer(null) }} wide>
           <form onSubmit={saveCustomer}>
-            <ModalTitle eyebrow="取引先マスタ" title={editingCustomer.name || "新しい取引先"} onClose={() => setEditingCustomer(null)} />
+            <fieldset disabled={mutationBusy} className="min-w-0">
+            <ModalTitle eyebrow="取引先マスタ" title={editingCustomer.name || "新しい取引先"} onClose={() => { if (!(mutationBusy)) setEditingCustomer(null) }} />
             <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.035] p-4">
               <div className="text-[10px] font-semibold tracking-[0.14em] text-white/35">取引先ID</div>
               <div className="mt-1 text-2xl font-bold tracking-[0.08em]">{editingCustomer.id}</div>
@@ -3675,15 +3728,17 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={async () => { const id = editingCustomer.id; setCustomers((current) => current.filter((item) => item.id !== id)); setEditingCustomer(null); try { await deleteShared("customer", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingCustomer(null)} />
+            <ModalActions busy={mutationBusy} existing={customers.some((item) => item.id === editingCustomer.id)} onDelete={() => deleteRecord("customer", editingCustomer.id)} onCancel={() => { if (!(mutationBusy)) setEditingCustomer(null) }} />
+          </fieldset>
           </form>
         </Modal>
       )}
 
       {editingProduct && (
-        <Modal onClose={() => setEditingProduct(null)} wide>
+        <Modal onClose={() => { if (!(mutationBusy || productSaveBusy || docUploadBusy)) setEditingProduct(null) }} wide>
           <form onSubmit={saveProduct}>
-            <ModalTitle eyebrow="商品マスタ" title={editingProduct.name || "新しい商品"} onClose={() => setEditingProduct(null)} />
+            <fieldset disabled={mutationBusy || productSaveBusy || docUploadBusy} className="min-w-0">
+            <ModalTitle eyebrow="商品マスタ" title={editingProduct.name || "新しい商品"} onClose={() => { if (!(mutationBusy || productSaveBusy || docUploadBusy)) setEditingProduct(null) }} />
             <div className="mb-5 rounded-xl border border-[#66845c]/30 bg-[#66845c]/10 p-4">
               <div className="text-[10px] font-semibold tracking-[0.14em] text-[#a9c19f]">商品ID</div>
               <div className="mt-1 text-2xl font-bold tracking-[0.08em] text-[#d7e5d2]">{editingProduct.id}</div>
@@ -3825,7 +3880,8 @@ export default function SalesKanbanPage() {
               </div>
             </section>
 
-            <ModalActions existing={products.some((item) => item.id === editingProduct.id)} onDelete={async () => { const id = editingProduct.id; setProducts((current) => current.filter((item) => item.id !== id)); setEditingProduct(null); try { await deleteShared("product", id) } catch (error) { console.error(error) } }} onCancel={() => setEditingProduct(null)} />
+            <ModalActions busy={mutationBusy || productSaveBusy || docUploadBusy} existing={products.some((item) => item.id === editingProduct.id)} onDelete={() => deleteRecord("product", editingProduct.id)} onCancel={() => { if (!(mutationBusy || productSaveBusy || docUploadBusy)) setEditingProduct(null) }} />
+          </fieldset>
           </form>
         </Modal>
       )}
@@ -3908,8 +3964,8 @@ function ModalTitle({ eyebrow, title, onClose }: { eyebrow: string; title: strin
   return <div className="mb-5 flex items-center justify-between gap-4"><div><div className="text-xs font-semibold tracking-[0.16em] text-white/35">{eyebrow}</div><h2 className="mt-1 text-xl font-semibold">{title}</h2></div><button type="button" onClick={onClose} className="rounded-full p-2 text-white/50 hover:bg-white/10"><X className="size-5" /></button></div>
 }
 
-function ModalActions({ existing, onDelete, onCancel }: { existing: boolean; onDelete: () => void; onCancel: () => void }) {
-  return <div className="mt-6 flex items-center justify-between gap-3">{existing ? <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-400/10"><Trash2 className="size-4" />削除</button> : <span />}<div className="flex gap-2"><button type="button" onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm">キャンセル</button><button type="submit" className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]">保存</button></div></div>
+function ModalActions({ existing, onDelete, onCancel, busy = false }: { existing: boolean; onDelete: () => void; onCancel: () => void; busy?: boolean }) {
+  return <div className="mt-6 flex items-center justify-between gap-3">{existing ? <button type="button" disabled={busy} onClick={onDelete} className="inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-400/10"><Trash2 className="size-4" />削除</button> : <span />}<div className="flex gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm">キャンセル</button><button type="submit" disabled={busy} className="disabled:opacity-40 rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-medium text-[#11150f]">{busy ? "処理中..." : "保存"}</button></div></div>
 }
 
 function priorityClass(priority?: WorkItem["priority"]) {
