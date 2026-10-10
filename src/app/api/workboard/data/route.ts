@@ -42,6 +42,17 @@ async function hasSalesAttributionColumns(token: string) {
   }
 }
 
+async function loadEventSalesLinks(token: string) {
+  try {
+    return { configured: true, rows: (await sb("work_event_sales_links?select=*", token)) || [] }
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42P01" || code === "PGRST205") return { configured: false, rows: [] }
+    throw error
+  }
+}
+
 function workToDb(item: any) {
   return {
     id: item.id,
@@ -120,6 +131,8 @@ export async function GET() {
     ])
 
     const salesAttributionConfigured = await hasSalesAttributionColumns(token)
+    const eventSalesLinks = await loadEventSalesLinks(token)
+    const eventCaseOverrides = new Map<string, string | null>(eventSalesLinks.rows.map((row: any) => [row.event_id, row.sales_case_id]))
 
     const mappedProducts = (products || []).map((p: any) => ({
       id: p.id,
@@ -171,7 +184,7 @@ export async function GET() {
     const mappedEvents = (events || []).map((e: any) => ({
       id: e.id,
       workItemId: e.work_item_id || undefined,
-      salesCaseId: e.sales_case_id || undefined,
+      salesCaseId: (eventCaseOverrides.has(e.id) ? eventCaseOverrides.get(e.id) : e.sales_case_id) || undefined,
       eventType: e.event_type,
       eventDate: e.event_date,
       channel: e.channel || "",
@@ -301,6 +314,7 @@ export async function GET() {
       productCosts: mappedProductCosts,
       salesCases: mappedSalesCases,
       salesAttributionConfigured,
+      eventSalesLinksConfigured: eventSalesLinks.configured,
       orders: mappedOrders,
     })
   } catch (error) {
@@ -321,7 +335,33 @@ export async function POST(request: NextRequest) {
     const data = body?.data
     if (!type || !data) return NextResponse.json({ error: "Invalid request" }, { status: 400 })
 
-    if (type === "work") {
+    if (type === "work_event_link") {
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (typeof data.id !== "string" || !uuid.test(data.id) ||
+        !(data.salesCaseId === null || (typeof data.salesCaseId === "string" && uuid.test(data.salesCaseId)))) {
+        return NextResponse.json({ error: "履歴と営業案件を選択してください。" }, { status: 400 })
+      }
+      const event = await sb(`work_events?select=id,work_item_id&id=eq.${encodeURIComponent(data.id)}`, token)
+      if (!event?.length) return NextResponse.json({ error: "活動履歴が見つかりません。" }, { status: 404 })
+      if (data.salesCaseId) {
+        const target = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(data.salesCaseId)}`, token)
+        if (!target?.length) return NextResponse.json({ error: "営業案件が見つかりません。" }, { status: 404 })
+        if (event[0].work_item_id) {
+          const work = await sb(`work_items?select=customer_id&id=eq.${encodeURIComponent(event[0].work_item_id)}`, token)
+          if (work?.[0]?.customer_id && work[0].customer_id !== target[0].customer_id) {
+            return NextResponse.json({ error: "関連業務と営業案件の取引先が異なります。" }, { status: 400 })
+          }
+        }
+      }
+      const links = await loadEventSalesLinks(token)
+      if (!links.configured) return NextResponse.json({ error: "活動履歴の紐づけ用SQLを先に適用してください。" }, { status: 409 })
+      await sb("work_event_sales_links?on_conflict=event_id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({ event_id: data.id, sales_case_id: data.salesCaseId, updated_at: new Date().toISOString() }),
+      })
+      return NextResponse.json({ ok: true, id: data.id, salesCaseId: data.salesCaseId })
+    } else if (type === "work") {
       await sb("work_items?on_conflict=id", token, {
         method: "POST",
         headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
