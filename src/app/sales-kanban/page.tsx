@@ -1059,6 +1059,26 @@ export default function SalesKanbanPage() {
   const quotedSalesCaseCount = countSalesCasesWithEvent("quote_sent")
   const sampleSentSalesCaseCount = countSalesCasesWithEvent("sample_sent")
 
+  const mediaKpiRows = [...CHANNELS, "未設定"].map((channel) => {
+    const cases = salesCases.filter((item) =>
+      (CHANNELS.includes(item.channel || "") ? item.channel : "未設定") === channel
+    )
+    const sentCases = cases.filter((item) => emailedCaseIds.has(item.id))
+    const repliedCount = sentCases.filter((item) => repliedCaseIds.has(item.id)).length
+    const closedCases = cases.filter((item) => item.caseType === "new_business" && ["won", "lost"].includes(item.stage))
+    const wonCount = closedCases.filter((item) => item.stage === "won").length
+    return {
+      channel,
+      caseCount: cases.length,
+      sentCount: sentCases.length,
+      repliedCount,
+      replyRate: sentCases.length ? `${Math.round(repliedCount / sentCases.length * 100)}%` : "—",
+      closedCount: closedCases.length,
+      wonCount,
+      winRate: closedCases.length ? `${Math.round(wonCount / closedCases.length * 100)}%` : "—",
+    }
+  })
+
   const isSystemEvent = (event: WorkEvent) =>
     event.source === "workboard_auto" ||
     ["work_updated", "work_created", "status_changed"].includes(event.eventType)
@@ -1765,6 +1785,48 @@ export default function SalesKanbanPage() {
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Kpi label="見積提示案件" value={`${quotedSalesCaseCount}件`} detail="見積提示の履歴がある案件" description="同じ案件で複数回提示しても1件として集計。" />
                     <Kpi label="サンプル送付案件" value={`${sampleSentSalesCaseCount}件`} detail="サンプル送付の履歴がある案件" description="同じ案件で複数回送付しても1件として集計。要求のみの案件は除外。" />
+                  </div>
+                </div>
+              </details>
+
+              <details className="mb-4 rounded-2xl border border-white/10 bg-white/[0.025]">
+                <summary className="flex cursor-pointer items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+                  <BarChart3 className="size-4 text-white/45" />
+                  媒体別KPI
+                  <ChevronDown className="ml-auto size-4 text-white/45" />
+                </summary>
+                <div className="px-4 pb-4">
+                  <p id="media-kpi-description" className="mb-3 text-xs leading-5 text-white/45">
+                    案件が生まれた媒体ごとの累計です。案件数は既存顧客対応も含み、成約率は新規営業の成約・失注が対象です。メール返信率は各媒体の案件のうちメール送信記録がある案件で集計します。DMの送信・返信率は未集計です。未登録の媒体は未設定に表示し、フォロー遅延・Aランクの絞り込みとは連動しません。
+                  </p>
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table aria-describedby="media-kpi-description" className="w-full min-w-[520px] text-left text-xs">
+                      <caption className="sr-only">案件の起点媒体ごとの案件数・メール返信率・新規営業成約率</caption>
+                      <thead className="bg-white/[0.045] text-white/50">
+                        <tr>
+                          <th scope="col" className="px-4 py-3 font-medium">媒体</th>
+                          <th scope="col" className="px-4 py-3 text-right font-medium">案件数</th>
+                          <th scope="col" className="px-4 py-3 text-right font-medium">メール返信率</th>
+                          <th scope="col" className="px-4 py-3 text-right font-medium">新規営業成約率</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {mediaKpiRows.map((row) => (
+                          <tr key={row.channel} className="border-t border-white/10">
+                            <th scope="row" className="px-4 py-3 font-medium text-white/75">{row.channel}</th>
+                            <td className="px-4 py-3 text-right text-white/75">{row.caseCount}件</td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="font-medium text-white/75">{row.replyRate}</div>
+                              <div className="mt-1 text-[10px] text-white/40">返信 {row.repliedCount} ／ 送信 {row.sentCount}</div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="font-medium text-white/75">{row.winRate}</div>
+                              <div className="mt-1 text-[10px] text-white/40">成約 {row.wonCount} ／ 決着 {row.closedCount}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </details>
