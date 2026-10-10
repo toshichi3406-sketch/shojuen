@@ -1,3 +1,4 @@
+import { buildWorkUpdatePatch, workUpdateValue } from "../../../sales-kanban/work-update"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -174,7 +175,7 @@ export async function PATCH(request: NextRequest) {
       const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
       const candidate = Array.isArray(rows) ? rows[0] : null
       if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
-      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映/
+      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新/
       if (applied.test(candidate.decision_note || "")) {
         return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
       }
@@ -264,6 +265,63 @@ export async function PUT(request: NextRequest) {
     }
 
     const now = new Date().toISOString()
+
+
+    if (candidateType === "work_update") {
+      const candidates = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
+      const candidate = Array.isArray(candidates) ? candidates[0] : null
+      if (!candidate || candidate.candidate_type !== "work_update") {
+        return NextResponse.json({ error: "業務更新候補が見つからないか、分類が変更されています。再読み込みしてください。" }, { status: 409 })
+      }
+      if (/既存業務 .* を更新/.test(candidate.decision_note || "")) {
+        return NextResponse.json({ ok: true, workId: candidate.target_id, alreadyApplied: true })
+      }
+      const workId = String(payload.work_item_id || "").trim()
+      if (!workId) return NextResponse.json({ error: "更新する既存業務を選択してください。" }, { status: 400 })
+      let patch: Record<string, string | null>
+      try {
+        patch = buildWorkUpdatePatch(payload)
+        const savedPatch = buildWorkUpdatePatch(candidate.payload || {})
+        if (JSON.stringify(patch) !== JSON.stringify(savedPatch)) {
+          return NextResponse.json({ error: "候補の内容が変わっています。再読み込みして変更内容を確認してください。" }, { status: 409 })
+        }
+      } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "変更内容を確認してください。" }, { status: 400 })
+      }
+      const expected = body.expectedWork
+      if (!expected || typeof expected !== "object" || Array.isArray(expected) || Object.keys(patch).some((key) => !Object.prototype.hasOwnProperty.call(expected, key))) {
+        return NextResponse.json({ error: "変更前の内容を確認できません。再読み込みしてください。" }, { status: 409 })
+      }
+      const rows = await sb(`work_items?select=*&id=eq.${encodeURIComponent(workId)}&deleted_at=is.null&limit=1`, token)
+      const current = Array.isArray(rows) ? rows[0] : null
+      if (!current) return NextResponse.json({ error: "業務が見つかりません。ゴミ箱内の業務は復元してから更新してください。" }, { status: 404 })
+      if (Object.keys(patch).some((key) => workUpdateValue(current[key]) !== workUpdateValue(expected[key]))) {
+        return NextResponse.json({ error: "業務が別の操作で変更されています。再読み込みして差分を確認してください。" }, { status: 409 })
+      }
+      const unchanged = Object.keys(patch).every((key) => workUpdateValue(current[key]) === workUpdateValue(patch[key]))
+      if (!unchanged) {
+        const versionFilter = current.updated_at ? `updated_at=eq.${encodeURIComponent(current.updated_at)}` : "updated_at=is.null"
+        const updated = await sb(`work_items?id=eq.${encodeURIComponent(workId)}&deleted_at=is.null&${versionFilter}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ ...patch, updated_at: now }),
+        })
+        if (!Array.isArray(updated) || !updated.length) {
+          return NextResponse.json({ error: "反映中に業務が変更されました。再読み込みして差分を確認してください。" }, { status: 409 })
+        }
+      }
+      const decisionNote = `既存業務 ${workId} を更新`
+      try {
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "approved", reviewed_at: now, target_id: workId, decision_note: decisionNote }),
+        })
+      } catch {
+        return NextResponse.json({ ok: true, workId, decisionNote, warning: "業務の更新は保存済みですが、候補の反映済み記録に失敗しました。業務の内容を確認し、同じ操作を繰り返さないでください。" })
+      }
+      return NextResponse.json({ ok: true, workId, decisionNote })
+    }
 
     if (candidateType === "new_work") {
       const existing = await sb("work_items?select=id&order=created_at.desc&limit=500", token)
