@@ -1410,7 +1410,9 @@ export default function SalesKanbanPage() {
 
   async function saveOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingOrder?.customerId || !editingOrder.orderDate || !editingOrder.items.length) return
+    if (!editingOrder?.customerId || !editingOrder.orderDate || !editingOrder.items.length || mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
 
     try {
       const response = await fetch("/api/workboard/data", {
@@ -1447,6 +1449,9 @@ export default function SalesKanbanPage() {
     } catch (error) {
       console.error(error)
       alert(error instanceof Error ? error.message : "受注履歴の保存に失敗しました。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
     }
   }
 
@@ -1469,7 +1474,9 @@ export default function SalesKanbanPage() {
 
   async function saveSalesCase(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!editingSalesCase?.customerId || !editingSalesCase.theme.trim() || !editingSalesCase.assignee.trim()) return
+    if (!editingSalesCase?.customerId || !editingSalesCase.theme.trim() || !editingSalesCase.assignee.trim() || mutationLock.current) return
+    mutationLock.current = true
+    setMutationBusy(true)
 
     const customer = customers.find((row) => row.id === editingSalesCase.customerId)
     const original = salesCases.find((row) => row.id === editingSalesCase.id)
@@ -1509,12 +1516,15 @@ export default function SalesKanbanPage() {
     } catch (error) {
       console.error(error)
       alert(error instanceof Error ? error.message : "営業案件の保存に失敗しました。")
+    } finally {
+      mutationLock.current = false
+      setMutationBusy(false)
     }
   }
 
   function blankWork(status: Status = "todo"): WorkItem {
     return {
-      id: nextId(work, "W"),
+      id: nextId([...work, ...trash.filter((item) => item.type === "work")], "W"),
       title: "",
       status,
       workType: "その他",
@@ -3215,9 +3225,10 @@ export default function SalesKanbanPage() {
       )}
 
       {editingOrder && (
-        <Modal onClose={() => setEditingOrder(null)} wide>
+        <Modal onClose={() => { if (!(mutationBusy)) setEditingOrder(null) }} wide>
           <form onSubmit={saveOrder}>
-            <ModalTitle eyebrow="受注履歴" title={editingOrder.id ? "受注を編集" : "新しい受注"} onClose={() => setEditingOrder(null)} />
+            <fieldset disabled={mutationBusy} className="min-w-0">
+            <ModalTitle eyebrow="受注履歴" title={editingOrder.id ? "受注を編集" : "新しい受注"} onClose={() => { if (!(mutationBusy)) setEditingOrder(null) }} />
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="取引先">
@@ -3346,6 +3357,7 @@ export default function SalesKanbanPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (mutationBusy) return
                   setEditingOrder(null)
                   if (postOrderFollowupSource) {
                     const source = postOrderFollowupSource
@@ -3357,10 +3369,11 @@ export default function SalesKanbanPage() {
               >
                 キャンセル
               </button>
-              <button type="submit" className="rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white">
-                受注を保存
+              <button type="submit" disabled={mutationBusy} className="disabled:opacity-40 rounded-full bg-[#eef3ea] px-5 py-2.5 text-sm font-semibold text-[#11150f] hover:bg-white">
+                {mutationBusy ? "保存中..." : "受注を保存"}
               </button>
             </div>
+          </fieldset>
           </form>
         </Modal>
       )}
@@ -3451,9 +3464,10 @@ export default function SalesKanbanPage() {
       )}
 
       {editingSalesCase && (
-        <Modal onClose={() => setEditingSalesCase(null)} wide>
+        <Modal onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} wide>
           <form onSubmit={saveSalesCase}>
-            <ModalTitle eyebrow="営業案件" title={editingSalesCase.title || "新しい営業案件"} onClose={() => setEditingSalesCase(null)} />
+            <fieldset disabled={mutationBusy || salesEventBusy} className="min-w-0">
+            <ModalTitle eyebrow="営業案件" title={editingSalesCase.title || "新しい営業案件"} onClose={() => { if (!(mutationBusy || salesEventBusy)) setEditingSalesCase(null) }} />
 
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="取引先">
@@ -3641,7 +3655,8 @@ export default function SalesKanbanPage() {
                         type="button"
                         disabled={salesEventBusy || (eventType !== "note" && !salesEventChannel)}
                         onClick={async () => {
-                          if (salesEventBusy || (eventType !== "note" && !salesEventChannel)) return
+                          if (mutationLock.current || salesEventBusy || (eventType !== "note" && !salesEventChannel)) return
+                          mutationLock.current = true
                           setSalesEventBusy(true)
                           try {
                             await appendSalesCaseEvent(editingSalesCase.id, eventType, salesEventNote, salesEventChannel || undefined)
@@ -3650,6 +3665,7 @@ export default function SalesKanbanPage() {
                             console.error(error)
                             alert(error instanceof Error ? error.message : "活動履歴の保存に失敗しました。")
                           } finally {
+                            mutationLock.current = false
                             setSalesEventBusy(false)
                           }
                         }}
@@ -3686,12 +3702,13 @@ export default function SalesKanbanPage() {
             )}
 
             <ModalActions
-              busy={mutationBusy}
+              busy={mutationBusy || salesEventBusy}
               deleteDisabled={!trashConfigured}
               existing={Boolean(editingSalesCase.id) && ["owner", "admin"].includes(auth.user?.role || "")}
               onDelete={() => { if (editingSalesCase.id) deleteRecord("sales_case", editingSalesCase.id) }}
-              onCancel={() => { if (!mutationBusy) setEditingSalesCase(null) }}
+              onCancel={() => { if (!mutationBusy && !salesEventBusy) setEditingSalesCase(null) }}
             />
+          </fieldset>
           </form>
         </Modal>
       )}
