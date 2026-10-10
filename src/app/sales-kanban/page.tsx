@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
+import { useWorkDrag } from "./work-drag"
 import {
   Activity,
   BarChart3,
@@ -402,7 +403,21 @@ export default function SalesKanbanPage() {
   const [productSaveBusy, setProductSaveBusy] = useState(false)
   const mutationLock = useRef(false)
   const [mutationBusy, setMutationBusy] = useState(false)
-  const draggingWorkId = useRef<string | null>(null)
+  const workDrag = useWorkDrag({
+    onLift: () => {
+      suppressClickSoundUntil.current = Infinity
+      playOperationSound("drag")
+    },
+    onDrop: (id, statusId) => {
+      const status = STATUSES.find((row) => row.id === statusId)
+      if (!status || mutationLock.current) return
+      playOperationSound("drop")
+      void moveWork(id, status.id)
+    },
+    onFinish: (lifted) => {
+      if (lifted) suppressClickSoundUntil.current = performance.now() + 200
+    },
+  })
   const [hydrated, setHydrated] = useState(false)
   const [sharedDataError, setSharedDataError] = useState("")
   const [sharedDataAttempt, setSharedDataAttempt] = useState(0)
@@ -2296,24 +2311,15 @@ export default function SalesKanbanPage() {
 
 
         {tab === "work" && (
-          <section className="flex-1 overflow-x-auto overflow-y-hidden p-4 md:p-6">
+          <section data-work-board className="flex-1 overflow-x-auto overflow-y-hidden p-4 md:p-6">
             <div className="flex h-full min-w-max gap-3">
               {STATUSES.map((status) => {
                 const items = filteredWork.filter((item) => item.status === status.id)
                 return (
                   <section
                     key={status.id}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault()
-                      const id = draggingWorkId.current
-                      draggingWorkId.current = null
-                      const item = work.find((row) => row.id === id)
-                      if (!item || mutationLock.current || item.status === status.id) return
-                      playOperationSound("drop")
-                      void moveWork(item.id, status.id)
-                    }}
-                    className="flex h-full w-[310px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3"
+                    data-work-column={status.id}
+                    className="flex h-full w-[310px] flex-col rounded-[20px] border border-white/10 bg-white/[0.035] p-3 [&[data-work-drag-over=true]]:border-[#a2bd8b]"
                   >
                     <div className="mb-3 flex items-center justify-between px-1">
                       <div className="flex items-center gap-2">
@@ -2329,19 +2335,13 @@ export default function SalesKanbanPage() {
                         return (
                           <article
                             key={item.id}
-                            draggable={!mutationBusy}
-                            onDragStart={() => {
-                              suppressClickSoundUntil.current = Infinity
-                              draggingWorkId.current = item.id
-                              playOperationSound("drag")
-                            }}
-                            onDragEnd={() => {
-                              suppressClickSoundUntil.current = performance.now() + 150
-                              draggingWorkId.current = null
+                            draggable={false}
+                            onPointerDown={(event) => {
+                              if (!mutationBusy && !mutationLock.current) workDrag.begin(event.nativeEvent, event.currentTarget, item.id)
                             }}
                             data-operation-sound="click"
-                            onClick={() => setEditingWork(item)}
-                            className="cursor-grab rounded-2xl border border-white/10 bg-[#111311] p-4 transition hover:-translate-y-0.5 hover:border-white/20"
+                            onClick={() => { if (performance.now() >= suppressClickSoundUntil.current) setEditingWork(item) }}
+                            className="cursor-grab select-none rounded-2xl border border-white/10 bg-[#111311] p-4 transition hover:-translate-y-0.5 hover:border-white/20"
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
@@ -3727,7 +3727,7 @@ export default function SalesKanbanPage() {
                           key={item.id}
                           type="button"
                           data-operation-sound="click"
-                          onClick={() => setEditingWork(item)}
+                          onClick={() => { if (performance.now() >= suppressClickSoundUntil.current) setEditingWork(item) }}
                           className="w-full rounded-xl border border-white/10 bg-[#0d0f0d] p-3 text-left transition hover:border-white/20 hover:bg-white/[0.04]"
                         >
                           <div className="text-sm font-medium">{item.title}</div>
