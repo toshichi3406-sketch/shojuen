@@ -4222,6 +4222,48 @@ export default function SalesKanbanPage() {
 
             <div className="mt-4"><Field label="メモ"><textarea rows={4} className={`${inputClass} min-h-28 resize-y py-3`} value={editingWork.memo || ""} onChange={(e) => setEditingWork({ ...editingWork, memo: e.target.value })} /></Field></div>
 
+            {work.some((item) => item.id === editingWork.id) && (
+              <section className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">関連する活動履歴</h3>
+                    <p className="mt-1 text-xs text-white/40">この業務カードに紐づく活動を新しい順に表示します。</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/50">
+                    {events.filter((event) => event.workItemId === editingWork.id).length}
+                  </span>
+                </div>
+                <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+                  {events.filter((event) => event.workItemId === editingWork.id).length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-white/10 p-4 text-xs text-white/35">
+                      まだこの業務カードに紐づく活動履歴はありません。
+                    </div>
+                  ) : (
+                    events
+                      .filter((event) => event.workItemId === editingWork.id)
+                      .sort((a, b) => (Date.parse(b.eventDate) || 0) - (Date.parse(a.eventDate) || 0))
+                      .map((event) => {
+                        const date = event.eventDate ? new Date(event.eventDate) : null
+                        const dateLabel = date && !Number.isNaN(date.getTime())
+                          ? date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })
+                          : event.eventDate || "日時不明"
+                        return (
+                          <div key={event.id} className="rounded-xl border border-white/10 bg-[#0d0f0d] p-3">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/35">
+                              <span>{dateLabel}</span>
+                              <Tag>{SALES_EVENT_LABELS[event.eventType] || event.eventType}</Tag>
+                              {salesEventMedia(event) && <Tag>{salesEventMedia(event)}</Tag>}
+                              {event.counterpartyName && <Tag>{event.counterpartyName}</Tag>}
+                            </div>
+                            {event.note && <div className="mt-2 whitespace-pre-wrap break-words text-xs leading-5 text-white/60">{event.note}</div>}
+                          </div>
+                        )
+                      })
+                  )}
+                </div>
+              </section>
+            )}
+
             <ModalActions deleteDisabled={!trashConfigured} busy={mutationBusy} existing={work.some((item) => item.id === editingWork.id)} onDelete={() => deleteRecord("work", editingWork.id)} onCancel={() => { if (!(mutationBusy)) setEditingWork(null) }} />
           </fieldset>
           </form>
