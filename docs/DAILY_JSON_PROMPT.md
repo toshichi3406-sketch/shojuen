@@ -77,12 +77,12 @@ product_update：商品の特徴・供給状況・証明書メタ情報の追加
 documentsはtitle、issuer、report_no、issued_at、status、note。ファイル本体は含めない。原価・標準卸価格・商条件はprice_candidateへ。
 
 price_candidate：価格・原価・送料・その他の商条件。数字の根拠、対象範囲、提示済み/提案だけの区別をnoteに残す。
-price_classification：supplier_cost（仕入原価）、standard_wholesale（標準卸価格）、customer_quoted（取引先へ提示済み価格）、proposed（提案予定価格）、shipping_rate（送料・運賃）、other（その他・要確認）。
+price_classification：supplier_cost（仕入原価）、standard_wholesale（標準卸価格）、customer_quoted（取引先へ提示済み価格）、customer_planned（提案予定価格。旧proposedも受付）、shipping_rate（送料・運賃）、other（その他・要確認）。
 supplier_costはproduct_id、amount、currency、unit、cost_type、supplier_or_vendor、effective_from、note。
 cost_type=base_purchase/processing/packaging/labeling/inspection/domestic_freight/other。
 customer_quotedはcustomer_id、product_id、amount、currency、unit、moq、shipping_terms、payment_terms、effective_from、note。
 shipping_rateはorigin、destination、carrier、service、weight_kg、amount、currency、shipping_stage、note。shipping_stage=estimate/quoted/actual。運賃・原価は別候補にしてよいが、同じ商品を二重に新規登録しない。
-分類だけではマスタに反映されない。現在の直接正式反映対象はsupplier_cost、customer_quoted、shipping_rate。その他は人が確認・登録する。未確定値を0として出力しない。
+分類だけではマスタに反映されない。直接正式反映対象はsupplier_cost、standard_wholesale、customer_quoted、shipping_rate。customer_plannedは別の価格案記録として保存する。未確定値を0として出力しない。
 
  decision：割引するか、進めるかなど経営者の判断が必要なもの。noteに判断点と確認できた根拠、未確認事項を記載する。
 
@@ -103,3 +103,12 @@ BOX段階：uncontacted=未接触、initial_sent=初回送信、replied=返信�
 □ 商条件の根拠と適用範囲をnoteに残した。
 □ 同じsessionの再提出でsource_session_idを変えていない。
 □ JSONとして解析でき、Markdownや注釈が外側にない。
+
+2026-10-12 価格レビュー・日別運用
+- 毎日のJSONには、新たに起きた事実・新しい判断・変更された項目だけを含める。保留中の全件を毎日再提出しない。
+- 同じ事実を再抽出するなら、実在するMessage-IDや資料名＋ページ・行などから安定したpayload.source_record_idを付ける。異なる更新・価格改定には別の識別子を使う。未知の識別子は捏造しない。完全同一の種類・件名・payloadは別セッションでも重複追加しない。文面が違う候補の同一性は識別子がなければ判定できない。
+- シンガポール営業は反応があった企業のみ個別案件としてJSON化。一斉営業のまとめ案件・まとめ用取引先は作成しない。
+- standard_wholesaleは商品を選択し、現在値・採用値・適用開始日・条件を人が確認して反映。将来適用の価格は価格案として保存する。
+- customer_plannedはplan_scope=standard（全顧客向けの標準価格案）またはcustomer（特定取引先への案）。customerの場合customer_id、任意のsales_case_idを確認する。相手・用途未定なら正式保存せず候補に残す。
+- 価格案は未採用・未提示の記録。customer_quotedへ自動変換せず、送信後に根拠のある別の提示済価格を記録する。
+- 日付フィルタは取込日時の日本時間の日付。メール・活動日時とは別。要修正は日付とは独立した保留状態。

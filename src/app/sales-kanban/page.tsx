@@ -1,5 +1,7 @@
 "use client"
 
+import { PriceReviewForm } from "./price-review-form"
+import { tokyoDate, parsePriceRecord } from "../../lib/ai-price-review"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useOperationSounds } from "./operation-sounds"
 import { useWorkDrag } from "./work-drag"
@@ -375,6 +377,8 @@ export default function SalesKanbanPage() {
   const [aiImportBusy, setAiImportBusy] = useState(false)
   const [aiTypeFilter, setAiTypeFilter] = useState("all")
   const [aiStatusFilter, setAiStatusFilter] = useState("pending")
+  const [aiDateFilter, setAiDateFilter] = useState("all")
+  const [aiBatchFilter, setAiBatchFilter] = useState("all")
   const [aiMatchCustomer, setAiMatchCustomer] = useState<Record<string, string>>({})
   const [aiMatchCase, setAiMatchCase] = useState<Record<string, string>>({})
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
@@ -727,7 +731,10 @@ export default function SalesKanbanPage() {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "AI取込に失敗しました。")
-      setAiImportMessage(`取込完了: ${result.candidateCount}件を候補として追加しました。`)
+      setAiImportMessage(`取込完了: ${result.candidateCount}件を候補として追加しました。${result.skippedCount ? ` 重複${result.skippedCount}件は既存の判定を維持し、追加しませんでした。` : ""}`)
+      setAiDateFilter("today")
+      setAiBatchFilter(result.batchId || "all")
+      setAiStatusFilter("pending")
       setAiImportJson("")
       try {
         const refreshedData = await readAiImportData()
@@ -836,7 +843,7 @@ export default function SalesKanbanPage() {
         ...item, status: "approved", target_id: result.workId, decision_note: result.decisionNote || `既存業務 ${result.workId} を更新`,
       } : item))
       setAiEditMessage(result.warning || "既存業務に変更を反映しました。新しい業務は作成していません。")
-      await refreshSharedAfterWrite()
+    await refreshSharedAfterWrite()
     } catch (error) {
       setAiReviewError(error instanceof Error ? error.message : "業務更新を反映できませんでした。")
     } finally {
@@ -1153,10 +1160,20 @@ export default function SalesKanbanPage() {
       if (selectedProduct) payload.product_id = selectedProduct
     }
 
+    if (candidate.candidate_type === "price_candidate" && ["standard_wholesale", "customer_planned"].includes(String(payload.price_classification))) {
+      const draft = aiPriceDraft[candidate.id] || {}
+      for (const key of ["amount","currency","unit","effective_from","plan_scope","conditions","sales_case_id"]) {
+        if (Object.prototype.hasOwnProperty.call(draft,key)) payload[key] = draft[key]
+      }
+      payload.product_id = candidateProducts(candidate)[0] || null
+      payload.customer_id = candidateCustomer(candidate) || null
+      if (payload.price_classification === "standard_wholesale" && !payload.effective_from) payload.effective_from = tokyoDate(new Date().toISOString())
+    }
     const response = await workboardFetch("/api/workboard/ai-import", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        expectedStandardPrice: products.find(row => row.id === payload.product_id)?.price || "",
         id: candidate.id,
         candidate_type: candidate.candidate_type,
         title: candidate.title,
@@ -1167,6 +1184,7 @@ export default function SalesKanbanPage() {
     if (!response.ok) throw new Error(result.error || "正式反映に失敗しました。")
 
     setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", decision_note: result.decisionNote || "正式反映済み" } : item))
+    setAiEditMessage(result.warning || (String(payload.price_classification) === "customer_planned" ? "価格案を保存しました。まだ採用・提示していません。" : "正式反映しました。"))
     await refreshSharedAfterWrite()
     } catch (error) {
       try { const data = await readAiImportData(); setAiCandidates(data.candidates); setAiBatches(data.batches) } catch { setAiLoadError("保存結果の確認が必要です。候補一覧を再読み込みしてください。") }
@@ -1319,8 +1337,12 @@ export default function SalesKanbanPage() {
   const pendingAiCount = aiCandidates.filter((item) => item.status === "pending").length
   const visibleAiCandidates = aiCandidates.filter((item) => {
     const typeOk = aiTypeFilter === "all" || item.candidate_type === aiTypeFilter
-    const statusOk = aiStatusFilter === "all" || item.status === aiStatusFilter
-    return typeOk && statusOk
+    const statusOk = aiStatusFilter === "all" || (aiStatusFilter === "reviewed" ? item.status === "approved" && !isAiCandidateApplied(item.decision_note) : aiStatusFilter === "applied" ? isAiCandidateApplied(item.decision_note) && !String(item.decision_note || "").startsWith("正式反映処理中:") : item.status === aiStatusFilter)
+    const batch = aiBatches.find(row => row.id === item.batch_id)
+    const date = tokyoDate(batch?.created_at || item.created_at)
+    const dateOk = aiDateFilter === "all" || date === (aiDateFilter === "today" ? tokyoDate(new Date().toISOString()) : aiDateFilter)
+    const batchOk = aiBatchFilter === "all" || item.batch_id === aiBatchFilter
+    return typeOk && statusOk && dateOk && batchOk
   })
 
   const supplierCostGroups = useMemo(() => {
@@ -3124,19 +3146,30 @@ export default function SalesKanbanPage() {
 
               <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <Kpi label="未確認" value={pendingAiCount} />
-                <Kpi label="承認" value={aiCandidates.filter((item) => item.status === "approved").length} />
+                <Kpi label="確認済み・未反映" value={aiCandidates.filter((item) => item.status === "approved" && !isAiCandidateApplied(item.decision_note)).length} />
+                <Kpi label="反映済み・価格案保存済み" value={aiCandidates.filter((item) => isAiCandidateApplied(item.decision_note) && !String(item.decision_note || "").startsWith("正式反映処理中:")).length} />
                 <Kpi label="要修正" value={aiCandidates.filter((item) => item.status === "needs_edit").length} />
                 <Kpi label="取込バッチ" value={aiBatches.length} />
               </div>
 
               <div className="mb-4 flex flex-wrap gap-2">
+                <button type="button" onClick={()=>{setAiDateFilter("today");setAiBatchFilter("all");setAiStatusFilter("pending")}} className="h-10 rounded-xl border border-white/15 px-3 text-xs">今日の未確認を振り分ける</button>
+                <select aria-label="取込日" value={aiDateFilter} onChange={e=>{setAiDateFilter(e.target.value);setAiBatchFilter("all")}} className="h-10 rounded-xl border border-white/10 bg-[#111311] px-3 text-xs">
+                  <option value="all">全取込日</option><option value="today">今日の取込（日本時間）</option>
+                  {[...new Set(aiBatches.map(row=>tokyoDate(row.created_at)).filter(Boolean))].sort().reverse().map(date=><option key={date} value={date}>{date}</option>)}
+                </select>
+                <select aria-label="取込ファイル・セッション" value={aiBatchFilter} onChange={e=>setAiBatchFilter(e.target.value)} className="h-10 max-w-sm rounded-xl border border-white/10 bg-[#111311] px-3 text-xs">
+                  <option value="all">全ファイル・セッション</option>{aiBatches.filter(row=>aiDateFilter==="all" || tokyoDate(row.created_at)===(aiDateFilter==="today"?tokyoDate(new Date().toISOString()):aiDateFilter)).map(row=><option key={row.id} value={row.id}>{tokyoDate(row.created_at)} {row.session_title || row.source}</option>)}
+                </select>
                 <select
                   value={aiStatusFilter}
                   onChange={(e) => setAiStatusFilter(e.target.value)}
                   className="h-10 rounded-xl border border-white/10 bg-[#111311] px-3 text-xs text-white outline-none"
                 >
                   <option value="pending">未確認のみ</option>
-                  <option value="approved">承認済み</option>
+                  <option value="reviewed">確認済み・未反映</option>
+                  <option value="applied">反映済み・価格案保存済み</option>
+                  <option value="approved">確認済み・反映済みすべて</option>
                   <option value="needs_edit">要修正</option>
                   <option value="rejected">却下</option>
                   <option value="all">全ステータス</option>
@@ -3278,6 +3311,7 @@ export default function SalesKanbanPage() {
                                 {aiCandidateLabel(candidate.candidate_type)}
                               </span>
                               <span>{(batch?.source || "AI").toUpperCase()}</span>
+                              <span>取込 {tokyoDate(batch?.created_at || candidate.created_at)}</span>
                               {candidate.confidence != null && (
                                 <span>信頼度 {Math.round(candidate.confidence * 100)}%</span>
                               )}
@@ -3360,6 +3394,17 @@ export default function SalesKanbanPage() {
                                   <option value="shipping_rate">送料・運賃</option>
                                   <option value="other">その他 / 要確認</option>
                                 </select>
+                                {["standard_wholesale","customer_planned"].includes(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) && <PriceReviewForm
+                                  mode={(aiPriceClass[candidate.id] || candidate.payload?.price_classification)==="standard_wholesale"?"standard":"plan"}
+                                  values={{ amount: String(candidate.payload?.amount ?? candidate.payload?.price ?? ""), currency: String(candidate.payload?.currency || "JPY"), unit: String(candidate.payload?.unit || "kg"), effective_from: String(candidate.payload?.effective_from || ((aiPriceClass[candidate.id] || candidate.payload?.price_classification)==="standard_wholesale"?tokyoDate(new Date().toISOString()):"")), plan_scope: String(candidate.payload?.plan_scope || ""), conditions: String(candidate.payload?.conditions || [candidate.payload?.moq ? `MOQ: ${candidate.payload.moq}` : "", candidate.payload?.shipping_terms, candidate.payload?.payment_terms].filter(Boolean).join(" ／ ")), sales_case_id: String(candidate.payload?.sales_case_id || ""), ...(aiPriceDraft[candidate.id] || {}) }}
+                                  productId={candidateProducts(candidate)[0] || ""} customerId={candidateCustomer(candidate)} products={products} customers={customers} cases={salesCases}
+                                  busy={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)}
+                                  onProduct={id=>setAiMatchProducts(current=>({...current,[candidate.id]:id?[id]:[]}))}
+                                  onCustomer={id=>setAiMatchCustomer(current=>({...current,[candidate.id]:id}))}
+                                  onChange={(key,value)=>setAiPriceDraft(current=>({...current,[candidate.id]:{...(current[candidate.id] || {}),[key]:value}}))}
+                                  onSave={()=>applyAiCandidate(candidate).catch(error=>alert(error instanceof Error?error.message:"価格を保存できませんでした。"))}
+                                />}
+
                                 {(aiPriceClass[candidate.id] || String(candidate.payload?.price_classification || "")) === "supplier_cost" && (
                                   <div className="mt-3 space-y-2 rounded-lg border border-white/10 bg-black/10 p-2">
                                     <div className="text-[10px] font-semibold tracking-[0.12em] text-amber-100/50">原価履歴への紐付け</div>
@@ -3800,7 +3845,7 @@ export default function SalesKanbanPage() {
                                 type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => reviewAiCandidate(candidate.id, "approved")}
                                 className="rounded-full border border-white/10 px-4 py-2 text-xs text-white/65"
                               >
-                                候補だけ承認
+                                確認済みにする（未反映）
                               </button>
                               <button
                                 type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => reviewAiCandidate(candidate.id, "needs_edit")}
@@ -3819,7 +3864,7 @@ export default function SalesKanbanPage() {
                         </div>
 
                         <div className="mt-4 text-xs text-white/55">
-                          {String(candidate.decision_note || "").startsWith("正式反映処理中:") ? "反映処理中／保存結果の確認が必要" : isAiCandidateApplied(candidate.decision_note) ? "正式反映済み" : candidate.status === "approved" ? (candidate.decision_note === "候補だけ承認（正式反映なし）" ? "候補のみ承認（正式反映なし）" : "確認済み（反映記録なし・反映先を確認）") : "現在の判定: " + (candidate.status === "rejected" ? "却下" : candidate.status === "needs_edit" ? "要修正" : "未判定")}
+                          {String(candidate.decision_note || "").startsWith("正式反映処理中:") ? "反映処理中／保存結果の確認が必要" : isAiCandidateApplied(candidate.decision_note) ? (String(candidate.decision_note || "").startsWith("価格案として保存") ? "価格案として保存済み（未採用・未提示）" : "正式反映済み") : candidate.status === "approved" ? (candidate.decision_note === "候補だけ承認（正式反映なし）" ? "確認済み・未反映" : "確認済み（反映記録なし・反映先を確認）") : "現在の判定: " + (candidate.status === "rejected" ? "却下" : candidate.status === "needs_edit" ? "要修正" : "未判定")}
                           {candidate.decision_note && <p className="mt-1 break-all">{candidate.decision_note}</p>}
                         </div>
                       </article>
@@ -4493,6 +4538,14 @@ export default function SalesKanbanPage() {
             </section>
 
             <section className="mt-4 rounded-2xl border border-white/10 p-4">
+              <h3 className="text-sm font-semibold">提案予定価格（未提示）</h3>
+              <p className="mt-1 text-xs text-white/50">価格案は採用・提示済み価格とは別の記録です。</p>
+              <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                {events.map(event=>({event,record:parsePriceRecord(event.note)})).filter(({record})=>record && record.customerId === editingCustomer.id).map(({event,record})=><div key={event.id} className="rounded-lg border border-white/10 p-3 text-xs whitespace-pre-wrap"><p>{record?.text}</p><p className="mt-1 text-white/50">保存 {tokyoDate(event.eventDate)}</p></div>)}
+              </div>
+            </section>
+
+            <section className="mt-4 rounded-2xl border border-white/10 p-4">
               <h3 className="text-sm font-semibold">提示価格・条件の履歴</h3>
               <p className="mt-1 text-xs text-white/45">現在の条件と過去の記録を表示します。提示した価格は受注や支払の確定を意味しません。</p>
               <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
@@ -4528,6 +4581,14 @@ export default function SalesKanbanPage() {
               ))}
               <div className="md:col-span-2"><Field label="備考"><textarea rows={3} className={`${inputClass} min-h-24 resize-y py-3`} value={editingProduct.memo || ""} onChange={(e) => setEditingProduct({ ...editingProduct, memo: e.target.value })} /></Field></div>
             </div>
+
+            <section className="mt-4 rounded-2xl border border-white/10 p-4">
+              <h3 className="text-sm font-semibold">標準卸価格の採用記録・価格案</h3>
+              <p className="mt-1 text-xs text-white/50">価格案は採用・提示済み価格とは別の記録です。</p>
+              <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
+                {events.map(event=>({event,record:parsePriceRecord(event.note)})).filter(({record})=>record && record.productId === editingProduct.id).map(({event,record})=><div key={event.id} className="rounded-lg border border-white/10 p-3 text-xs whitespace-pre-wrap"><p>{record?.text}</p><p className="mt-1 text-white/50">保存 {tokyoDate(event.eventDate)}</p></div>)}
+              </div>
+            </section>
 
             {currentProductCostSummary.rows.length > 0 && (
               <section className="mt-6 rounded-2xl border border-[#66845c]/30 bg-[#66845c]/10 p-4">
@@ -4790,5 +4851,5 @@ function statusDot(status: Status) {
 
 
 function isAiCandidateApplied(note?: string | null) {
-  return /正式反映処理中:|正式反映済み|正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/.test(note || "")
+  return /標準卸価格へ反映|価格案として保存|正式反映処理中:|正式反映済み|正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/.test(note || "")
 }
