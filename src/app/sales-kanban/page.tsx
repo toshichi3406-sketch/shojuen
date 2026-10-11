@@ -405,6 +405,7 @@ export default function SalesKanbanPage() {
   const [salesEventBusy, setSalesEventBusy] = useState(false)
   const [editingSalesCase, setEditingSalesCase] = useState<SalesCase | null>(null)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+  const [snapshotJson, setSnapshotJson] = useState("")
   const [wonFollowupSource, setWonFollowupSource] = useState<SalesCase | null>(null)
   const [wonCreateOrder, setWonCreateOrder] = useState(true)
   const [wonCreateFollowup, setWonCreateFollowup] = useState(true)
@@ -657,7 +658,9 @@ export default function SalesKanbanPage() {
       const responses = await Promise.all([workboardFetch("/api/workboard/data"), workboardFetch("/api/workboard/ai-import")])
       if (responses.some((response) => !response.ok)) throw new Error("書き出しに失敗しました。ログイン状態を確認してください。")
       const [data, aiImports] = await Promise.all(responses.map((response) => response.json()))
-      const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), data, aiImports }, null, 2)], { type: "application/json" })
+      const snapshot = JSON.stringify({ exportedAt: new Date().toISOString(), data, aiImports }, null, 2)
+      setSnapshotJson(snapshot)
+      const blob = new Blob([snapshot], { type: "application/json" })
       const downloadUrl = URL.createObjectURL(blob)
       const anchor = document.createElement("a")
       anchor.href = downloadUrl
@@ -3854,6 +3857,15 @@ export default function SalesKanbanPage() {
               <button type="button" disabled={eventLinkBusy || !eventSalesLinksConfigured} className="rounded-xl bg-[#eef3ea] px-4 py-2 text-sm font-semibold text-[#11150f] disabled:opacity-40" onClick={saveEventLink}>{eventLinkBusy ? "保存中..." : "紐づけを保存"}</button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {snapshotJson && (
+        <Modal onClose={() => setSnapshotJson("")} wide>
+          <ModalTitle eyebrow="データの書き出し" title="書き出しデータ" onClose={() => setSnapshotJson("")} />
+          <p className="mb-3 text-sm text-white/55">ダウンロードが始まらない場合は、下のJSONをコピーして保存できます。取引情報が含まれるため、公開しないでください。</p>
+          <textarea aria-label="書き出しJSON" readOnly value={snapshotJson} className="h-80 w-full rounded-xl border border-white/15 bg-black/20 p-3 font-mono text-xs" />
+          <button type="button" onClick={() => setSnapshotJson("")} className="mt-4 rounded-full border border-white/15 px-4 py-2">閉じる</button>
         </Modal>
       )}
 
