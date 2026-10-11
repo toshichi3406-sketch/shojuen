@@ -1,0 +1,893 @@
+import { cookies } from "next/headers"
+import { NextRequest, NextResponse } from "next/server"
+import { CASE_STAGES, parseStageRecord, stageRecordNote, resolvedStageEvents } from "../../../../lib/workboard-time-analysis"
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+async function getToken() {
+  const cookieStore = await cookies()
+  return cookieStore.get("shojuen_sb_access")?.value || null
+}
+
+async function sb(path: string, token: string, init: RequestInit = {}) {
+  if (!url || !publishableKey) throw new Error("Supabase is not configured")
+  const response = await fetch(`${url}/rest/v1/${path}`, {
+    ...init,
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+    cache: "no-store",
+  })
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(text || `Supabase request failed: ${response.status}`)
+  }
+  if (response.status === 204) return null
+  const text = await response.text()
+  return text ? JSON.parse(text) : null
+}
+
+async function hasSalesAttributionColumns(token: string) {
+  try {
+    await sb("sales_cases?select=origin_type,channel&limit=1", token)
+    return true
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42703" || code === "PGRST204") return false
+    throw error
+  }
+}
+
+async function loadEventSalesLinks(token: string) {
+  try {
+    return { configured: true, rows: (await sb("work_event_sales_links?select=*", token)) || [] }
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42P01" || code === "PGRST205") return { configured: false, rows: [] }
+    throw error
+  }
+}
+
+const trashTables: Record<string, string> = {
+  work: "work_items", customer: "customers", product: "products",
+  sales_case: "sales_cases", order: "orders",
+}
+
+class RelationError extends Error {}
+
+async function validateCaseCustomer(salesCaseId: unknown, customerId: unknown, token: string) {
+  if (!salesCaseId) return
+  if (typeof salesCaseId !== "string") throw new RelationError("営業案件を確認してください。")
+  const rows = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(salesCaseId)}`, token)
+  if (!rows?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
+  if (customerId && rows[0].customer_id !== customerId) throw new RelationError("取引先と営業案件が一致していません。紐づけ先を選び直してください。")
+}
+
+async function validateProductIds(value: unknown, token: string): Promise<string[]> {
+  if (value == null) return []
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(id))) throw new RelationError("関連商品を確認してください。")
+  const ids = [...new Set(value)] as string[]
+  if (!ids.length) return ids
+  const rows = await sb(`products?select=id&id=in.(${ids.map(encodeURIComponent).join(",")})`, token)
+  const existing = new Set((rows || []).map((row: any) => row.id))
+  if (ids.some((id) => !existing.has(id))) throw new RelationError("関連商品が見つかりません。再読み込みして選び直してください。")
+  return ids
+}
+
+async function hasTrashColumns(token: string) {
+  try {
+    await sb("work_items?select=deleted_at&limit=1", token)
+    return true
+  } catch (error) {
+    let code = ""
+    try { code = JSON.parse(error instanceof Error ? error.message : "").code || "" } catch {}
+    if (code === "42703" || code === "PGRST204") return false
+    throw error
+  }
+}
+
+function workToDb(item: any) {
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    customer_id: item.customerId || null,
+    work_type: item.workType || null,
+    assignee: item.assignee || null,
+    priority: item.priority || null,
+    due_date: item.dueDate || null,
+    next_action: item.nextAction || null,
+    country: item.country || null,
+    origin_type: item.originType || null,
+    channel: item.channel || null,
+    memo: item.memo || null,
+    sales_case_id: item.salesCaseId || null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function customerToDb(item: any) {
+  return {
+    id: item.id,
+    name: item.name,
+    country: item.country || null,
+    category: item.category || null,
+    contact_name: item.contact || null,
+    email: item.email || null,
+    phone: item.phone || null,
+    instagram: item.instagram || null,
+    linkedin: item.linkedin || null,
+    note: item.note || null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function productToDb(item: any) {
+  return {
+    id: item.id,
+    name: item.name,
+    producer: item.producer || null,
+    origin: item.origin || null,
+    use_case: item.use || null,
+    color_note: item.color || null,
+    umami_note: item.umami || null,
+    bitterness_note: item.bitterness || null,
+    aroma_note: item.aroma || null,
+    cost: item.cost || null,
+    standard_wholesale_price: item.price || null,
+    moq: item.moq || null,
+    supply_status: item.supply || null,
+    memo: item.memo || null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+export async function GET() {
+  const token = await getToken()
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  try {
+    const [products, customers, prices, workItems, links, docs, events, shippingRates, productCosts, salesCases, salesCaseProducts, orders, orderItems, priceHistory] = await Promise.all([
+      sb("products?select=*&order=id.asc", token),
+      sb("customers?select=*&order=id.asc", token),
+      sb("customer_prices_current?select=*", token),
+      sb("work_items?select=*&order=created_at.asc", token),
+      sb("work_item_products?select=*", token),
+      sb("product_documents?select=*", token),
+      sb("work_events?select=*&order=event_date.desc", token),
+      sb("shipping_rates?select=*&order=created_at.desc", token),
+      sb("product_costs?select=*&order=created_at.desc", token),
+      sb("sales_cases?select=*&order=created_at.desc", token),
+      sb("sales_case_products?select=*", token),
+      sb("orders?select=*&order=order_date.desc,created_at.desc", token),
+      sb("order_items?select=*&order=created_at.asc", token),
+      sb("customer_prices?select=*&order=created_at.desc", token),
+    ])
+
+    const salesAttributionConfigured = await hasSalesAttributionColumns(token)
+    const trashConfigured = await hasTrashColumns(token)
+    const eventSalesLinks = await loadEventSalesLinks(token)
+    const eventCaseOverrides = new Map<string, string | null>(eventSalesLinks.rows.map((row: any) => [row.event_id, row.sales_case_id]))
+
+    const mappedProducts = (products || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      producer: p.producer || "",
+      origin: p.origin || "",
+      use: p.use_case || "",
+      color: p.color_note || "",
+      umami: p.umami_note || "",
+      bitterness: p.bitterness_note || "",
+      aroma: p.aroma_note || "",
+      cost: p.cost || "",
+      price: p.standard_wholesale_price || "",
+      moq: p.moq || "",
+      supply: p.supply_status || "",
+      memo: p.memo || "",
+      docs: (docs || [])
+        .filter((d: any) => d.product_id === p.id)
+        .map((d: any) => ({ id: d.id, title: d.title, url: d.storage_path, mimeType: d.mime_type || "", isPrivate: String(d.storage_path || "").startsWith("products/") })),
+    }))
+
+    const mappedCustomers = (customers || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      country: c.country || "",
+      category: c.category || "",
+      contact: c.contact_name || "",
+      email: c.email || "",
+      phone: c.phone || "",
+      instagram: c.instagram || "",
+      linkedin: c.linkedin || "",
+      note: c.note || "",
+      priceHistory: (priceHistory || []).filter((p: any) => p.customer_id === c.id).map((p: any) => ({
+        id: p.id, productId: p.product_id, price: String(p.price ?? ""), currency: p.currency, unit: p.unit,
+        effectiveFrom: p.effective_from || "", createdAt: p.created_at || "", current: (prices || []).some((current: any) => current.id === p.id), note: p.note || "",
+      })),
+      prices: (prices || [])
+        .filter((p: any) => p.customer_id === c.id && p.is_current)
+        .map((p: any) => ({
+          id: p.id,
+          productId: p.product_id,
+          price: p.price == null ? "" : String(p.price),
+          currency: p.currency,
+          unit: p.unit,
+          moq: p.moq || "",
+          shipping: p.shipping_terms || "",
+          payment: p.payment_terms || "",
+          effectiveFrom: p.effective_from || "",
+          locked: Boolean(p.ai_locked),
+        })),
+    }))
+
+    const mappedEvents = (events || []).map((e: any) => ({
+      id: e.id,
+      workItemId: e.work_item_id || undefined,
+      salesCaseId: (eventCaseOverrides.has(e.id) ? eventCaseOverrides.get(e.id) : e.sales_case_id) || undefined,
+      eventType: e.event_type,
+      eventDate: e.event_date,
+      channel: e.channel || "",
+      note: e.note || "",
+      counterpartyName: e.counterparty_name || "",
+      counterpartyEmail: e.counterparty_email || "",
+      direction: e.direction || "",
+      source: e.source || "",
+      sourceCandidateId: e.source_candidate_id || undefined,
+    }))
+
+    const mappedProductCosts = (productCosts || []).map((r: any) => ({
+      id: r.id,
+      productId: r.product_id,
+      costType: r.cost_type,
+      label: r.label || "",
+      amount: r.amount == null ? "" : String(r.amount),
+      currency: r.currency || "JPY",
+      unit: r.unit || "kg",
+      quantityBasis: r.quantity_basis == null ? "" : String(r.quantity_basis),
+      effectiveFrom: r.effective_from || "",
+      effectiveTo: r.effective_to || "",
+      supplierOrVendor: r.supplier_or_vendor || "",
+      note: r.note || "",
+      createdAt: r.created_at,
+    }))
+
+    const mappedShippingRates = (shippingRates || []).map((r: any) => ({
+      id: r.id,
+      rateStage: r.rate_stage || "",
+      origin: r.origin || "",
+      destination: r.destination || "",
+      carrier: r.carrier || "",
+      service: r.service || "",
+      weightFromKg: r.weight_from_kg == null ? "" : String(r.weight_from_kg),
+      weightToKg: r.weight_to_kg == null ? "" : String(r.weight_to_kg),
+      actualWeightKg: r.actual_weight_kg == null ? "" : String(r.actual_weight_kg),
+      sizeClass: r.size_class || "",
+      price: r.price == null ? "" : String(r.price),
+      currency: r.currency || "JPY",
+      transitTime: r.transit_time || "",
+      terms: r.terms || "",
+      source: r.source || "",
+      verifiedAt: r.verified_at || "",
+      shipmentDate: r.shipment_date || "",
+      customerId: r.customer_id || "",
+      note: r.note || "",
+      createdAt: r.created_at,
+    }))
+
+    const mappedSalesCases = (salesCases || []).map((row: any) => ({
+      id: row.id,
+      customerId: row.customer_id,
+      title: row.title,
+      theme: row.theme,
+      caseType: row.case_type,
+      ...(salesAttributionConfigured ? { originType: row.origin_type || "", channel: row.channel || "" } : {}),
+      stage: row.stage,
+      heat: row.heat,
+      nextFollowUpDate: row.next_follow_up_date || "",
+      nextAction: row.next_action || "",
+      assignee: row.assignee || "",
+      lastContactAt: row.last_contact_at || "",
+      closeReason: row.close_reason || "",
+      closeNote: row.close_note || "",
+      wonAt: row.won_at || "",
+      closedAt: row.closed_at || "",
+      productIds: (salesCaseProducts || [])
+        .filter((link: any) => link.sales_case_id === row.id)
+        .map((link: any) => link.product_id),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }))
+
+    const mappedOrders = (orders || []).map((row: any) => ({
+      id: row.id,
+      customerId: row.customer_id,
+      salesCaseId: row.sales_case_id || "",
+      orderType: row.order_type,
+      orderStatus: row.order_status,
+      orderDate: row.order_date,
+      currency: row.currency || "JPY",
+      shippingAmount: row.shipping_amount == null ? "" : String(row.shipping_amount),
+      totalAmount: row.total_amount == null ? "" : String(row.total_amount),
+      externalOrderRef: row.external_order_ref || "",
+      note: row.note || "",
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      items: (orderItems || [])
+        .filter((item: any) => item.order_id === row.id)
+        .map((item: any) => ({
+          id: item.id,
+          productId: item.product_id,
+          quantity: item.quantity == null ? "" : String(item.quantity),
+          unit: item.unit || "kg",
+          unitPrice: item.unit_price == null ? "" : String(item.unit_price),
+          lineAmount: item.line_amount == null ? "" : String(item.line_amount),
+        })),
+    }))
+
+    const mappedWork = (workItems || []).map((w: any) => ({
+      id: w.id,
+      title: w.title,
+      status: w.status,
+      customerId: w.customer_id || undefined,
+      workType: w.work_type || "",
+      assignee: w.assignee || "",
+      priority: w.priority || "中",
+      dueDate: w.due_date || "",
+      nextAction: w.next_action || "",
+      country: w.country || "",
+      originType: w.origin_type || undefined,
+      channel: w.channel || "",
+      memo: w.memo || "",
+      salesCaseId: w.sales_case_id || "",
+      productIds: (links || [])
+        .filter((l: any) => l.work_item_id === w.id)
+        .map((l: any) => l.product_id),
+    }))
+
+    const collections = [
+      { type: "work", rows: workItems, mapped: mappedWork },
+      { type: "customer", rows: customers, mapped: mappedCustomers },
+      { type: "product", rows: products, mapped: mappedProducts },
+      { type: "sales_case", rows: salesCases, mapped: mappedSalesCases },
+      { type: "order", rows: orders, mapped: mappedOrders },
+    ]
+    const trash = collections.flatMap(({ type, rows }) => (rows || [])
+      .filter((row: any) => row.deleted_at)
+      .map((row: any) => ({ type, id: row.id, title: row.title || row.name || row.external_order_ref || `受注 ${row.order_date || row.id}`, deletedAt: row.deleted_at })))
+      .sort((a: any, b: any) => b.deletedAt.localeCompare(a.deletedAt))
+    const active = (type: string) => {
+      const collection = collections.find((item) => item.type === type)!
+      const removed = new Set((collection.rows || []).filter((row: any) => row.deleted_at).map((row: any) => row.id))
+      return collection.mapped.filter((row: any) => !removed.has(row.id))
+    }
+    return NextResponse.json({
+      work: active("work"),
+      customers: active("customer"),
+      products: active("product"),
+      events: resolvedStageEvents(mappedEvents),
+      shippingRates: mappedShippingRates,
+      productCosts: mappedProductCosts,
+      salesCases: active("sales_case"),
+      salesAttributionConfigured,
+      eventSalesLinksConfigured: eventSalesLinks.configured,
+      orders: active("order"),
+      trash,
+      trashConfigured,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to load WORKBOARD data" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const token = await getToken()
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  try {
+    const body = await request.json()
+    const type = body?.type
+    const data = body?.data
+    if (type === "repair_case_stage") {
+      if (typeof data?.id !== "string" || !data.id) return NextResponse.json({ error: "案件を選択してください。" }, { status: 400 })
+      const cases = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(data.id)}&deleted_at=is.null&limit=1`, token)
+      const current = cases?.[0]
+      if (!current) return NextResponse.json({ error: "案件が見つかりません。" }, { status: 404 })
+      const rows = await sb(`work_events?select=*&sales_case_id=eq.${encodeURIComponent(data.id)}&source=eq.workboard_auto&order=event_date.asc`, token)
+      const events = (rows || []).map((e: any) => ({ id: e.id, salesCaseId: e.sales_case_id, source: e.source, eventType: e.event_type, eventDate: e.event_date, note: e.note }))
+      const pending = resolvedStageEvents(events).filter((e: any) => {
+        const r = parseStageRecord(e.note)
+        return r?.phase === "pending" && r.to === current.stage && r.from !== r.to &&
+          Number.isFinite(Date.parse(e.eventDate)) && Date.parse(e.eventDate) === Date.parse(current.updated_at)
+      })
+      if (pending.length !== 1) return NextResponse.json({ error: "保存日時と段階が一致する未確定記録を一意に確認できません。開始日は推測せず不明のままにします。" }, { status: 409 })
+      const event = pending[0], record = parseStageRecord(event.note)!
+      await sb("work_events", token, { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
+        sales_case_id: data.id, event_type: "note", event_date: event.eventDate, source: "workboard_auto",
+        note: JSON.stringify({ ...record, phase: "committed", supersedes: event.id }),
+      }) })
+      return NextResponse.json({ ok: true, repaired: true })
+    }
+    if (!type || !data) return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+
+    if (type === "work_event_link") {
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      if (typeof data.id !== "string" || !uuid.test(data.id) ||
+        !(data.salesCaseId === null || (typeof data.salesCaseId === "string" && uuid.test(data.salesCaseId)))) {
+        return NextResponse.json({ error: "履歴と営業案件を選択してください。" }, { status: 400 })
+      }
+      const event = await sb(`work_events?select=id,work_item_id,note,source&id=eq.${encodeURIComponent(data.id)}`, token)
+      if (!event?.length) return NextResponse.json({ error: "活動履歴が見つかりません。" }, { status: 404 })
+      if (parseStageRecord(event[0].note)) return NextResponse.json({ error: "段階変更の記録は紐づけを変更できません。" }, { status: 400 })
+      if (data.salesCaseId) {
+        const target = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(data.salesCaseId)}`, token)
+        if (!target?.length) return NextResponse.json({ error: "営業案件が見つかりません。" }, { status: 404 })
+        if (event[0].work_item_id) {
+          const work = await sb(`work_items?select=customer_id&id=eq.${encodeURIComponent(event[0].work_item_id)}`, token)
+          if (work?.[0]?.customer_id && work[0].customer_id !== target[0].customer_id) {
+            return NextResponse.json({ error: "関連業務と営業案件の取引先が異なります。" }, { status: 400 })
+          }
+        }
+      }
+      const links = await loadEventSalesLinks(token)
+      if (!links.configured) return NextResponse.json({ error: "活動履歴の紐づけ用SQLを先に適用してください。" }, { status: 409 })
+      await sb("work_event_sales_links?on_conflict=event_id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+        body: JSON.stringify({ event_id: data.id, sales_case_id: data.salesCaseId, updated_at: new Date().toISOString() }),
+      })
+      return NextResponse.json({ ok: true, id: data.id, salesCaseId: data.salesCaseId })
+    } else if (type === "work") {
+      await validateCaseCustomer(data.salesCaseId, data.customerId, token)
+      const productIds = await validateProductIds(data.productIds, token)
+      await sb("work_items?on_conflict=id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(workToDb(data)),
+      })
+      await sb(`work_item_products?work_item_id=eq.${encodeURIComponent(data.id)}`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+      if (productIds.length) {
+        await sb("work_item_products", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(
+            productIds.map((productId: string) => ({
+              work_item_id: data.id,
+              product_id: productId,
+              relation_type: "related",
+            }))
+          ),
+        })
+      }
+    } else if (type === "sales_case") {
+      if (!data.customerId || !data.title || !data.theme || !data.caseType || !data.stage || !data.heat || !data.assignee) {
+        return NextResponse.json({ error: "営業案件の必須項目を確認してください。" }, { status: 400 })
+      }
+
+      const productIds = await validateProductIds(data.productIds, token)
+      if (!CASE_STAGES.includes(data.stage)) return NextResponse.json({ error: "案件の段階を確認してください。" }, { status: 400 })
+      let previousCase: any = null
+      if (data.id) {
+        const current = await sb(`sales_cases?select=*&id=eq.${encodeURIComponent(data.id)}&deleted_at=is.null`, token)
+        if (!current?.length) throw new RelationError("営業案件が見つかりません。再読み込みしてください。")
+        previousCase = current[0]
+        if (data.expectedUpdatedAt != null && data.expectedUpdatedAt !== previousCase.updated_at) return NextResponse.json({ error: "案件が別の操作で変更されています。再読み込みして確認してください。" }, { status: 409 })
+        if (data.expectedStage != null && data.expectedStage !== previousCase.stage) return NextResponse.json({ error: "案件の段階が別の操作で変更されています。再読み込みして確認してください。" }, { status: 409 })
+        if (current[0].customer_id !== data.customerId) {
+          const linked = await Promise.all([
+            sb(`work_items?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            sb(`orders?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            sb(`work_events?select=id&sales_case_id=eq.${encodeURIComponent(data.id)}&limit=1`, token),
+            loadEventSalesLinks(token).then((result) => result.rows.filter((row: any) => row.sales_case_id === data.id)),
+          ])
+          if (linked.some((rows) => rows?.length)) throw new RelationError("関連業務・受注・活動履歴がある営業案件の取引先は変更できません。紐づけを確認してください。")
+        }
+      }
+
+      const hasOrigin = Object.prototype.hasOwnProperty.call(data, "originType")
+      const hasChannel = Object.prototype.hasOwnProperty.call(data, "channel")
+      const allowedOrigins = ["Outbound", "Inbound", "Referral", "Existing"]
+      const allowedChannels = ["Email", "Instagram DM", "Threads", "LinkedIn", "Web", "電話", "展示会", "紹介", "その他"]
+      if ((hasOrigin && data.originType != null && data.originType !== "" && !allowedOrigins.includes(data.originType)) ||
+          (hasChannel && data.channel != null && data.channel !== "" && !allowedChannels.includes(data.channel))) {
+        return NextResponse.json({ error: "接点区分・媒体の選択肢を確認してください。" }, { status: 400 })
+      }
+      if ((hasOrigin || hasChannel) && !(await hasSalesAttributionColumns(token))) {
+        return NextResponse.json({ error: "接点区分・媒体の保存にはDB更新が必要です。画面を再読み込みしてください。" }, { status: 409 })
+      }
+
+      const changedStage = previousCase && previousCase.stage !== data.stage
+      const savedAt = new Date().toISOString()
+      const payload = {
+        ...(hasOrigin ? { origin_type: data.originType || null } : {}),
+        ...(hasChannel ? { channel: data.channel || null } : {}),
+        customer_id: data.customerId,
+        title: data.title,
+        theme: data.theme,
+        case_type: data.caseType,
+        stage: data.stage,
+        heat: data.heat,
+        next_follow_up_date: data.nextFollowUpDate || null,
+        next_action: data.nextAction || null,
+        assignee: data.assignee,
+        last_contact_at: data.lastContactAt || null,
+        close_reason: data.closeReason || null,
+        close_note: data.closeNote || null,
+        won_at: data.stage === "won" && (!previousCase || changedStage) ? savedAt : previousCase?.won_at || data.wonAt || null,
+        closed_at: ["won","lost"].includes(data.stage) && (!previousCase || changedStage) ? savedAt : previousCase?.closed_at || data.closedAt || null,
+        updated_at: savedAt,
+      }
+
+      let salesCaseId = data.id
+      let stageEvent: any = null
+      let warning = ""
+      const priorDecision = previousCase && ["won","lost"].includes(previousCase.stage) && (previousCase.closed_at || previousCase.won_at)
+        ? { date: previousCase.closed_at || previousCase.won_at, outcome: previousCase.stage, channel: previousCase.channel || "", originType: previousCase.origin_type || "", caseType: previousCase.case_type } : undefined
+      const changeNote = (phase: "pending" | "committed" | "aborted") => stageRecordNote(previousCase?.stage || null, data.stage, { ...data, channel: hasChannel ? data.channel : previousCase?.channel, originType: hasOrigin ? data.originType : previousCase?.origin_type, priorDecision }, phase)
+      if (changedStage) {
+        const inserted = await sb("work_events", token, {
+          method: "POST", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: changeNote("pending") }),
+        })
+        stageEvent = inserted?.[0]
+        if (!stageEvent?.id) throw new Error("段階変更の記録を準備できませんでした。案件は変更していません。")
+      }
+      if (salesCaseId) {
+        try {
+          const saved = await sb(`sales_cases?id=eq.${encodeURIComponent(salesCaseId)}&deleted_at=is.null&${previousCase.updated_at ? "updated_at=eq." + encodeURIComponent(previousCase.updated_at) : "updated_at=is.null"}`, token, {
+            method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(payload),
+          })
+          if (!saved?.length) throw new RelationError("案件が別の操作で変更されています。再読み込みして確認してください。")
+        } catch (error) {
+          if (stageEvent) {
+            // Keep an uncertain network result pending; do not invent a successful transition.
+            if (error instanceof RelationError) try {
+              await sb("work_events", token, { method: "POST", body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: JSON.stringify({ ...JSON.parse(changeNote("aborted")), supersedes: stageEvent.id }) }) })
+            } catch { /* A pending record conservatively leaves the duration unknown. */ }
+          }
+          throw error
+        }
+      } else {
+        const inserted = await sb("sales_cases", token, {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify(payload),
+        })
+        salesCaseId = inserted?.[0]?.id
+      }
+
+      if (!salesCaseId) {
+        return NextResponse.json({ error: "営業案件IDを取得できませんでした。" }, { status: 500 })
+      }
+      if (changedStage || !previousCase) {
+        try {
+          if (stageEvent) {
+            const inserted = await sb("work_events", token, {
+              method: "POST", headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: JSON.stringify({ ...JSON.parse(changeNote("committed")), supersedes: stageEvent.id }) }),
+            })
+            if (!inserted?.[0]?.id) throw new Error("Missing stage completion")
+            stageEvent = inserted[0]
+          } else {
+            const inserted = await sb("work_events", token, {
+              method: "POST", headers: { Prefer: "return=representation" },
+              body: JSON.stringify({ sales_case_id: salesCaseId, event_type: "note", event_date: savedAt, source: "workboard_auto", note: changeNote("committed") }),
+            })
+            stageEvent = inserted?.[0]
+            if (!stageEvent?.id) throw new Error("Missing stage record")
+          }
+        } catch { warning = "案件は保存済みですが、段階の記録を確定できませんでした。滞在日数は不明として表示します。再読み込みして確認してください。" }
+      }
+
+      try {
+      await sb(`sales_case_products?sales_case_id=eq.${encodeURIComponent(salesCaseId)}`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+
+      if (productIds.length) {
+        await sb("sales_case_products", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(
+            productIds.map((productId: string) => ({
+              sales_case_id: salesCaseId,
+              product_id: productId,
+            }))
+          ),
+        })
+      }
+      } catch { warning = [warning, "案件は保存済みですが、関連商品の更新に失敗しました。案件を開いて確認してください。"].filter(Boolean).join(" ") }
+
+      return NextResponse.json({ ok: true, id: salesCaseId, warning, wonAt: payload.won_at, closedAt: payload.closed_at,
+        stageEvent: stageEvent ? { id: stageEvent.id, salesCaseId, eventType: "note", eventDate: savedAt, source: "workboard_auto", note: stageEvent.note } : null })
+    } else if (type === "order") {
+      if (!data.customerId || !data.orderDate || !data.orderType || !data.orderStatus || !data.currency) {
+        return NextResponse.json({ error: "受注履歴の必須項目を確認してください。" }, { status: 400 })
+      }
+
+      const items = Array.isArray(data.items) ? data.items : []
+      if (!items.length) {
+        return NextResponse.json({ error: "受注明細を1件以上追加してください。" }, { status: 400 })
+      }
+      await validateCaseCustomer(data.salesCaseId, data.customerId, token)
+      await validateProductIds(items.map((item: any) => item.productId), token)
+
+      const normalizedItems = items.map((item: any) => {
+        const quantity = Number(String(item.quantity ?? "").replace(/,/g, ""))
+        const unitPrice = Number(String(item.unitPrice ?? "").replace(/[,s¥￥]/g, ""))
+        if (!item.productId || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+          throw new Error("受注明細の商品・数量・単価を確認してください。")
+        }
+        return {
+          product_id: item.productId,
+          quantity,
+          unit: item.unit || "kg",
+          unit_price: unitPrice,
+          line_amount: quantity * unitPrice,
+        }
+      })
+
+      const computedSubtotal = normalizedItems.reduce((sum: number, item: any) => sum + item.line_amount, 0)
+      const shippingAmount = data.shippingAmount === "" || data.shippingAmount == null
+        ? null
+        : Number(String(data.shippingAmount).replace(/[,s¥￥]/g, ""))
+
+      if (shippingAmount != null && (!Number.isFinite(shippingAmount) || shippingAmount < 0)) {
+        return NextResponse.json({ error: "送料を確認してください。" }, { status: 400 })
+      }
+
+      const payload = {
+        customer_id: data.customerId,
+        sales_case_id: data.salesCaseId || null,
+        order_type: data.orderType,
+        order_status: data.orderStatus,
+        order_date: data.orderDate,
+        currency: data.currency || "JPY",
+        shipping_amount: shippingAmount,
+        total_amount: computedSubtotal + (shippingAmount || 0),
+        external_order_ref: data.externalOrderRef || null,
+        note: data.note || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      let orderId = data.id
+      if (orderId) {
+        await sb(`orders?id=eq.${encodeURIComponent(orderId)}`, token, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(payload),
+        })
+      } else {
+        const inserted = await sb("orders", token, {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify(payload),
+        })
+        orderId = inserted?.[0]?.id
+      }
+
+      if (!orderId) {
+        return NextResponse.json({ error: "受注IDを取得できませんでした。" }, { status: 500 })
+      }
+
+      await sb(`order_items?order_id=eq.${encodeURIComponent(orderId)}`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+
+      await sb("order_items", token, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(
+          normalizedItems.map((item: any) => ({
+            ...item,
+            order_id: orderId,
+          }))
+        ),
+      })
+
+      return NextResponse.json({ ok: true, id: orderId, totalAmount: payload.total_amount })
+    } else if (type === "work_event") {
+      if (parseStageRecord(data.note)) return NextResponse.json({ error: "段階の記録は案件の保存から登録してください。" }, { status: 400 })
+      let customerId: string | undefined
+      if (data.workItemId) {
+        const rows = await sb(`work_items?select=id,customer_id&id=eq.${encodeURIComponent(data.workItemId)}`, token)
+        if (!rows?.length) throw new RelationError("関連業務が見つかりません。再読み込みしてください。")
+        customerId = rows[0].customer_id
+      }
+      await validateCaseCustomer(data.salesCaseId, customerId, token)
+      const inserted = await sb("work_events", token, {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          work_item_id: data.workItemId || null,
+          sales_case_id: data.salesCaseId || null,
+          event_type: data.eventType || "note",
+          event_date: data.eventDate || new Date().toISOString(),
+          channel: data.channel || null,
+          note: data.note || null,
+          direction: data.direction || null,
+          source: data.source || "manual",
+        }),
+      })
+      if (!inserted?.[0]?.id) throw new Error("活動履歴IDを取得できませんでした。再読み込みしてください。")
+      return NextResponse.json({ ok: true, id: inserted[0].id })
+    } else if (type === "customer") {
+      await sb("customers?on_conflict=id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(customerToDb(data)),
+      })
+      if ((data.prices || []).length) {
+        const currentPrices = await sb(
+          `customer_prices_current?select=*&customer_id=eq.${encodeURIComponent(data.id)}`,
+          token
+        )
+
+        const normalize = (row: any) => ({
+          productId: row.product_id ?? row.productId ?? "",
+          price: row.price == null || row.price === "" ? null : Number(row.price),
+          currency: row.currency || "JPY",
+          unit: row.unit || "kg",
+          moq: row.moq || null,
+          shipping: row.shipping_terms ?? row.shipping ?? null,
+          payment: row.payment_terms ?? row.payment ?? null,
+          effectiveFrom: row.effective_from ?? row.effectiveFrom ?? null,
+        })
+
+        const inserts = (data.prices || [])
+          .filter((row: any) => {
+            const current = (currentPrices || []).find((p: any) => p.product_id === row.productId)
+            if (!current) return true
+            const a = normalize(current)
+            const b = normalize(row)
+            return JSON.stringify(a) !== JSON.stringify(b)
+          })
+          .map((row: any) => ({
+            customer_id: data.id,
+            product_id: row.productId,
+            price: row.price === "" ? null : Number(row.price),
+            currency: row.currency || "JPY",
+            unit: row.unit || "kg",
+            moq: row.moq || null,
+            shipping_terms: row.shipping || null,
+            payment_terms: row.payment || null,
+            effective_from: row.effectiveFrom || new Date().toISOString().slice(0, 10),
+            is_current: true,
+            ai_locked: true,
+            approved_at: new Date().toISOString(),
+          }))
+
+        if (inserts.length) {
+          await sb("customer_prices", token, {
+            method: "POST",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify(inserts),
+          })
+        }
+      }
+    } else if (type === "product_cost") {
+      const amount = Number(String(data.amount ?? "").replace(/[,\s¥￥]/g, ""))
+      if (!data.productId || !data.costType || !data.label || !Number.isFinite(amount) || amount < 0) {
+        return NextResponse.json({ error: "原価の必須項目を確認してください。" }, { status: 400 })
+      }
+      await sb("product_costs", token, {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          product_id: data.productId,
+          cost_type: data.costType,
+          label: data.label,
+          amount,
+          currency: data.currency || "JPY",
+          unit: data.unit || "kg",
+          quantity_basis: data.quantityBasis ? Number(data.quantityBasis) : null,
+          effective_from: data.effectiveFrom || new Date().toISOString().slice(0, 10),
+          supplier_or_vendor: data.supplierOrVendor || null,
+          note: data.note || null,
+          ai_locked: true,
+          approved_at: new Date().toISOString(),
+        }),
+      })
+    } else if (type === "product") {
+      const publicDocs = (Array.isArray(data.docs) ? data.docs : [])
+        .filter((doc: any) => doc.title && typeof doc.url === "string" && doc.url && !doc.url.startsWith("products/"))
+      await sb("products?on_conflict=id", token, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify(productToDb(data)),
+      })
+      await sb(`product_documents?product_id=eq.${encodeURIComponent(data.id)}&storage_path=not.like.products/*`, token, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" },
+      })
+      if (publicDocs.length) {
+        await sb("product_documents", token, {
+          method: "POST",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify(
+            publicDocs
+              .map((doc: any) => ({
+                product_id: data.id,
+                title: doc.title,
+                storage_path: doc.url,
+              }))
+          ),
+        })
+      }
+    } else {
+      return NextResponse.json({ error: "Unsupported entity type" }, { status: 400 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to save WORKBOARD data" },
+      { status: error instanceof RelationError ? 400 : 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const token = await getToken()
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const type = request.nextUrl.searchParams.get("type")
+  const id = request.nextUrl.searchParams.get("id")
+  if (!type || !id) return NextResponse.json({ error: "Missing type or id" }, { status: 400 })
+
+  try {
+    const table = Object.hasOwn(trashTables, type) ? trashTables[type] : null
+
+    if (!table) return NextResponse.json({ error: "Unsupported entity type" }, { status: 400 })
+
+    if (!await hasTrashColumns(token)) return NextResponse.json({ error: "ゴミ箱用のDB更新を先に適用してください。削除は行っていません。" }, { status: 409 })
+    const rows = await sb(`${table}?id=eq.${encodeURIComponent(id)}&deleted_at=is.null`, token, {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ deleted_at: new Date().toISOString() }),
+    })
+    if (!rows?.length) return NextResponse.json({ error: "対象が見つからないか、操作する権限がありません。再読み込みしてください。" }, { status: 404 })
+
+    const row = rows[0]
+    return NextResponse.json({ ok: true, trashed: { type, id: row.id, title: row.title || row.name || row.external_order_ref || `受注 ${row.order_date || row.id}`, deletedAt: row.deleted_at } })
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to delete WORKBOARD data" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const token = await getToken()
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  try {
+    const body = await request.json()
+    const type = body?.type
+    const id = body?.id
+    const table = typeof type === "string" && Object.hasOwn(trashTables, type) ? trashTables[type] : null
+    if (!table || typeof id !== "string" || !id || body?.action !== "restore") return NextResponse.json({ error: "復元対象を確認してください。" }, { status: 400 })
+    if (!await hasTrashColumns(token)) return NextResponse.json({ error: "ゴミ箱用のDB更新が必要です。" }, { status: 409 })
+    const rows = await sb(`${table}?id=eq.${encodeURIComponent(id)}&deleted_at=not.is.null`, token, {
+      method: "PATCH", headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ deleted_at: null }),
+    })
+    if (!rows?.length) return NextResponse.json({ error: "対象が見つからないか、復元する権限がありません。再読み込みしてください。" }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "復元できませんでした。" }, { status: 500 })
+  }
+}
