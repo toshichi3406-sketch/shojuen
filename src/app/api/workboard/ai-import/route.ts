@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+import { priceRecord, importIdentity, tokyoDate } from "../../../../lib/ai-price-review"
 import { buildWorkUpdatePatch, workUpdateValue } from "../../../sales-kanban/work-update"
 import { POST as saveCaseData } from "../data/route"
 import { buildSalesCaseUpdatePatch, SALES_CASE_UPDATE_FIELDS, salesCaseUpdateValue } from "../../../../lib/sales-case-update"
@@ -41,18 +43,20 @@ function decodedCandidate(candidate: any) {
     delete payload._workboard_candidate_type
     return { ...candidate, candidate_type: candidate.payload._workboard_candidate_type, payload }
   }
+  if (candidate?.candidate_type === "price_candidate" && candidate.payload?.price_classification === "proposed") return { ...candidate, payload: { ...candidate.payload, price_classification: "customer_planned" } }
   return candidate
 }
 
 function encodedCandidate(type: string, payload: Record<string, unknown>) {
   const clean = { ...payload }
   delete clean._workboard_candidate_type
+  if (type === "price_candidate" && clean.price_classification === "proposed") clean.price_classification = "customer_planned"
   return ["new_sales_case","sales_case_update"].includes(type)
     ? { candidate_type: "decision", payload: { ...clean, _workboard_candidate_type: type } }
     : { candidate_type: type, payload: clean }
 }
 
-const APPLIED_NOTE = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
+const APPLIED_NOTE = /標準卸価格へ反映|価格案として保存|正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
 const APPLYING_NOTE = "正式反映処理中:"
 
 export async function GET() {
@@ -144,6 +148,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const priorRows: any[] = []
+    for (let offset = 0; ; offset += 1000) {
+      const page = await sb(`ai_import_candidates?select=id,candidate_type,target_id,title,payload&order=id.asc&limit=1000&offset=${offset}`, token)
+      priorRows.push(...(page || []))
+      if (!page || page.length < 1000) break
+    }
+    const fingerprint = (candidate: any) => createHash("sha256").update(importIdentity(candidate)).digest("hex")
+    const known = new Set((priorRows || []).map((row: any) => row.payload?._import_fingerprint || fingerprint(decodedCandidate(row))))
+    const freshCandidates = candidates.filter((candidate: any) => {
+      const key = fingerprint(candidate)
+      if (known.has(key)) return false
+      known.add(key)
+      return true
+    })
+    const skippedCount = candidates.length - freshCandidates.length
+    if (!freshCandidates.length) return NextResponse.json({ ok: true, candidateCount: 0, skippedCount })
+
     const insertedBatch = await sb("ai_import_batches", token, {
       method: "POST",
       headers: { Prefer: "return=representation" },
@@ -165,9 +186,9 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(
-        candidates.map((candidate: any) => ({
+        freshCandidates.map((candidate: any) => ({
           batch_id: batch.id,
-          ...encodedCandidate(candidate.candidate_type, candidate.payload && typeof candidate.payload === "object" && !Array.isArray(candidate.payload) ? candidate.payload : {}),
+          ...encodedCandidate(candidate.candidate_type, { ...(candidate.payload && typeof candidate.payload === "object" && !Array.isArray(candidate.payload) ? candidate.payload : {}), _import_fingerprint: fingerprint(candidate) }),
           target_id: candidate.target_id || null,
           title: candidate.title.trim(),
           confidence: candidate.confidence == null ? null : Number(candidate.confidence),
@@ -176,7 +197,7 @@ export async function POST(request: NextRequest) {
       ),
     })
 
-    return NextResponse.json({ ok: true, batchId: batch.id, candidateCount: candidates.length })
+    return NextResponse.json({ ok: true, batchId: batch.id, candidateCount: freshCandidates.length, skippedCount })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to import AI summary" },
@@ -200,7 +221,7 @@ export async function PATCH(request: NextRequest) {
       const rows = await sb(`ai_import_candidates?select=*&id=eq.${encodeURIComponent(id)}&limit=1`, token)
       const candidate = Array.isArray(rows) ? decodedCandidate(rows[0]) : null
       if (!candidate) return NextResponse.json({ error: "候補が見つかりません。" }, { status: 404 })
-      const applied = /正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
+      const applied = /標準卸価格へ反映|価格案として保存|正式業務|既存取引先|新規取引先|既存商品|新規商品|原価履歴へ反映|取引先価格履歴へ反映|送料マスタへ反映|業務履歴へ反映|既存業務 .* を更新|案件BOX .* を作成|既存案件BOX .* を更新/
       if (applied.test(candidate.decision_note || "") || String(candidate.decision_note || "").startsWith(APPLYING_NOTE)) {
         return NextResponse.json({ error: "正式反映済みの候補は編集できません。反映先の業務・履歴・マスタで修正してください。" }, { status: 409 })
       }
@@ -722,7 +743,59 @@ export async function PUT(request: NextRequest) {
 
 
     if (candidateType === "price_candidate") {
-      const classification = String(payload.price_classification || "")
+      const classification = String(payload.price_classification || "") === "proposed" ? "customer_planned" : String(payload.price_classification || "")
+
+      if (["standard_wholesale", "customer_planned"].includes(classification)) {
+        let record: ReturnType<typeof priceRecord>
+        try { record = priceRecord(payload, classification === "standard_wholesale" ? "standard" : "plan") }
+        catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "価格を確認してください。" }, { status: 400 }) }
+        if (record.mode === "standard" && record.effectiveFrom > tokyoDate(now)) return NextResponse.json({ error: "将来適用の価格は価格案として保存してください。現在価格にはまだ反映できません。" }, { status: 400 })
+        const productRows = await sb(`products?select=id,name,standard_wholesale_price,updated_at&id=eq.${encodeURIComponent(record.productId)}&deleted_at=is.null&limit=1`, token)
+        const product = productRows?.[0]
+        if (!product) return NextResponse.json({ error: "商品が見つかりません。" }, { status: 404 })
+        if (record.customerId) {
+          const customers = await sb(`customers?select=id&id=eq.${encodeURIComponent(record.customerId)}&deleted_at=is.null&limit=1`, token)
+          if (!customers?.length) return NextResponse.json({ error: "取引先が見つかりません。" }, { status: 404 })
+        }
+        if (record.salesCaseId) {
+          const cases = await sb(`sales_cases?select=id,customer_id&id=eq.${encodeURIComponent(record.salesCaseId)}&deleted_at=is.null&limit=1`, token)
+          if (!cases?.length || cases[0].customer_id !== record.customerId) return NextResponse.json({ error: "案件と取引先が一致しません。" }, { status: 400 })
+        }
+        if (record.mode === "standard" && (!Object.prototype.hasOwnProperty.call(body, "expectedStandardPrice") || String(product.standard_wholesale_price || "") !== String(body.expectedStandardPrice || ""))) {
+          return NextResponse.json({ error: "標準卸価格が変更されています。商品マスタを再読み込みして確認してください。" }, { status: 409 })
+        }
+        await claimCandidate()
+        let previousPrice = product.standard_wholesale_price
+        if (record.mode === "standard") {
+          const version = product.updated_at == null ? "updated_at=is.null" : "updated_at=eq." + encodeURIComponent(product.updated_at)
+          const saved = await sb(`products?id=eq.${encodeURIComponent(record.productId)}&deleted_at=is.null&${version}`, token, {
+            method: "PATCH", headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ standard_wholesale_price: `${record.amount.toLocaleString("ja-JP")} ${record.currency}/${record.unit}`, updated_at: now }),
+          })
+          if (!saved?.length) {
+            await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, { method: "PATCH", body: JSON.stringify({ decision_note: applyCandidate.decision_note }) })
+            return NextResponse.json({ error: "商品が別の操作で変更されています。再読み込みしてください。" }, { status: 409 })
+          }
+        }
+        // Price plans are note events, never quotes or adopted prices. Existing event storage preserves provenance.
+        let warning = ""
+        try {
+          await sb("work_events?on_conflict=id", token, {
+            method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+            body: JSON.stringify({ id, sales_case_id: record.salesCaseId || null, event_type: "note", event_date: now,
+              source: "ai_import", source_candidate_id: id, note: JSON.stringify({ ...record, previousPrice }) }),
+          })
+        } catch (error) {
+          if (record.mode === "plan") throw error
+          warning = "標準卸価格は更新済みですが採用履歴の保存結果を確認してください。"
+        }
+        const decisionNote = record.mode === "standard" ? `標準卸価格へ反映（${record.productId}）` : `価格案として保存（${record.scope} / ${record.productId}）`
+        await sb(`ai_import_candidates?id=eq.${encodeURIComponent(id)}`, token, {
+          method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "approved", reviewed_at: now,
+            payload: { ...payload, product_id: record.productId, customer_id: record.customerId || null, previous_standard_price: previousPrice, saved_at: now }, decision_note: decisionNote }),
+        })
+        return NextResponse.json({ ok: true, decisionNote, warning, productId: record.productId })
+      }
 
       if (classification === "supplier_cost") {
         const productId = String(payload.product_id || "").trim()

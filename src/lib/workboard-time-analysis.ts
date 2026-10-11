@@ -1,3 +1,4 @@
+import { parsePriceRecord } from "./ai-price-review"
 export const CASE_STAGES = ["uncontacted","initial_sent","replied","qualifying","quoted","sample_requested","sample_sent","considering","won","lost","hold"] as const
 export type StageRecord = {
   kind: "sales_stage_v1"; phase: "pending" | "committed" | "aborted"; from: string | null; to: string;
@@ -40,6 +41,8 @@ export function resolvedStageEvents(events: AnalysisEvent[]) {
 }
 
 export function displayActivityNote(note: string, labels: Record<string, string>) {
+  const price = parsePriceRecord(note)
+  if (price) return price.text
   const row = parseStageRecord(note)
   if (!row) return note
   const change = row.from === null ? "案件作成: " : `段階変更: ${labels[row.from] || row.from} → `
