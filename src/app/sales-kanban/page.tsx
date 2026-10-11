@@ -2107,6 +2107,7 @@ export default function SalesKanbanPage() {
       setWonFollowupSource(null)
       setPostOrderFollowupSource(null)
       setAiImportJson("")
+      setSnapshotJson("")
       setAiReviewError("")
       setAiLoadError("")
       setAiCandidates([])
