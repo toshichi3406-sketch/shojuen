@@ -1,5 +1,7 @@
 "use client"
 
+import { EventWorkReview } from "./event-work-review"
+import { EventWorkDraft, eventWorkPatch } from "../../lib/ai-work-event"
 import { PriceReviewForm } from "./price-review-form"
 import { tokyoDate, parsePriceRecord } from "../../lib/ai-price-review"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
@@ -383,6 +385,7 @@ export default function SalesKanbanPage() {
   const [aiMatchCase, setAiMatchCase] = useState<Record<string, string>>({})
   const [aiMatchWork, setAiMatchWork] = useState<Record<string, string>>({})
   const [aiEventTarget, setAiEventTarget] = useState<Record<string, string>>({})
+  const [aiEventWorkDraft, setAiEventWorkDraft] = useState<Record<string, EventWorkDraft>>({})
   const [aiNewWorkStatus, setAiNewWorkStatus] = useState<Record<string, Status>>({})
   const [aiMatchProducts, setAiMatchProducts] = useState<Record<string, string[]>>({})
   const [aiPriceClass, setAiPriceClass] = useState<Record<string, string>>({})
@@ -957,6 +960,7 @@ export default function SalesKanbanPage() {
       setAiShippingStage((current) => ({ ...current, [saved.id]: "" }))
       setAiShippingDraft((current) => ({ ...current, [saved.id]: {} }))
       setAiPriceDraft((current) => ({ ...current, [saved.id]: {} }))
+      setAiEventWorkDraft(current => { const next = { ...current }; delete next[saved.id]; return next })
       setAiCostRows((current) => { const next = { ...current }; delete next[saved.id]; return next })
       setAiStatusFilter("pending")
       setAiTypeFilter("all")
@@ -984,6 +988,10 @@ export default function SalesKanbanPage() {
       if (!work.some((item) => item.id === id)) { setAiReviewError("業務を選び直してください。"); return }
       payload.work_item_id = id
     } else if (target) { setAiReviewError("紐づけ先を選び直してください。"); return }
+    let workUpdate: Record<string, string | null> | null = null
+    try { if (payload.work_item_id) workUpdate = eventWorkPatch(aiEventWorkDraft[candidate.id] || {}) }
+    catch (error) { setAiReviewError(error instanceof Error ? error.message : "業務の変更内容を確認してください。"); return }
+    const currentWork = work.find(item => item.id === payload.work_item_id)
     aiReviewLock.current = true
     setAiReviewBusy(true)
     setAiReviewError("")
@@ -992,12 +1000,12 @@ export default function SalesKanbanPage() {
       const response = await workboardFetch("/api/workboard/ai-import", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: candidate.id, candidate_type: "work_event", title: candidate.title, payload }),
+        body: JSON.stringify({ id: candidate.id, candidate_type: "work_event", title: candidate.title, payload, workUpdate, workUpdateConfirmed: Boolean(aiEventWorkDraft[candidate.id]?.confirmed), expectedWork: currentWork ? { status: currentWork.status, next_action: currentWork.nextAction || null } : undefined }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error || "活動履歴を反映できませんでした。")
       setAiCandidates((current) => current.map((item) => item.id === candidate.id ? { ...item, status: "approved", decision_note: result.decisionNote || "業務履歴へ反映" } : item))
-      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の活動履歴は保存済みです。紐づけを変える場合は活動履歴の「案件の紐づけを変更」を使ってください。" : result.salesCaseId ? "案件に紐づけて活動履歴を保存しました。" : result.workId ? "業務に紐づけて活動履歴を保存しました。" : "単独の活動履歴として保存しました。"))
+      setAiEditMessage(result.warning || (result.alreadyApplied ? "この候補の活動履歴は保存済みです。紐づけを変える場合は活動履歴の「案件の紐づけを変更」を使ってください。" : result.workUpdated ? "活動履歴を保存し、業務の状態・次のアクションを更新しました。" : result.salesCaseId ? "案件に紐づけて活動履歴を保存しました。" : result.workId ? "業務に紐づけて活動履歴を保存しました。" : "単独の活動履歴として保存しました。"))
       await refreshSharedAfterWrite()
     } catch (error) {
       setAiReviewError(error instanceof Error ? error.message : "活動履歴を反映できませんでした。")
@@ -3782,7 +3790,7 @@ export default function SalesKanbanPage() {
                                     <select
                                       aria-label="活動履歴の紐づけ先"
                                       value={aiEventTarget[candidate.id] || ""}
-                                      onChange={(e) => setAiEventTarget((current) => ({ ...current, [candidate.id]: e.target.value }))}
+                                      onChange={(e) => { setAiEventTarget((current) => ({ ...current, [candidate.id]: e.target.value })); setAiEventWorkDraft(current => ({ ...current, [candidate.id]: {} })) }}
                                       className="mb-2 h-9 w-full rounded-lg border border-white/10 bg-[#0d0f0d] px-2 text-xs"
                                     >
                                       <option value="">単独の活動履歴として保存</option>
@@ -3794,8 +3802,14 @@ export default function SalesKanbanPage() {
                                       </optgroup>
                                     </select>
                                     <p className="text-[10px] leading-4 text-white/35">
-                                      提案・メール送信・返答などの商談履歴は案件へ紐づけます。W番号は業務管理の別の業務です。未選択なら単独履歴として保存します。
+                                      商談の進展は案件、資料取得・発送準備などの作業の進捗は業務へ紐づけます。未選択なら単独履歴として保存します。
                                     </p>
+                                    {(() => {
+                                      const target = aiEventTarget[candidate.id] || ""
+                                      const item = target.startsWith("work:") ? work.find(row => row.id === target.slice(5)) : undefined
+                                      const proposal = candidate.payload?.work_update
+                                      return item ? <EventWorkReview work={item} draft={aiEventWorkDraft[candidate.id] || {}} suggestion={proposal && typeof proposal === "object" && !Array.isArray(proposal) && (!candidate.payload?.work_item_id || candidate.payload.work_item_id === item.id) ? proposal as Record<string, unknown> : undefined} disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onChange={draft => setAiEventWorkDraft(current => ({ ...current, [candidate.id]: draft }))} /> : null
+                                    })()}
                                   </>
                                 )}
 
@@ -3824,7 +3838,7 @@ export default function SalesKanbanPage() {
                               {!isAiCandidateApplied(candidate.decision_note) && <button type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)} onClick={() => openAiCandidateEditor(candidate)} className="rounded-full border border-white/15 px-4 py-2 text-xs text-white/80">候補を編集</button>}
                               {(candidate.candidate_type === "new_work" || candidate.candidate_type === "work_event" || candidate.candidate_type === "customer_update" || candidate.candidate_type === "product_update") && (
                                 <button
-                                  type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note)}
+                                  type="button" disabled={aiReviewBusy || isAiCandidateApplied(candidate.decision_note) || (candidate.candidate_type === "work_event" && (aiEventTarget[candidate.id] || "").startsWith("work:") && Boolean(aiEventWorkDraft[candidate.id]?.status || aiEventWorkDraft[candidate.id]?.updateNextAction) && !aiEventWorkDraft[candidate.id]?.confirmed)}
                                   onClick={() => applyAiCandidate(candidate).catch((error) => alert(error instanceof Error ? error.message : "正式反映に失敗しました。"))}
                                   className="rounded-full bg-[#eef3ea] px-4 py-2 text-xs font-semibold text-[#11150f]"
                                 >
@@ -3832,7 +3846,9 @@ export default function SalesKanbanPage() {
                                     ? "単独履歴として反映"
                                     : candidate.candidate_type === "work_event" && (aiEventTarget[candidate.id] || "").startsWith("sales:")
                                       ? "案件へ履歴を反映"
-                                      : candidate.candidate_type === "customer_update" && !candidateCustomer(candidate)
+                                      : candidate.candidate_type === "work_event" && (aiEventTarget[candidate.id] || "").startsWith("work:")
+                                      ? (aiEventWorkDraft[candidate.id]?.status || aiEventWorkDraft[candidate.id]?.updateNextAction ? "活動を記録して業務を更新" : "業務へ履歴を反映")
+                                    : candidate.candidate_type === "customer_update" && !candidateCustomer(candidate)
                                       ? "新規取引先として反映"
                                       : candidate.candidate_type === "product_update" && !candidateProducts(candidate).length
                                         ? "新規商品として反映"

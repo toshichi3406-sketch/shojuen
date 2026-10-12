@@ -1,5 +1,5 @@
 SHOJUEN WORKBOARD 日報JSON用 共通プロンプト
-仕様版：2026-10-11／案件BOX作成・更新対応
+仕様版：2026-10-12／活動履歴と業務の同時更新対応
 
 Claudeへの設定方法
 以下の「登録する指示」をClaudeのプロジェクト指示へ貼り付けてください。メモリだけに全文保持を任せず、このファイルをプロジェクト資料にも追加してください。短いメモリには「日報JSONと言われたらSHOJUEN WORKBOARDの共通プロンプトを参照し、会話中の明示された事実・提案を候補JSONへ整理する」と記録してください。
@@ -67,6 +67,10 @@ work_item_id、sales_case_id、event_type、event_date、channel、direction、c
 event_typeはemail_sent（Email送信）、contact_sent（その他連絡）、reply_received（返信・反応）、contact_received（受信）、quote_sent（見積送付）、sample_sent（サンプル発送）、note（その他）。判別できなければnoteを使う。
 directionはoutbound/inbound/internalから事実に合わせて指定。相手名を会社名や案件の顧客から推測しない。販売案件に紐づく仕入先への連絡なら、相手は実際の仕入先。
 event_dateを省略すると現実装では反映日時が記録されるので、日時不明ならnoteに「元の実施日時は要確認」と明記する。
+活動の結果、既存業務の状態や次のアクションを変える必要があると明示された場合は、work_eventのpayloadへwork_update: {status, next_action, reason}を追加できる。これは提案であり、自動反映しない。変更する項目だけを入れ、reasonに活動と変更を結びつける根拠を書く。根拠のない次状態を推測しない。同じ出来事・同じ変更を別のwork_update候補にも重ねて出さない。
+人が取込カードで業務を選択し、提案を入力欄にコピー／修正して、確認チェックを入れた場合だけ活動と業務更新を一緒に保存する。案件・単独の活動へ紐づけたときは業務を更新しない。
+商談の進展（顧客への提案・返信・注文判断）は案件へ、具体的な作業（資料取得・内容確認・発送準備）の進捗は業務へ。業務が関連案件を持つ場合は1件の活動が両方へ紐づくことがあるため、同じ活動を2件作らない。
+業務状態は右へ進む順番ではなく、今の作業・待ち先を表す。催促送信だけなら相手待ちを維持、返答で判断が必要になったなら要判断、資料受領後に確認するなら確認・準備中。履歴は元の実施日時、業務の更新は反映時刻を記録する。過去の活動だからといって現在の業務を当時の状態へ戻さない。
 
 customer_update：取引先の新規登録・連絡先情報の更新。
 既存ならpayload.customer_id。name、country、category、contact_name、email、phone、instagram、linkedin、note。
