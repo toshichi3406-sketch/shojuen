@@ -79,10 +79,10 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
           {locale === "ja" ? "MATCHA WHOLESALER, JAPAN" : m.hero.subtagline}
         </p>
         <h1 className="font-heading mt-5 max-w-3xl text-balance text-3xl font-medium leading-snug tracking-tight text-white sm:text-4xl xl:text-5xl">
-          {locale === "ja" ? "小さな店にも、産地の茶をそのまま。" : m.hero.title}
+          {locale === "ja" ? "茶は、産地の物語ごと。" : m.hero.title}
         </h1>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-stone-200 sm:text-base">
-          {locale === "ja" ? "買い付けた茶は、味を見てから小分けしています。小さなお店にも、大口と同じ条件で。" : m.hero.lead}
+          {locale === "ja" ? "その物語に共感していただける方と、お取引をしております。" : m.hero.lead}
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
