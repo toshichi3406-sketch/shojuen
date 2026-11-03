@@ -808,6 +808,7 @@ export function WholesalePageClient() {
 
       <section className="border-b border-border/70 bg-muted/25">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:py-28">
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
           <FadeIn>
             <p className="text-xs font-medium uppercase tracking-[0.35em] text-primary">
               {t.useKicker}
@@ -819,6 +820,12 @@ export function WholesalePageClient() {
               {t.useLead}
             </p>
           </FadeIn>
+            <FadeIn delay={0.08}>
+              <div className="relative aspect-[2/3] max-h-[560px] overflow-hidden rounded-[2rem] bg-muted">
+                <Image src="/images/matcha-swatch-light.jpg" alt={{ ja: "和紙の上で色と質感を確かめる抹茶の色見本", en: "Matcha powder spread on paper to examine its color and texture", zh: "在和紙上觀察色澤與質感的抹茶粉" }[locale]} fill sizes="(min-width: 1024px) 42vw, 100vw" className="object-cover" />
+              </div>
+            </FadeIn>
+          </div>
 
           <div className="mt-12 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
             {t.uses.map((item, i) => (
