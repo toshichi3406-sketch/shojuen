@@ -19,11 +19,11 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
   const logo = (className: string) => (
     <Image src="/images/shojuen-logo.png" alt="SHOJUEN MATCHA" width={1536} height={1024} priority className={className} />
   )
-  const video = (background = false) => (
+  const video = (background = false, className?: string) => (
     <video
-      className={background
+      className={cn(background
         ? "absolute inset-0 h-full w-full scale-110 object-cover blur-[48px] brightness-[0.4]"
-        : "absolute inset-0 h-full w-full object-contain object-center"}
+        : "absolute inset-0 h-full w-full object-contain object-center", className)}
       poster={siteImages.hero}
       autoPlay={!reduceMotion}
       muted loop playsInline preload="metadata" aria-hidden
@@ -82,18 +82,15 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
         </nav>
       )}
       {split ? (
-        <section aria-label="SHOJUEN" className="mx-auto grid max-w-[1600px] lg:min-h-[min(calc(100svh-120px),880px)] lg:grid-cols-[1.15fr_1fr]">
-          <div className="relative isolate overflow-hidden">
-            {video(true)}
-            <div className="pointer-events-none absolute inset-0 bg-black/70" aria-hidden />
-            <div className="relative z-10 flex h-full flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-8">
-              {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
-              {copy}
-            </div>
+        <section aria-label="SHOJUEN" className="relative isolate overflow-hidden lg:flex lg:h-[clamp(640px,calc(100svh-120px),880px)]">
+          {video(true, "blur-[32px] brightness-[0.6]")}
+          <div className="pointer-events-none absolute inset-0 bg-black/55" aria-hidden />
+          <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-8">
+            {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
+            {copy}
           </div>
-          <div className="relative h-[65svh] overflow-hidden bg-stone-950 lg:h-auto lg:min-h-[640px]">
-            {video(true)}
-            {video()}
+          <div className="relative z-10 h-[65svh] w-full lg:aspect-[9/16] lg:h-full lg:w-auto lg:shrink-0">
+            {video(false, "object-right")}
           </div>
         </section>
       ) : (
