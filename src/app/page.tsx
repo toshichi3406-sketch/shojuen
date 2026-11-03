@@ -6,10 +6,12 @@ import { LatestArticles } from "@/components/home/latest-articles"
 import { MatchaVisualGallery } from "@/components/home/matcha-visual-gallery"
 import { ProducersPreview } from "@/components/home/producers-preview"
 
-export default function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ hero?: string }> }) {
+  const { hero } = await searchParams
+  const preview = hero === "ambient" || hero === "split"
   return (
     <>
-      <HeroSection />
+      <HeroSection variant={hero === "split" ? "split" : "ambient"} preview={preview} />
       <HomeStorySection />
       <WholesaleBanner />
       <MatchaVisualGallery />
