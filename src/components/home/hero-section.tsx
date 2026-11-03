@@ -87,7 +87,8 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
             {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
             {copy}
           </div>
-          <div className="relative h-[65svh] overflow-hidden bg-black lg:h-auto lg:min-h-[640px]">
+          <div className="relative h-[65svh] overflow-hidden bg-stone-950 lg:h-auto lg:min-h-[640px]">
+            {video(true)}
             {video()}
           </div>
         </section>
