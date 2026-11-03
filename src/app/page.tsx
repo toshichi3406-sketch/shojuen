@@ -11,7 +11,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const preview = hero === "ambient" || hero === "split"
   return (
     <>
-      <HeroSection variant={hero === "split" ? "split" : "ambient"} preview={preview} />
+      <HeroSection variant={hero === "ambient" ? "ambient" : "split"} preview={preview} />
       <HomeStorySection />
       <WholesaleBanner />
       <MatchaVisualGallery />
