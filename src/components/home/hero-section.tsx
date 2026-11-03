@@ -1,8 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
-import { motion, useScroll, useTransform } from "framer-motion"
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion"
 import { useRef } from "react"
 import { ArrowDownIcon } from "lucide-react"
 
@@ -15,6 +14,7 @@ import { trackLeadEvent } from "@/lib/lead-tracking"
 
 export function HeroSection() {
   const { locale, m, hrefForLocale } = useLanguage()
+  const reduceMotion = useReducedMotion()
   const sectionRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -40,17 +40,24 @@ export function HeroSection() {
           animate={{ scale: 1 }}
           transition={{ duration: 22, ease: [0.22, 1, 0.36, 1] }}
         >
-          <Image
-            src={siteImages.hero}
-            alt={m.hero.imageAlt}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[50%_32%]"
-          />
+          {/* Muted, looping in-house footage. `playsInline` keeps iOS Safari
+              from taking it full screen; `autoPlay` is dropped when the
+              viewer asks for reduced motion, leaving the poster frame. */}
+          <video
+            className="absolute inset-0 h-full w-full object-cover object-[50%_52%]"
+            poster={siteImages.hero}
+            autoPlay={!reduceMotion}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden
+          >
+            <source src={siteImages.heroVideo} type="video/mp4" />
+          </video>
         </motion.div>
         <div
-          className="absolute inset-0 bg-gradient-to-t from-stone-950/95 via-emerald-950/45 to-stone-900/35"
+          className="absolute inset-0 bg-gradient-to-t from-stone-950/95 via-emerald-950/60 to-stone-900/50"
           aria-hidden
         />
         <div
