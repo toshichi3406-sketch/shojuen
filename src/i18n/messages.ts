@@ -372,11 +372,11 @@ const ja: Messages = {
     introStrong: "第0章",
     introAfter:
       "は、その読み方の地図です。まず A / B / C の大枠を押さえ、農園・製茶所のレシピと向く用途を整理する参照章です。",
-    imageAlt: "複数の抹茶粉の色味を並べた俯瞰のイメージ",
+    imageAlt: "紙の上に並べた三種類の抹茶の色見本",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.ja,
   howToPage: {
-    imageAlt: "茶筅で抹茶を点てる手元のイメージ",
+    imageAlt: "白い器で濃茶を茶筅で練っているところ",
     kicker: "How to",
     title: "点て方・楽しみ方",
     introBefore: "濃茶と薄茶では、湯の量・温度・茶筅の動きの目的がまったく異なります。以下は稽古とカフェ双方で再現しやすい",
@@ -727,11 +727,11 @@ const en: Messages = {
     introStrong: "Chapter 0",
     introAfter:
       " is the map — start with types A / B / C, then read each farm's recipe and best use.",
-    imageAlt: "Overhead view of several heaps of matcha powder in different greens",
+    imageAlt: "Three grades of matcha powder compared side by side on paper",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.en,
   howToPage: {
-    imageAlt: "Hands whisking matcha with a chasen above a chawan",
+    imageAlt: "Whisking thick koicha in a white bowl with a bamboo chasen",
     kicker: "How to",
     title: "How to prepare & enjoy",
     introBefore:
@@ -1067,11 +1067,11 @@ const zh: Messages = {
     introStrong: "第0章",
     introAfter:
       "是閱讀方式的地圖。先掌握 A / B / C 的大框架，再整理各茶園的配方與適合用途。",
-    imageAlt: "並排呈現多種抹茶粉色澤的俯瞰意象",
+    imageAlt: "紙上並排的三種抹茶色樣",
   },
   encyclopediaCh0: matchaEncyclopediaCh0ByLocale.zh,
   howToPage: {
-    imageAlt: "以茶筅點抹茶的手部意象",
+    imageAlt: "在白碗中以茶筅練製濃茶",
     kicker: "How to",
     title: "點茶與品飲方式",
     introBefore:
