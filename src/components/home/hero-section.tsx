@@ -12,7 +12,7 @@ import { trackLeadEvent } from "@/lib/lead-tracking"
 
 type HeroVariant = "ambient" | "split"
 
-export function HeroSection({ variant = "ambient", preview = false }: { variant?: HeroVariant; preview?: boolean }) {
+export function HeroSection({ variant = "split", preview = false }: { variant?: HeroVariant; preview?: boolean }) {
   const { locale, m, hrefForLocale } = useLanguage()
   const reduceMotion = useReducedMotion()
   const split = variant === "split"
@@ -34,9 +34,12 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
   const copy = (
     <div>
         <h1
-          className="max-w-3xl text-xl font-medium leading-relaxed tracking-[0.12em] text-white sm:text-2xl xl:text-3xl"
+          aria-label="MATCHA WHOLESALER, JAPAN"
+          className="relative flex max-w-full flex-col text-[clamp(3rem,6.8vw,8.5rem)] font-black uppercase leading-[0.88] tracking-[-0.07em] text-white"
         >
-          MATCHA WHOLESALER, JAPAN
+          <span aria-hidden="true" className="block">MATCHA</span>
+          <span aria-hidden="true" className="relative z-10 block">WHOLESALER,</span>
+          <span aria-hidden="true" className="relative z-20 -mt-[0.08em] self-end pr-[0.04em] italic">JAPAN</span>
         </h1>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
@@ -70,21 +73,26 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
   return (
     <div className="bg-stone-950">
       {preview && (
-        <nav aria-label="ヒーロー比較" className="flex flex-wrap justify-center gap-2 border-b border-white/10 bg-stone-950 px-4 py-2 text-xs text-white">
+        <nav aria-label="ヒーロー比較" className="hidden flex-wrap justify-center gap-2 border-b border-white/10 bg-stone-950 px-4 py-2 text-xs text-white lg:flex">
           <Link href={hrefForLocale("/?hero=ambient")} aria-current={!split ? "page" : undefined} className={cn("rounded-full px-4 py-2", !split ? "bg-white text-stone-950" : "bg-white/10")}>A：ぼかし背景</Link>
           <Link href={hrefForLocale("/?hero=split")} aria-current={split ? "page" : undefined} className={cn("rounded-full px-4 py-2", split ? "bg-white text-stone-950" : "bg-white/10")}>B：左右分割</Link>
         </nav>
       )}
       {split ? (
         <section aria-label="SHOJUEN" className="relative isolate overflow-hidden lg:flex lg:h-[clamp(640px,calc(100svh-120px),880px)]">
-          {video(true, "blur-[32px] brightness-[0.6]")}
-          <div className="pointer-events-none absolute inset-0 bg-black/55" aria-hidden />
-          <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-8">
+          <div className="absolute inset-0 hidden lg:block" aria-hidden>
+            {video(true, "blur-[32px] brightness-[0.6]")}
+            <div className="absolute inset-0 bg-black/55" />
+          </div>
+          <div className="relative z-10 hidden min-w-0 flex-1 flex-col justify-center px-6 py-10 sm:px-12 lg:flex lg:px-16 lg:py-8">
             {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
             {copy}
           </div>
-          <div className="relative z-10 h-[65svh] w-full lg:aspect-[9/16] lg:h-full lg:w-auto lg:shrink-0">
-            {video(false, "object-right")}
+          <div className="relative z-10 aspect-[9/16] max-h-[calc(100svh-64px)] w-full bg-black lg:h-full lg:max-h-none lg:w-auto lg:shrink-0">
+            {video(false, "object-center lg:object-right")}
+            <div className="absolute inset-0 flex items-center justify-center px-8 lg:hidden">
+              {logo("h-auto w-[min(68vw,300px)] drop-shadow-xl")}
+            </div>
           </div>
         </section>
       ) : (
