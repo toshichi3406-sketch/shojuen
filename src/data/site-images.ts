@@ -1,19 +1,25 @@
 /**
- * AI-generated ceremonial matcha imagery. Each path is used in at most one
- * layout role so the same photo is not repeated across hero, pages, and strips.
+ * Site imagery. Each path is used in at most one layout role so the same
+ * photo is not repeated across hero, pages, and strips.
+ * Entries marked "in-house" are our own photographs; the rest are
+ * AI-generated placeholders still awaiting replacement.
  */
 const img = (name: string) => `/images/${name}` as const
 
 export const siteImages = {
-  /** Full-bleed home hero only */
-  hero: img("hero-ceremonial-matcha-v4.png"),
+  /** Full-bleed home hero — poster frame for `heroVideo` (in-house) */
+  hero: img("hero-matcha-poster.jpg"),
+  /** Full-bleed home hero loop, muted (in-house) */
+  heroVideo: img("hero-matcha.mp4"),
   producersHeader: img("slot-producers-header.png"),
   producersCardPrimary: img("slot-producer-card-1.png"),
   producersCardSecondary: img("slot-producer-card-2.png"),
   previewCardPrimary: img("slot-preview-1.png"),
   previewCardSecondary: img("slot-preview-2-v2.png"),
-  matchaCatalogBanner: img("slot-matcha-catalog-v2.png"),
-  howToHero: img("slot-howto-hero.png"),
+  /** in-house */
+  matchaCatalogBanner: img("matcha-swatches-three.jpg"),
+  /** in-house */
+  howToHero: img("koicha-whisking.jpg"),
 } as const
 
 /**
