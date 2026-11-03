@@ -83,9 +83,13 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
       )}
       {split ? (
         <section aria-label="SHOJUEN" className="mx-auto grid max-w-[1600px] lg:min-h-[min(calc(100svh-120px),880px)] lg:grid-cols-[1.15fr_1fr]">
-          <div className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-8">
-            {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
-            {copy}
+          <div className="relative isolate overflow-hidden">
+            {video(true)}
+            <div className="pointer-events-none absolute inset-0 bg-black/70" aria-hidden />
+            <div className="relative z-10 flex h-full flex-col justify-center px-6 py-10 sm:px-12 lg:px-16 lg:py-8">
+              {logo("mb-6 h-auto w-36 self-center sm:w-44 lg:self-start")}
+              {copy}
+            </div>
           </div>
           <div className="relative h-[65svh] overflow-hidden bg-stone-950 lg:h-auto lg:min-h-[640px]">
             {video(true)}
