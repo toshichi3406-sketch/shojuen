@@ -33,13 +33,8 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
   )
   const copy = (
     <div>
-        <h1
-          aria-label="MATCHA WHOLESALER, JAPAN"
-          className="relative flex max-w-full flex-col text-[clamp(3rem,6.8vw,8.5rem)] font-black uppercase leading-[0.88] tracking-[-0.07em] text-white"
-        >
-          <span aria-hidden="true" className="block">MATCHA</span>
-          <span aria-hidden="true" className="relative z-10 block">WHOLESALER,</span>
-          <span aria-hidden="true" className="relative z-20 -mt-[0.08em] self-end pr-[0.04em] italic">JAPAN</span>
+        <h1 className="whitespace-nowrap text-[10px] font-medium uppercase leading-relaxed tracking-[0.2em] text-white/85 sm:text-xs">
+          MATCHA WHOLESALER, JAPAN
         </h1>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
