@@ -31,7 +31,10 @@ const geistMono = Geist_Mono({
 })
 
 export async function generateMetadata(): Promise<Metadata> {
-  return getSiteMetadata()
+  return {
+    ...(await getSiteMetadata()),
+    verification: { google: "6o-4wNCwadTjkJYYFiwerPwJ-iTngPwMncbsbxmkF4g" },
+  }
 }
 
 export default async function RootLayout({
