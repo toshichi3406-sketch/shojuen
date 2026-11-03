@@ -1,13 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion"
-import { useRef } from "react"
+import { motion, useReducedMotion } from "framer-motion"
 import { ArrowDownIcon } from "lucide-react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { FloatingOrbs } from "@/components/motion/floating-orbs"
 import { useLanguage } from "@/i18n/language-context"
 import { siteImages } from "@/data/site-images"
 import { trackLeadEvent } from "@/lib/lead-tracking"
@@ -15,36 +13,18 @@ import { trackLeadEvent } from "@/lib/lead-tracking"
 export function HeroSection() {
   const { locale, m, hrefForLocale } = useLanguage()
   const reduceMotion = useReducedMotion()
-  const sectionRef = useRef<HTMLElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  })
-  const imageY = useTransform(scrollYProgress, [0, 1], [0, 140])
-  const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.08])
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0])
-  const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -40])
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative flex min-h-[min(92vh,880px)] items-end overflow-hidden bg-stone-950"
-    >
-      <motion.div
-        className="absolute inset-0"
-        style={{ y: imageY, scale: imageScale }}
+    <div className="bg-stone-950">
+      <section
+        aria-label="SHOJUEN"
+        className="relative h-[min(92svh,880px)] overflow-hidden bg-black"
       >
-        <motion.div
-          className="absolute inset-0"
-          initial={{ scale: 1.12 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 22, ease: [0.22, 1, 0.36, 1] }}
-        >
           {/* Muted, looping in-house footage. `playsInline` keeps iOS Safari
               from taking it full screen; `autoPlay` is dropped when the
               viewer asks for reduced motion, leaving the poster frame. */}
           <video
-            className="absolute inset-0 h-full w-full object-cover object-[50%_52%]"
+            className="absolute inset-0 h-full w-full object-contain object-center"
             poster={siteImages.hero}
             autoPlay={!reduceMotion}
             muted
@@ -55,23 +35,15 @@ export function HeroSection() {
           >
             <source src={siteImages.heroVideo} type="video/mp4" />
           </video>
-        </motion.div>
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-stone-950/95 via-emerald-950/60 to-stone-900/50"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,120,80,0.15),_transparent_55%)]"
-          aria-hidden
-        />
-      </motion.div>
+        <div className="pointer-events-none absolute inset-0 bg-black/20" aria-hidden />
+        <div className="absolute inset-0 flex items-center justify-center px-6">
+          <p className="font-heading text-center text-4xl font-medium tracking-[0.18em] text-white drop-shadow-lg sm:text-6xl md:text-7xl">
+            SHOJUEN
+          </p>
+        </div>
+      </section>
 
-      <FloatingOrbs />
-
-      <motion.div
-        className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-20 pt-32 sm:px-6 sm:pb-28"
-        style={{ opacity: contentOpacity, y: contentY }}
-      >
+      <div className="relative mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
         <p className="mb-4 max-w-xl text-xs font-medium uppercase tracking-[0.45em] text-emerald-100/90">
           {m.hero.subtagline}
         </p>
@@ -120,7 +92,7 @@ export function HeroSection() {
           <ArrowDownIcon className="size-4" aria-hidden />
           <span className="tracking-widest">{m.hero.scroll}</span>
         </motion.div>
-      </motion.div>
-    </section>
+      </div>
+    </div>
   )
 }
