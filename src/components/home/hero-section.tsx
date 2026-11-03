@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useReducedMotion } from "framer-motion"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 
 import { buttonVariants } from "@/components/ui/button"
@@ -12,6 +13,55 @@ import { trackLeadEvent } from "@/lib/lead-tracking"
 
 type HeroVariant = "ambient" | "split"
 
+function HeroVideo({ background, className, reduceMotion, playLabel }: {
+  background: boolean; className?: string; reduceMotion: boolean | null; playLabel: string
+}) {
+  const ref = useRef<HTMLVideoElement>(null)
+  const [paused, setPaused] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element || reduceMotion) return
+    element.muted = true
+    element.play().catch(() => setPaused(true))
+  }, [reduceMotion])
+
+  function play() {
+    const element = ref.current
+    if (!element) return
+    if (failed) element.load()
+    setFailed(false)
+    element.muted = true
+    element.play().catch(() => setPaused(true))
+  }
+
+  return (
+    <>
+      <video
+        ref={ref}
+        className={cn(background
+          ? "absolute inset-0 h-full w-full scale-110 object-cover blur-[48px] brightness-[0.4]"
+          : "absolute inset-0 h-full w-full object-contain object-center", className)}
+        poster={siteImages.hero}
+        autoPlay={!reduceMotion}
+        muted loop playsInline preload={background ? "metadata" : "auto"}
+        aria-hidden={background || undefined}
+        onPlaying={() => { setPaused(false); setFailed(false) }}
+        onPause={() => setPaused(true)}
+        onError={() => { setFailed(true); setPaused(true) }}
+      >
+        <source src={siteImages.heroVideo} type="video/mp4" />
+      </video>
+      {!background && paused && (
+        <button type="button" onClick={play} className="absolute bottom-5 right-5 z-30 rounded-full border border-white/40 bg-black/60 px-4 py-2 text-xs text-white backdrop-blur-sm">
+          <span aria-hidden>▶ </span>{playLabel}
+        </button>
+      )}
+    </>
+  )
+}
+
 export function HeroSection({ variant = "split", preview = false }: { variant?: HeroVariant; preview?: boolean }) {
   const { locale, m, hrefForLocale } = useLanguage()
   const reduceMotion = useReducedMotion()
@@ -20,22 +70,20 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
     <Image src="/images/shojuen-logo.png" alt="SHOJUEN MATCHA" width={1536} height={1024} priority className={className} />
   )
   const video = (background = false, className?: string) => (
-    <video
-      className={cn(background
-        ? "absolute inset-0 h-full w-full scale-110 object-cover blur-[48px] brightness-[0.4]"
-        : "absolute inset-0 h-full w-full object-contain object-center", className)}
-      poster={siteImages.hero}
-      autoPlay={!reduceMotion}
-      muted loop playsInline preload="metadata" aria-hidden
-    >
-      <source src={siteImages.heroVideo} type="video/mp4" />
-    </video>
+    <HeroVideo background={background} className={className} reduceMotion={reduceMotion}
+      playLabel={{ ja: "動画を再生", en: "Play video", zh: "播放影片" }[locale]} />
   )
   const copy = (
     <div>
-        <h1 className="whitespace-nowrap text-[10px] font-medium uppercase leading-relaxed tracking-[0.2em] text-white/85 sm:text-xs">
+        <p className="whitespace-nowrap text-[10px] font-medium uppercase leading-relaxed tracking-[0.2em] text-white/85 sm:text-xs">
           MATCHA WHOLESALER, JAPAN
+        </p>
+        <h1 className="font-heading mt-5 max-w-3xl text-3xl font-medium leading-snug tracking-tight text-white sm:text-4xl xl:text-5xl">
+          小さな店にも、産地の茶をそのまま。
         </h1>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-stone-200 sm:text-base">
+          買い付けた茶は、味を見てから小分けしています。小さなお店にも、大口と同じ条件で。
+        </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href={hrefForLocale("/wholesale")}
@@ -74,6 +122,7 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
         </nav>
       )}
       {split ? (
+        <div>
         <section aria-label="SHOJUEN" className="relative isolate overflow-hidden lg:flex lg:h-[clamp(640px,calc(100svh-120px),880px)]">
           <div className="absolute inset-0 hidden lg:block" aria-hidden>
             {video(true, "blur-[32px] brightness-[0.6]")}
@@ -86,10 +135,12 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
           <div className="relative z-10 aspect-[9/16] max-h-[calc(100svh-64px)] w-full bg-black lg:h-full lg:max-h-none lg:w-auto lg:shrink-0">
             {video(false, "object-center lg:object-right")}
             <div className="absolute inset-0 flex items-center justify-center px-8 lg:hidden">
-              {logo("h-auto w-[min(68vw,300px)] drop-shadow-xl")}
+              {logo("h-auto w-[min(48vw,210px)] drop-shadow-xl")}
             </div>
           </div>
         </section>
+        <div className="px-6 py-10 lg:hidden">{copy}</div>
+        </div>
       ) : (
         <>
           <section aria-label="SHOJUEN" className="relative h-[min(calc(100svh-120px),880px)] min-h-80 overflow-hidden bg-stone-950">
