@@ -76,13 +76,13 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
   const copy = (
     <div>
         <p className="whitespace-nowrap text-[10px] font-medium uppercase leading-relaxed tracking-[0.2em] text-white/85 sm:text-xs">
-          MATCHA WHOLESALER, JAPAN
+          {locale === "ja" ? "MATCHA WHOLESALER, JAPAN" : m.hero.subtagline}
         </p>
         <h1 className="font-heading mt-5 max-w-3xl text-balance text-3xl font-medium leading-snug tracking-tight text-white sm:text-4xl xl:text-5xl">
-          小さな店にも、産地の茶をそのまま。
+          {locale === "ja" ? "小さな店にも、産地の茶をそのまま。" : m.hero.title}
         </h1>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-stone-200 sm:text-base">
-          買い付けた茶は、味を見てから小分けしています。小さなお店にも、大口と同じ条件で。
+          {locale === "ja" ? "買い付けた茶は、味を見てから小分けしています。小さなお店にも、大口と同じ条件で。" : m.hero.lead}
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
