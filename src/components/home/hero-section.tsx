@@ -78,7 +78,7 @@ export function HeroSection({ variant = "split", preview = false }: { variant?: 
         <p className="whitespace-nowrap text-[10px] font-medium uppercase leading-relaxed tracking-[0.2em] text-white/85 sm:text-xs">
           MATCHA WHOLESALER, JAPAN
         </p>
-        <h1 className="font-heading mt-5 max-w-3xl text-3xl font-medium leading-snug tracking-tight text-white sm:text-4xl xl:text-5xl">
+        <h1 className="font-heading mt-5 max-w-3xl text-balance text-3xl font-medium leading-snug tracking-tight text-white sm:text-4xl xl:text-5xl">
           小さな店にも、産地の茶をそのまま。
         </h1>
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-stone-200 sm:text-base">
