@@ -33,17 +33,11 @@ export function HeroSection({ variant = "ambient", preview = false }: { variant?
   )
   const copy = (
     <div>
-        <p className="mb-4 max-w-xl text-xs font-medium uppercase tracking-[0.45em] text-emerald-100/90">
-          {m.hero.subtagline}
-        </p>
         <h1
-          className="font-heading max-w-3xl text-4xl font-medium leading-[1.15] tracking-wide text-white drop-shadow-sm sm:text-5xl md:text-6xl"
+          className="max-w-3xl text-xl font-medium leading-relaxed tracking-[0.12em] text-white sm:text-2xl xl:text-3xl"
         >
-          {m.hero.title}
+          MATCHA WHOLESALER, JAPAN
         </h1>
-        <p className="mt-6 max-w-2xl text-base leading-relaxed text-stone-200/95 sm:text-lg">
-          {m.hero.lead}
-        </p>
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href={hrefForLocale("/wholesale")}
