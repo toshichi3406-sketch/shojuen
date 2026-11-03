@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import type { Locale } from "@/i18n/types"
 import { localizePath, stripLocalePrefix } from "@/i18n/routing"
 
-export const SITE_ORIGIN = "https://ochanoshojuen.com"
+export const SITE_ORIGIN = "https://www.ochanoshojuen.com"
 
 type SeoText = {
   title: string
