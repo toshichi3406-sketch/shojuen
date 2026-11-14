@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { FadeIn } from "@/components/motion/fade-in"
 import { buttonVariants } from "@/components/ui/button"
+import { qualificationCopy } from "@/data/wholesale-inquiry"
 import { getContactEmail } from "@/data/site-contact"
 import { useLanguage } from "@/i18n/language-context"
 import type { Locale } from "@/i18n/types"
@@ -68,7 +69,6 @@ type WholesaleCopy = {
   inquiryKicker: string
   inquiryTitle: string
   inquiryBody: string
-  inquiryFields: readonly string[]
   inquiryCta: string
 }
 
@@ -215,20 +215,13 @@ const copy: Record<Locale, WholesaleCopy> = {
       {
         question: "最初の問い合わせでは何を伝えればいいですか？",
         answer:
-          "会社・ブランド名、納品国、用途、月間のおおよその使用量、ご希望の価格帯が分かるとスムーズです。未定の項目があっても構いません。",
+          "会社・ブランド名、納品国、用途、希望商品に加え、今回のご希望、事業の状況、採用する場合の初回仕入れ予定量（サンプルを除く）、購入・導入の希望時期を伺います。月間使用量、サンプルのご希望、希望価格帯、ご相談内容は任意です。数量と時期が未定の場合は「未定」を選べます。",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "お探しの用途を、まずはお聞かせください。",
     inquiryBody:
       "品種名やグレードが分からなくても問題ありません。用途と条件を伺いながら、候補を整理してご提案します。",
-    inquiryFields: [
-      "会社・ブランド名",
-      "納品国",
-      "用途",
-      "月間のおおよその使用量",
-      "ご希望の価格帯（あれば）",
-    ],
     inquiryCta: "卸売について問い合わせる",
   },
   en: {
@@ -357,14 +350,13 @@ const copy: Record<Locale, WholesaleCopy> = {
       {
         question: "What should I include in my first inquiry?",
         answer:
-          "Company or brand name, destination country, intended use, approximate monthly volume and target price are helpful. It is fine if some details are still undecided.",
+          "We ask for your company or brand, destination country, use, product, inquiry purpose, business stage, expected first order excluding samples, and purchase timing. Monthly volume, sample preferences, target price and a message are optional. You can select “Not decided yet” for quantity and timing.",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "Tell us the cup you want to make.",
     inquiryBody:
       "You do not need to know the cultivar or grade in advance. We can narrow the options with you.",
-    inquiryFields: ["Company / brand", "Destination country", "Use", "Approx. monthly volume", "Target price, if any"],
     inquiryCta: "Email wholesale inquiry",
   },
   zh: {
@@ -509,20 +501,13 @@ const copy: Record<Locale, WholesaleCopy> = {
       {
         question: "第一次詢問需要提供哪些資訊？",
         answer:
-          "公司或品牌名稱、出貨目的地、用途、預估每月用量與預算會很有幫助。若有尚未決定的項目，也可以先洽詢。",
+          "我們會詢問公司或品牌名稱、出貨目的地、用途、希望商品、諮詢目的、事業階段、首次採購量（不含樣品）及希望採購時間。每月用量、樣品需求、目標價格與諮詢內容為選填。數量與時間可選擇「尚未決定」。",
       },
     ],
     inquiryKicker: "START A CONVERSATION",
     inquiryTitle: "先告訴我們，您想做什麼樣的產品。",
     inquiryBody:
       "不需要先知道品種或等級。我們會依用途與條件，協助整理並提出適合的選項。",
-    inquiryFields: [
-      "公司 / 品牌名稱",
-      "出貨目的地",
-      "用途",
-      "預估每月用量",
-      "預算或目標價格（如有）",
-    ],
     inquiryCta: "洽詢批發與出口",
   },
 
@@ -541,8 +526,12 @@ function PhotoCaption({
 }
 
 export function WholesalePageClient() {
-  const { locale, hrefForLocale } = useLanguage()
+  const { locale, hrefForLocale, m } = useLanguage()
   const t = copy[locale]
+  const q = qualificationCopy[locale]
+  const f = m.contactPage.form
+  const requiredFields = [f.company, f.country, f.useCase, f.product, q.purpose, q.stage, q.initialOrder, q.timing]
+  const optionalFields = [f.volume, q.sample, q.budget, f.message]
   const email = getContactEmail()
   const contactHref = hrefForLocale("/contact?from=wholesale")
 
@@ -1038,20 +1027,17 @@ export function WholesalePageClient() {
               </div>
 
               <div className="border-t border-border pt-6 lg:border-l lg:border-t-0 lg:pl-9 lg:pt-0">
-                <p className="text-sm font-medium text-foreground">
-                  {locale === "ja"
-                    ? "分かる範囲で教えてください"
-                    : locale === "zh"
-                      ? "提供目前已知的資訊即可"
-                      : "Share what you know"}
-                </p>
-                <div className="mt-5 space-y-4">
-                  {t.inquiryFields.map((field, i) => (
-                    <div key={field} className="flex gap-3 text-sm">
-                      <span className="font-mono text-xs text-primary">
-                        0{i + 1}
-                      </span>
-                      <span className="text-muted-foreground">{field}</span>
+                <p className="text-sm leading-relaxed text-muted-foreground">{q.intro}</p>
+                <div className="mt-5 space-y-6">
+                  {[
+                    { label: q.required, fields: requiredFields },
+                    { label: f.optional, fields: optionalFields },
+                  ].map(group => (
+                    <div key={group.label}>
+                      <h3 className="text-sm font-medium text-foreground">{group.label}</h3>
+                      <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                        {group.fields.map(field => <li key={field}>{field}</li>)}
+                      </ul>
                     </div>
                   ))}
                 </div>
