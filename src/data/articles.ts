@@ -49,6 +49,26 @@ export const articles: Article[] = [
   "readMinutes": 3
 },
   {
+  "slug": "field-note-table-tea-20260705",
+  "title": {
+    "ja": "一杯のお茶で、自分にも、誰かにもいたわりを。",
+    "en": "A Cup of Tea, a Gesture of Care",
+    "ko": "한 잔의 차로, 나에게도 누군가에게도 다정함을"
+  },
+  "excerpt": {
+    "ja": "7月5日、テーブル茶道へ。先生のおもてなしと冷たい抹茶、そしてラテ用抹茶の試飲を通して、お茶の楽しみ方を考えました。",
+    "en": "A table-style tea ceremony on July 5: hospitality, cold matcha, and a tasting that explored how serving style brings out different strengths.",
+    "ko": "7월 5일의 테이블 다도. 선생님의 환대와 차가운 말차, 라테용 말차 시음을 통해 차를 즐기는 방법을 생각했습니다."
+  },
+  "category": {
+    "ja": "お茶のある時間",
+    "en": "Moments with Tea",
+    "ko": "차와 함께하는 시간"
+  },
+  "publishedAt": "2026-07-05",
+  "readMinutes": 4
+},
+  {
     slug: "field-note-takeo-chawan-kiln",
     title: {
       ja: "佐賀の焼き物と、有田の窯元 — 抹茶椀を巡る取材ノート",

@@ -30,6 +30,45 @@ const takeoChawan = (name: string) =>
   `/images/journal/takeo_chawan_20260624/${name}` as const
 
 export const journalArticleMedia: Record<string, JournalArticleMedia> = {
+  "field-note-table-tea-20260705": {
+  "hero": {
+    "src": "/images/journal/table_tea_20260705/01-pouring.webp",
+    "aspectRatio": "1567 / 1045",
+    "captionJa": "ガラスの器へ。涼やかな一杯を分かち合う。",
+    "captionEn": "Pouring a refreshing cup to share.",
+    "captionKo": "시원한 한 잔을 함께 나누며.",
+    "captionZh": "倒入玻璃杯中，分享清涼的一杯。"
+  },
+  "figures": [
+    {
+      "src": "/images/journal/table_tea_20260705/02-whisking.webp",
+      "aspectRatio": "1045 / 1567",
+      "captionJa": "テーブルを囲み、先生がお茶を点ててくださる時間。",
+      "captionEn": "Our teacher prepares matcha as we gather around the table.",
+      "captionKo": "테이블에 둘러앉아 선생님이 말차를 준비해 주시는 시간.",
+      "captionZh": "圍坐桌旁，老師為我們點茶的時光。",
+      "afterParagraph": 2
+    },
+    {
+      "src": "/images/journal/table_tea_20260705/03-preparing.webp",
+      "aspectRatio": "1045 / 1567",
+      "captionJa": "一杯を準備する、先生の手元。",
+      "captionEn": "Preparing a cup, one gesture at a time.",
+      "captionKo": "한 잔을 준비하시는 선생님의 손길.",
+      "captionZh": "老師準備一杯茶的雙手。",
+      "afterParagraph": 4
+    },
+    {
+      "src": "/images/journal/table_tea_20260705/04-cold-matcha.webp",
+      "aspectRatio": "1045 / 1567",
+      "captionJa": "また飲みたい、あの日の冷たい抹茶。",
+      "captionEn": "The cold matcha we would love to enjoy again.",
+      "captionKo": "다시 마시고 싶은, 그날의 차가운 말차.",
+      "captionZh": "令人想再品嘗的，那天的冰抹茶。",
+      "afterParagraph": 11
+    }
+  ]
+},
   "field-note-ekimae-rivet-20261114": {
   "hero": {
     "src": "/images/journal/rivet_20261114/01-mikuriya.webp",

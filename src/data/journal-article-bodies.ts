@@ -8,6 +8,50 @@ export const journalArticleBodies: Record<
   string,
   Partial<Record<Locale | "ko", string[]>>
 > = {
+  "field-note-table-tea-20260705": {
+  "ja": [
+    "7月5日、テーブル茶道に参加させていただきました。",
+    "教えてくださったのは、茶道の師範の先生。正座だと足がしびれてしまうから、と笑いを交えながら、テーブル茶道をされている理由を話してくださいました。",
+    "茶室のしつらえや、一挙手一投足の所作も大切。でも、それとともに大切にしたいのが、おもてなしの心と、その場に集まった人たちで一期一会の茶会を楽しむこと。親しみやすい先生のお話とお茶を通して、その思いが伝わってきました。",
+    "目の前の人を思って一杯を点て、受け取った人は、そのひとときを味わう。",
+    "自分自身や、周りの人へのいたわりとしてお茶があること。松壽園が大切にしている思いを、先生は自然に体現されているように感じました。",
+    "この日は、もうひとつお願いをしました。私たちがラテ用として扱っている抹茶を、ミルクを加えずに飲んだら、茶道の師範はどう評価されるのか。そんな試飲にもご協力いただきました。",
+    "結果は、お抹茶としていただくなら、5点満点で2.5点。",
+    "ミルクに負けない味わいがラテでは魅力になる一方、そのまま点てて飲むなら、それに合う抹茶を選ぶ必要があります。同じ抹茶でも、飲み方によって持ち味の生き方が変わる。その違いを、先生と一緒に確かめることができました。",
+    "松壽園では、すべての商品について、茶道の師範やシェフ、お茶のプロの方々とともにテイスティングを行っています。そのまま味わう一杯に、ミルクと合わせるラテに、それぞれの使い方に合う抹茶をお届けするためです。",
+    "そして、この日いただいた冷たい抹茶。ガラスの器に注がれた緑が涼やかで、心に残っています。",
+    "あの冷たい抹茶を、また飲みたいなあ。",
+    "そう思い返せる時間も、お茶をいただく楽しみのひとつなのだと思います。"
+  ],
+  "en": [
+    "On July 5, we took part in a table-style tea ceremony.",
+    "Our teacher was a master of the Japanese tea ceremony. With a warm sense of humor, she explained why she offers tea ceremonies at a table: sitting in the traditional kneeling position can leave your legs numb.",
+    "The setting of a tea room and the care given to every movement matter. Alongside them, she reminded us of the spirit of hospitality—and the joy of sharing a gathering that will never happen in quite the same way again. Through her welcoming conversation and the tea she prepared, that spirit felt close and familiar.",
+    "One person prepares a cup with another in mind. The person receiving it takes a moment to enjoy it.",
+    "Tea as a way to care for ourselves and for those around us is something we value at Shojuen. We felt that our teacher expressed this naturally in the way she welcomed us.",
+    "That day, we also asked for her help with a tasting. How would a tea ceremony master assess one of our latte matchas when prepared simply with water, without milk?",
+    "Her assessment, for drinking it as traditional matcha, was 2.5 out of 5.",
+    "A flavor strong enough to hold its own against milk can be an asset in a latte. For matcha whisked with water alone, however, a different selection is needed. The same matcha reveals its strengths differently depending on how it is served. Together with our teacher, we had the chance to explore that distinction.",
+    "At Shojuen, every product is tasted with tea ceremony masters, chefs, or tea professionals. This helps us recommend matcha suited to its intended use, whether enjoyed with water alone or blended with milk in a latte.",
+    "And then there was the cold matcha we enjoyed that day. Its green color, served in glass, looked wonderfully refreshing. It has stayed with us.",
+    "We would love another glass of that cold matcha.",
+    "Having a moment like that to look back on is part of the pleasure of tea, too."
+  ],
+  "ko": [
+    "7월 5일, 테이블 다도에 참여했습니다.",
+    "차를 가르쳐 주신 분은 다도 사범 선생님이었습니다. 선생님은 정좌로 오래 앉아 있으면 다리가 저린다는 이야기를 웃음과 함께 건네며, 테이블 다도를 하시는 이유를 들려주셨습니다.",
+    "다실을 꾸미는 일도, 하나하나의 몸가짐과 동작도 중요합니다. 그와 함께 소중히 여겨야 할 것은 손님을 정성껏 맞이하는 마음, 그리고 그 자리에 모인 사람들과 다시없을 차 모임을 즐기는 일이라고 하셨습니다. 선생님의 친근한 이야기와 차를 통해 그 마음을 느낄 수 있었습니다.",
+    "눈앞의 사람을 생각하며 한 잔을 준비하고, 그 차를 받은 사람은 잠시 그 시간을 음미합니다.",
+    "자신과 주변 사람을 보살피는 방법으로서의 차. 쇼주엔이 소중히 여기는 이 마음을 선생님은 자연스럽게 실천하고 계신 듯했습니다.",
+    "이날은 한 가지 부탁도 드렸습니다. 저희가 라테용으로 취급하는 말차를 우유 없이 마시면 다도 사범께서는 어떻게 평가하실지 궁금했습니다. 선생님은 이 시음에도 함께해 주셨습니다.",
+    "물로만 개어 마시는 말차로서의 평가는 5점 만점에 2.5점이었습니다.",
+    "우유에 묻히지 않는 뚜렷한 맛은 라테에서 장점이 됩니다. 한편, 물로만 개어 마실 때는 그 방식에 맞는 말차를 골라야 합니다. 같은 말차도 어떻게 마시느냐에 따라 장점이 드러나는 방식이 달라집니다. 선생님과 함께 그 차이를 확인할 수 있었습니다.",
+    "쇼주엔에서는 모든 상품을 다도 사범이나 셰프, 차 전문가들과 함께 시음합니다. 물로만 즐기는 한 잔에도, 우유와 어우러지는 라테에도 각각의 용도에 맞는 말차를 전하기 위해서입니다.",
+    "그리고 이날 마셨던 차가운 말차. 유리잔에 담긴 초록빛이 시원하고 산뜻해 오래도록 기억에 남았습니다.",
+    "그 차가운 말차를, 또 마시고 싶습니다.",
+    "이렇게 다시 떠올리고 싶은 시간이 생기는 것도 차를 즐기는 기쁨 중 하나인 것 같습니다."
+  ]
+},
   "field-note-ekimae-rivet-20261114": {
   "ja": [
     "佐賀駅から歩いて3分ほど。「駅前リベット」の御厨健士朗さんを訪ねました。",
