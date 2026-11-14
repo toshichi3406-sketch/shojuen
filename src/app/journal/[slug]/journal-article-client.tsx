@@ -11,6 +11,7 @@ import {
   journalArticleMedia,
   type JournalFigure,
 } from "@/data/journal-article-media"
+import { StoryLikeButton } from "@/components/journal/story-like-button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { FadeIn } from "@/components/motion/fade-in"
@@ -118,6 +119,7 @@ export function JournalArticleClient({
             <Fragment key={`extra-${i}`}>{renderFigure(f)}</Fragment>
           ))}
         </div>
+        {!article.draft && <StoryLikeButton key={slug} slug={slug} locale={articleLocale} />}
       </FadeIn>
     </article>
   )
