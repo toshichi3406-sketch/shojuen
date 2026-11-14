@@ -6,8 +6,50 @@ import type { Locale } from "@/i18n/types"
  */
 export const journalArticleBodies: Record<
   string,
-  Partial<Record<Locale, string[]>>
+  Partial<Record<Locale | "ko", string[]>>
 > = {
+  "field-note-ekimae-rivet-20261114": {
+  "ja": [
+    "佐賀駅から歩いて3分ほど。「駅前リベット」の御厨健士朗さんを訪ねました。",
+    "御厨さんは、淹茶選手権2026で最優秀淹茶賞を受賞されたお茶の淹れ手。こちらのお店では、松壽園がお届けする宇治の石臼挽き抹茶をお取り扱いいただいています。",
+    "訪ねて印象に残ったのは、お店の居心地のよさと、御厨さんを囲む人たちの姿でした。",
+    "入口の前を通りかかった顔見知りの方が、御厨さんに声をかけていく。そんな何気ないやり取りから、このお店が街の日常の中にあることが伝わってきます。",
+    "お茶を淹れる確かな技術と、ふらりと立ち寄りたくなる親しみやすさ。その両方がある場所で、私たちがお届けした抹茶も、一杯になって誰かの時間に加わっている。卸先を訪ねると、その先にいる人の顔が見えてきます。",
+    "同じ宇治の石臼挽き抹茶は、佐賀市の「BUNGA VILLAGE（ブンガビレッジ）」にもお届けしています。レストラン・結婚式場「シャトー文雅」の敷地内にあるベーカリーカフェです。",
+    "次回は、ブンガビレッジにも足を運び、素材選びへのこだわりや、抹茶をどのように使っていただいているのか、お話を伺えたらと思っています。",
+    "産地から届いた茶が、それぞれのお店で、どんな一杯やひと皿になるのか。これから少しずつ、このジャーナルでお伝えしていきます。"
+  ],
+  "en": [
+    "Today, we visited Kenshiro Mikuriya at Ekimae Rivet, about a three-minute walk from Saga Station.",
+    "Mikuriya received the top award, the “最優秀淹茶賞,” at Japan’s Encha Championship 2026. At Ekimae Rivet, he serves stone-milled Uji matcha supplied by Shojuen.",
+    "What stayed with us was the welcoming atmosphere—and the people around him.",
+    "As familiar faces passed the entrance, they stopped to greet him. Those small exchanges offered a glimpse of a place woven into the everyday life of its neighborhood.",
+    "Here, skilled tea preparation sits comfortably alongside the warmth of a casual local gathering place. The matcha we deliver becomes a drink and a moment in someone’s day. Visiting our partners lets us see the people beyond each delivery.",
+    "We also supply the same stone-milled Uji matcha to BUNGA VILLAGE in Saga, a bakery café on the grounds of Chateau Bunga, a restaurant and wedding venue.",
+    "For a future journal entry, we hope to visit BUNGA VILLAGE to hear about the care they put into choosing ingredients and how they use our matcha.",
+    "From its place of origin to a cup or a plate, tea takes on a different expression in each setting. We look forward to sharing more of those stories here."
+  ],
+  "ko": [
+    "오늘은 사가역에서 걸어서 약 3분 거리에 있는 ‘에키마에 리벳’을 찾아 미쿠리야 켄시로 씨를 만났습니다.",
+    "미쿠리야 씨는 일본 ‘엔차 선수권 2026’에서 최고상인 ‘最優秀淹茶賞’을 수상한 차 전문가입니다. 이곳에서는 쇼주엔이 공급하는 맷돌로 간 우지 말차를 사용하고 있습니다.",
+    "이날 특히 기억에 남은 것은 편안한 가게 분위기와 미쿠리야 씨를 둘러싼 사람들의 모습이었습니다.",
+    "입구 앞을 지나던 친숙한 이웃들이 미쿠리야 씨에게 인사를 건넵니다. 짧고 자연스러운 대화 속에서, 이곳이 동네의 일상에 스며든 공간이라는 것을 느낄 수 있었습니다.",
+    "차를 우리는 탄탄한 실력과 누구나 편하게 들르고 싶어지는 친근함. 그 두 가지가 함께하는 곳에서, 저희가 전한 말차도 한 잔의 음료가 되어 누군가의 하루에 더해지고 있었습니다. 거래처를 직접 찾아가면 납품 너머에 있는 사람들의 얼굴이 보입니다.",
+    "같은 우지 맷돌 말차는 사가시의 ‘BUNGA VILLAGE’에도 공급하고 있습니다. 레스토랑이자 웨딩 공간인 ‘샤토 분가’ 부지 안에 자리한 베이커리 카페입니다.",
+    "다음에는 BUNGA VILLAGE도 방문해 재료를 고르는 기준과 저희 말차를 어떻게 사용하고 계신지 이야기를 들어보고 싶습니다.",
+    "산지에서 온 차가 각기 다른 공간에서 어떤 한 잔과 한 접시로 이어지는지, 앞으로 이 저널을 통해 조금씩 전하겠습니다."
+  ],
+  "zh": [
+    "今天，我們造訪了距離佐賀站步行約三分鐘的「駅前リベット」，拜訪御厨健士朗先生。",
+    "御厨先生是「淹茶選手権2026」最高獎「最優秀淹茶賞」的得主。這裡使用的，是由松壽園供應的宇治石臼研磨抹茶。",
+    "這次造訪，讓我們印象深刻的，是店裡舒適的氛圍，以及圍繞在御厨先生身邊的人們。",
+    "熟識的鄰里經過門口，便向御厨先生打聲招呼。從這些自然的互動中，可以感受到這間店早已融入街坊的日常。",
+    "精湛的泡茶技藝，與讓人想隨時走進來坐坐的親切感，在這裡並存。我們送來的抹茶，也在這樣的空間裡化為一杯飲品，走進某個人的時光。親自拜訪合作店家，讓我們看見每一次交付之後的人與故事。",
+    "同一款宇治石臼研磨抹茶，也供應給佐賀市的「BUNGA VILLAGE」。這是一間位於餐廳暨婚禮場地「Chateau Bunga（シャトー文雅）」園區內的烘焙咖啡館。",
+    "下一次，我們希望也能走訪 BUNGA VILLAGE，聽聽他們挑選食材的講究，以及如何運用我們的抹茶。",
+    "從產地來到不同的店裡，茶會成為怎樣的一杯飲品或一道料理？未來，我們將在這本日誌裡，慢慢與大家分享。"
+  ]
+},
   "field-note-takeo-chawan-kiln": {
     ja: [
       "当園では、これから抹茶椀も取り扱っていこうと考えています。その背景には、佐賀が日本有数の陶磁器の産地であるという事実があります。有田焼、伊万里焼、波佐見焼が磁器として名を連ね、武雄焼は陶器と磁器の両方を生む——名前は違っても、いずれも長い歴史と深い技術に支えられた焼き物の世界です。松壽園が抹茶椀の窯元として向き合うことにしたのが、佐賀・有田で有田焼を手がける、この一軒です。",

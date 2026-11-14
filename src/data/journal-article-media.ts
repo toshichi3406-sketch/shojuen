@@ -11,6 +11,9 @@ export type JournalFigure = {
   captionJa: string
   captionEn: string
   captionZh: string
+  captionKo?: string
+  afterParagraph?: number
+  aspectRatio?: string
   /** 人物の顔が写る等、掲載に本人許可が必要な写真は true */
   needsPermission?: boolean
 }
@@ -27,6 +30,45 @@ const takeoChawan = (name: string) =>
   `/images/journal/takeo_chawan_20260624/${name}` as const
 
 export const journalArticleMedia: Record<string, JournalArticleMedia> = {
+  "field-note-ekimae-rivet-20261114": {
+  "hero": {
+    "src": "/images/journal/rivet_20261114/01-mikuriya.webp",
+    "aspectRatio": "1108 / 1477",
+    "captionJa": "宇治の石臼挽き抹茶と、駅前リベットの御厨健士朗さん。",
+    "captionEn": "Kenshiro Mikuriya at Ekimae Rivet with our stone-milled Uji matcha.",
+    "captionZh": "駅前リベット的御厨健士朗先生與宇治石臼研磨抹茶。",
+    "captionKo": "우지 맷돌 말차를 든 에키마에 리벳의 미쿠리야 켄시로 씨."
+  },
+  "figures": [
+    {
+      "src": "/images/journal/rivet_20261114/02-entrance.webp",
+    "aspectRatio": "1108 / 1477",
+      "captionJa": "お茶とお酒を楽しめる、駅前リベットの入口。",
+      "captionEn": "The entrance to Ekimae Rivet, a place for tea and drinks.",
+      "captionZh": "可以品茶與小酌的駅前リベット入口。",
+      "captionKo": "차와 술을 즐길 수 있는 에키마에 리벳의 입구.",
+      "afterParagraph": 3
+    },
+    {
+      "src": "/images/journal/rivet_20261114/03-award.webp",
+    "aspectRatio": "1477 / 1108",
+      "captionJa": "店内に飾られた、淹茶選手権2026・最優秀淹茶賞の賞状。",
+      "captionEn": "The certificate for the top award at the Encha Championship 2026.",
+      "captionZh": "店內展示的淹茶選手権2026「最優秀淹茶賞」獎狀。",
+      "captionKo": "매장에 전시된 엔차 선수권 2026 최고상 상장.",
+      "afterParagraph": 4
+    },
+    {
+      "src": "/images/journal/rivet_20261114/04-logo.webp",
+    "aspectRatio": "1477 / 1108",
+      "captionJa": "街の日常にある、駅前リベット。",
+      "captionEn": "Ekimae Rivet, part of everyday life in the neighborhood.",
+      "captionZh": "融入街坊日常的駅前リベット。",
+      "captionKo": "동네의 일상 속에 자리한 에키마에 리벳.",
+      "afterParagraph": 7
+    }
+  ]
+},
   "field-note-takeo-chawan-kiln": {
     hero: {
       src: takeoChawan("01-hero-four-bowls.png"),

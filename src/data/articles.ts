@@ -1,9 +1,9 @@
 import type { Locale } from "@/i18n/types"
 
 /** ja は必須。en/zh は任意（無い場合は ja にフォールバック）。 */
-export type LocalizedText = { ja: string; en?: string; zh?: string }
+export type LocalizedText = { ja: string; en?: string; zh?: string; ko?: string }
 
-export function localize(text: LocalizedText, locale: Locale): string {
+export function localize(text: LocalizedText, locale: Locale | "ko"): string {
   return text[locale] ?? text.ja
 }
 
@@ -25,6 +25,29 @@ export function getPublishedArticles(): Article[] {
 
 /** JOURNAL — 碾茶・抹茶の専門記事。将来 CMS / MDX へ。 */
 export const articles: Article[] = [
+  {
+  "slug": "field-note-ekimae-rivet-20261114",
+  "title": {
+    "ja": "お茶と、人が集まる場所。駅前リベットを訪ねて。",
+    "en": "Where Tea Brings People Together: A Visit to Ekimae Rivet",
+    "ko": "차와 사람이 모이는 곳, 에키마에 리벳을 찾아서",
+    "zh": "茶與人相聚的地方——走訪駅前リベット"
+  },
+  "excerpt": {
+    "ja": "淹茶選手権2026・最優秀淹茶賞を受賞した御厨健士朗さんを訪ねて。佐賀駅近くのお店で出会った、茶と人をつなぐ日常を写真とともに。",
+    "en": "A visit to award-winning tea brewer Kenshiro Mikuriya at Ekimae Rivet in Saga, where tea and neighborhood life meet.",
+    "ko": "엔차 선수권 2026 최고상 수상자 미쿠리야 켄시로 씨를 찾아서. 사가역 근처에서 만난 차와 사람의 일상을 사진으로 전합니다.",
+    "zh": "拜訪淹茶選手権2026最高獎得主御厨健士朗先生，以照片記錄佐賀站附近連結茶與人的日常。"
+  },
+  "category": {
+    "ja": "お取引先を訪ねて",
+    "en": "Visiting Our Partners",
+    "ko": "거래처를 찾아서",
+    "zh": "拜訪合作店家"
+  },
+  "publishedAt": "2026-11-14",
+  "readMinutes": 3
+},
   {
     slug: "field-note-takeo-chawan-kiln",
     title: {
